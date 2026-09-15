@@ -1,4 +1,7 @@
+"use client"
+
 import * as React from "react"
+import { usePathname } from "next/navigation"
 import { DesktopHeader } from "@/components/shell/desktop-header"
 import { MobileHeader } from "@/components/shell/mobile-header"
 import { MobileBottomNav } from "@/components/shell/mobile-bottom-nav"
@@ -10,6 +13,17 @@ interface AppShellProps {
 }
 
 export function AppShell({ children, className }: AppShellProps) {
+  const pathname = usePathname()
+  const isAuthRoute = pathname === "/login" || pathname === "/register"
+
+  if (isAuthRoute) {
+    return (
+      <div className="relative min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-hidden">
+        <main className="w-full max-w-md mx-auto">{children}</main>
+      </div>
+    )
+  }
+
   return (
     <div className="relative min-h-screen flex flex-col bg-background text-foreground overflow-x-hidden">
       {/* Desktop Header */}
