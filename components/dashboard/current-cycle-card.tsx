@@ -31,7 +31,7 @@ export function CurrentCycleCard({
 }: CurrentCycleCardProps) {
   if (!currentCycle) {
     return (
-      <Card className="border-border/80 bg-card shadow-xs">
+      <Card>
         <CardContent className="p-6 sm:p-7 space-y-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
@@ -65,7 +65,7 @@ export function CurrentCycleCard({
   const currentDay = statusInfo.currentDay ?? 1
 
   return (
-    <Card className="border-border/80 bg-gradient-to-br from-card via-card to-secondary/30 shadow-xs relative overflow-hidden">
+    <Card className="bg-gradient-to-br from-card via-card to-secondary/30 relative overflow-hidden">
       <CardContent className="p-6 sm:p-7 space-y-6">
         {/* Top Meta Row */}
         <div className="flex items-start justify-between gap-4">

@@ -6,7 +6,7 @@ export function CalendarSkeleton() {
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
       {/* 1. Main Calendar Card Skeleton */}
-      <Card className="border-border/80 shadow-redi-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {/* Navigation & Header Controls */}
         <CardHeader className="pb-3 border-b border-border/50">
           <div className="flex items-center justify-between gap-2">
@@ -63,7 +63,7 @@ export function CalendarSkeleton() {
       </Card>
 
       {/* 2. Selected Date Card Skeleton */}
-      <Card className="border-border/80 shadow-redi-sm bg-card">
+      <Card>
         <CardContent className="p-4 sm:p-5 space-y-4">
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="space-y-2">

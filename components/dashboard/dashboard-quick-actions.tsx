@@ -17,7 +17,7 @@ export function DashboardQuickActions() {
           <button
             type="button"
             onClick={openQuickLog}
-            className="group flex items-center justify-between p-4 rounded-2xl border border-primary/20 bg-primary/5 hover:bg-primary/10 hover:border-primary/40 transition-all text-left shadow-2xs"
+            className="group flex items-center justify-between p-4 rounded-2xl border border-primary/25 bg-primary/5 hover:bg-primary/10 hover:border-primary/45 transition-all text-left shadow-redi-card hover:shadow-redi-card-hover active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-xs">
@@ -34,7 +34,7 @@ export function DashboardQuickActions() {
           {/* 2. View Calendar */}
           <Link
             href="/calendar"
-            className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 bg-card hover:border-primary/30 hover:shadow-2xs transition-all text-left"
+            className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
@@ -51,7 +51,7 @@ export function DashboardQuickActions() {
           {/* 3. View Cycle History */}
           <Link
             href="/cycles"
-            className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 bg-card hover:border-primary/30 hover:shadow-2xs transition-all text-left"
+            className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">

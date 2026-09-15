@@ -43,7 +43,7 @@ export function CycleCard({ cycle, isCurrent }: CycleCardProps) {
 
   return (
     <Link href={`/cycles/${cycle.id}`} className="group block select-none">
-      <Card className="border-border/80 bg-card hover:border-primary/50 hover:shadow-redi-sm transition-all duration-150">
+      <Card interactive>
         <CardContent className="p-5 space-y-3">
           {/* Header Row */}
           <div className="flex items-start justify-between gap-2">

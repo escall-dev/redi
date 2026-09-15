@@ -135,8 +135,8 @@ export function CycleDetailView({ cycle }: CycleDetailViewProps) {
       {/* Key Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {/* Period Duration */}
-        <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
+        <Card size="sm">
+          <CardContent className="p-0 flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary shrink-0">
               <Droplet className="size-5" />
             </div>
@@ -150,8 +150,8 @@ export function CycleDetailView({ cycle }: CycleDetailViewProps) {
         </Card>
 
         {/* Cycle Length */}
-        <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
+        <Card size="sm">
+          <CardContent className="p-0 flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary shrink-0">
               <Clock className="size-5" />
             </div>
@@ -165,8 +165,8 @@ export function CycleDetailView({ cycle }: CycleDetailViewProps) {
         </Card>
 
         {/* Logged Days */}
-        <Card className="border-border/70 shadow-xs">
-          <CardContent className="p-4 flex items-center gap-3">
+        <Card size="sm">
+          <CardContent className="p-0 flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary shrink-0">
               <Calendar className="size-5" />
             </div>
@@ -181,7 +181,7 @@ export function CycleDetailView({ cycle }: CycleDetailViewProps) {
       </div>
 
       {/* Period Days Tracking Section */}
-      <Card className="border-border/80 shadow-xs">
+      <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
@@ -271,7 +271,7 @@ export function CycleDetailView({ cycle }: CycleDetailViewProps) {
 
       {/* Cycle Notes Card */}
       {cycle.notes && (
-        <Card className="border-border/70 shadow-xs">
+        <Card>
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
               <FileText className="size-4 text-primary" />

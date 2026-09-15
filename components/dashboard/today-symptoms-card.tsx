@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { SymptomLogDialog } from "@/components/symptoms/symptom-log-dialog"
 import { SymptomDeleteDialog } from "@/components/symptoms/symptom-delete-dialog"
 import type { SymptomRecord } from "@/app/actions/symptoms"
 import { getSeverityLabel } from "@/lib/symptoms/constants"
-import { Activity, Plus, Pencil, Trash2 } from "lucide-react"
+import { Activity, Plus, Pencil, Trash2, ArrowRight } from "lucide-react"
 
 interface TodaySymptomsCardProps {
   todaySymptoms: SymptomRecord[]
@@ -33,7 +34,7 @@ export function TodaySymptomsCard({ todaySymptoms, todayStr }: TodaySymptomsCard
   const handleSuccess = () => router.refresh()
 
   return (
-    <Card className="rounded-2xl border-border/70 shadow-redi-sm">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
@@ -109,16 +110,26 @@ export function TodaySymptomsCard({ todaySymptoms, todayStr }: TodaySymptomsCard
                 </div>
               </div>
             ))}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={() => { setEditTarget(null); setLogOpen(true) }}
-              className="gap-1.5 text-muted-foreground hover:text-primary w-full justify-center"
-            >
-              <Plus className="size-3.5" />
-              Add Another
-            </Button>
+            <div className="flex items-center justify-between pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => { setEditTarget(null); setLogOpen(true) }}
+                className="h-7 px-2 text-xs text-primary hover:text-primary/80 gap-1"
+              >
+                <Plus className="size-3" />
+                <span>Add Another</span>
+              </Button>
+
+              <Link
+                href="/symptoms"
+                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors font-medium"
+              >
+                <span>View all symptoms</span>
+                <ArrowRight className="size-3" />
+              </Link>
+            </div>
           </div>
         )}
       </CardContent>

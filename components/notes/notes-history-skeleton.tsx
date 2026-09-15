@@ -16,7 +16,7 @@ export function NotesHistorySkeleton() {
       {/* Note cards skeleton */}
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="rounded-2xl border-border/70 shadow-redi-sm">
+          <Card key={i}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
                 <Skeleton className="h-4 w-36 rounded-md" />

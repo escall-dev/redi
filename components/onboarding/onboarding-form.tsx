@@ -77,7 +77,7 @@ export function OnboardingForm({ initialDisplayName = "" }: OnboardingFormProps)
       </div>
 
       {/* Onboarding Card */}
-      <Card className="border-border/80 shadow-redi-sm">
+      <Card>
         <CardHeader className="sr-only">
           <h2>Personalize your cycle tracking</h2>
         </CardHeader>

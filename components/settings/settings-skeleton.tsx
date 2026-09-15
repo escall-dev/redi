@@ -12,7 +12,7 @@ export function SettingsSkeleton() {
       </div>
 
       {/* Card 1: Profile Details */}
-      <Card className="border-border/70 shadow-xs">
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-xl" />
@@ -31,7 +31,7 @@ export function SettingsSkeleton() {
       </Card>
 
       {/* Card 2: Cycle Preferences */}
-      <Card className="border-border/70 shadow-xs">
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-xl" />
@@ -54,7 +54,7 @@ export function SettingsSkeleton() {
       </Card>
 
       {/* Card 3: Account & Session */}
-      <Card className="border-border/70 shadow-xs">
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-xl" />
@@ -74,7 +74,7 @@ export function SettingsSkeleton() {
       </Card>
 
       {/* Card 4: Danger Zone */}
-      <Card className="border-border/70 shadow-xs">
+      <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <Skeleton className="size-10 rounded-xl" />

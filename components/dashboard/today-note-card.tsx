@@ -21,7 +21,7 @@ export function TodayNoteCard({ todayNote, todayStr }: TodayNoteCardProps) {
   const handleSuccess = () => router.refresh()
 
   return (
-    <Card className="rounded-2xl border-border/70 shadow-redi-sm">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">

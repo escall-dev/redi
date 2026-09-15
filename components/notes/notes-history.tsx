@@ -41,7 +41,7 @@ function NoteCard({
     : note.content
 
   return (
-    <Card className="rounded-2xl border-border/75 shadow-redi-sm hover:border-primary/30 transition-all bg-card">
+    <Card className="hover:border-primary/40 transition-all">
       <CardHeader className="pb-2.5 pt-4 px-4 sm:px-5 border-b border-border/40">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-foreground font-semibold text-sm sm:text-base">

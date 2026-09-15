@@ -38,7 +38,7 @@ export function LoginForm() {
       </div>
 
       {/* Login Card */}
-      <Card className="border-border/80 shadow-redi-sm">
+      <Card>
         <CardHeader className="sr-only">
           <h2>Sign in form</h2>
         </CardHeader>

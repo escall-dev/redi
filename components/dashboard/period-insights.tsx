@@ -30,7 +30,7 @@ export function PeriodInsights({
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       {/* 1. Last Period Card */}
-      <Card className="border-border/80 bg-card shadow-xs">
+      <Card>
         <CardContent className="p-5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -92,7 +92,7 @@ export function PeriodInsights({
       </Card>
 
       {/* 2. Next Expected Period Card */}
-      <Card className="border-border/80 bg-card shadow-xs">
+      <Card>
         <CardContent className="p-5 sm:p-6 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">

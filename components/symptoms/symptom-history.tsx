@@ -114,7 +114,7 @@ export function SymptomHistory({ symptoms }: SymptomHistoryProps) {
               </h2>
 
               {/* Symptom rows card */}
-              <div className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-redi-sm divide-y divide-border/50">
+              <div className="rounded-2xl border border-border/80 dark:border-border/60 bg-card overflow-hidden shadow-redi-card divide-y divide-border/50">
                 {daySymptoms.map((s) => (
                   <div
                     key={s.id}

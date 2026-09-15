@@ -166,7 +166,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       )}
 
       {/* 1. Profile Section */}
-      <Card className="border-border/70 shadow-xs overflow-hidden">
+      <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
@@ -210,7 +210,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       </Card>
 
       {/* 2. Cycle Preferences Section */}
-      <Card className="border-border/70 shadow-xs overflow-hidden">
+      <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
@@ -279,7 +279,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       </Card>
 
       {/* 3. Account & Security Section */}
-      <Card className="border-border/70 shadow-xs overflow-hidden">
+      <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
@@ -319,7 +319,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       </Card>
 
       {/* 4. Danger Zone Section */}
-      <Card className="border-destructive/30 bg-destructive/[0.02] shadow-xs overflow-hidden">
+      <Card className="border-destructive/30 bg-destructive/[0.02] overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/10 text-destructive border border-destructive/20">

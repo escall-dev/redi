@@ -22,8 +22,8 @@ export function CycleStatsSection({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
         {/* 1. Average Cycle Length */}
-        <Card className="border-border/80 bg-card shadow-xs">
-          <CardContent className="p-4 space-y-2">
+        <Card size="sm">
+          <CardContent className="p-0 space-y-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Clock className="size-3.5 text-primary" />
               <span>Avg Cycle Length</span>
@@ -49,8 +49,8 @@ export function CycleStatsSection({
         </Card>
 
         {/* 2. Average Period Duration */}
-        <Card className="border-border/80 bg-card shadow-xs">
-          <CardContent className="p-4 space-y-2">
+        <Card size="sm">
+          <CardContent className="p-0 space-y-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Droplets className="size-3.5 text-primary" />
               <span>Avg Period Length</span>
@@ -76,8 +76,8 @@ export function CycleStatsSection({
         </Card>
 
         {/* 3. Tracked Cycles Count */}
-        <Card className="border-border/80 bg-card shadow-xs">
-          <CardContent className="p-4 space-y-2">
+        <Card size="sm">
+          <CardContent className="p-0 space-y-2">
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <History className="size-3.5 text-primary" />
               <span>Tracked Cycles</span>
