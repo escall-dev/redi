@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { getCyclesAction } from "@/app/actions/cycles"
+import { getSymptomsByDateAction } from "@/app/actions/symptoms"
 import {
   getCurrentCycle,
   getCurrentCycleStatus,
@@ -16,6 +17,7 @@ import { PeriodInsights } from "@/components/dashboard/period-insights"
 import { CycleStatsSection } from "@/components/dashboard/cycle-stats-section"
 import { DashboardQuickActions } from "@/components/dashboard/dashboard-quick-actions"
 import { RecentCyclesSection } from "@/components/dashboard/recent-cycles-section"
+import { TodaySymptomsCard } from "@/components/dashboard/today-symptoms-card"
 
 export const dynamic = "force-dynamic"
 
@@ -46,6 +48,9 @@ export default async function DashboardPage() {
 
   // Fetch all user cycles with period days and computed consecutive cycle lengths
   const cycles = await getCyclesAction()
+
+  // Fetch today's symptoms for dashboard summary
+  const todaySymptoms = await getSymptomsByDateAction(getTodayDateString())
 
   // 1. Current Cycle & Status
   const todayStr = getTodayDateString()
@@ -88,6 +93,9 @@ export default async function DashboardPage() {
 
       {/* H. Quick Actions (Log Period dialog, Calendar, Cycles) */}
       <DashboardQuickActions />
+
+      {/* I. Today's Symptoms */}
+      <TodaySymptomsCard todaySymptoms={todaySymptoms} todayStr={todayStr} />
 
       {/* E. Cycle Summary Statistics */}
       <CycleStatsSection

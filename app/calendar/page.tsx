@@ -1,15 +1,52 @@
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
+import { createClient } from "@/lib/supabase/server"
+import { redirect } from "next/navigation"
+import { getCyclesAction } from "@/app/actions/cycles"
+import { getSymptomsAction } from "@/app/actions/symptoms"
+import { CalendarView } from "@/components/calendar/calendar-view"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays, Clock } from "lucide-react"
+import { CalendarDays } from "lucide-react"
 
-export default function CalendarPage() {
+export const dynamic = "force-dynamic"
+
+export const metadata = {
+  title: "Calendar — Redi",
+  description: "View and explore your menstrual cycle timeline and period tracking history.",
+}
+
+export default async function CalendarPage() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect("/login")
+  }
+
+  // Verify onboarding status
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("onboarding_completed")
+    .eq("user_id", user.id)
+    .single()
+
+  if (profile && profile.onboarding_completed === false) {
+    redirect("/onboarding")
+  }
+
+  // Fetch verified user cycles with period days and consecutive cycle lengths
+  const cycles = await getCyclesAction()
+
+  // Fetch all symptoms for calendar indicator dots and selected-date context
+  const symptoms = await getSymptomsAction()
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-8">
       {/* Page Header */}
       <div className="space-y-1">
         <div className="flex items-center gap-2">
           <Badge variant="lavender" className="gap-1 font-normal text-xs">
-            <Clock className="size-3" />
+            <CalendarDays className="size-3" />
             Calendar
           </Badge>
         </div>
@@ -17,31 +54,13 @@ export default function CalendarPage() {
           Calendar
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Monthly timeline and cycle calendar views.
+          Menstrual cycle timeline and period tracking history.
         </p>
       </div>
 
-      {/* Placeholder Surface Card */}
-      <Card className="border-border/70 shadow-xs">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
-              <CalendarDays className="size-5" />
-            </div>
-            <div>
-              <CardTitle>Cycle Calendar</CardTitle>
-              <CardDescription>
-                Placeholder Route
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl bg-secondary/60 p-4 border border-border/50 text-sm text-foreground/80 leading-relaxed">
-            Your Redi calendar will appear here.
-          </div>
-        </CardContent>
-      </Card>
+      {/* Main Interactive Calendar View */}
+      <CalendarView cycles={cycles} symptoms={symptoms} />
     </div>
   )
 }
+

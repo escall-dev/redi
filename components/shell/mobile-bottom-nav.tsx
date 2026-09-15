@@ -11,6 +11,13 @@ import { Plus } from "lucide-react"
 export function MobileBottomNav() {
   const pathname = usePathname()
   const { openQuickLog } = useQuickLog()
+  // useSyncExternalStore: server snapshot = false, client snapshot = true.
+  // This is the recommended React pattern for SSR-safe "is mounted" detection.
+  const mounted = React.useSyncExternalStore(
+    (cb) => { window.addEventListener("focus", cb); return () => window.removeEventListener("focus", cb) },
+    () => true,
+    () => false
+  )
 
   const homeItem = NAV_ITEMS[0] // Home
   const calendarItem = NAV_ITEMS[1] // Calendar
@@ -19,9 +26,11 @@ export function MobileBottomNav() {
 
   const renderNavLink = (item: (typeof NAV_ITEMS)[number]) => {
     const Icon = item.icon
+    // Before mount, treat nothing as active so SSR HTML matches the initial client render.
     const isActive =
-      pathname === item.href ||
-      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+      mounted &&
+      (pathname === item.href ||
+        (item.href !== "/dashboard" && pathname.startsWith(item.href)))
 
     return (
       <Link

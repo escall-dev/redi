@@ -47,17 +47,14 @@ function PeriodLogForm({ cycleToEdit, onClose, onSuccess }: PeriodLogFormProps) 
   const [startDate, setStartDate] = React.useState(
     cycleToEdit?.start_date || todayStr
   )
-  const [hasEnded, setHasEnded] = React.useState(
-    Boolean(cycleToEdit?.end_date)
-  )
   const [endDate, setEndDate] = React.useState(cycleToEdit?.end_date || "")
   const [notes, setNotes] = React.useState(cycleToEdit?.notes || "")
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, setIsPending] = React.useState(false)
 
-  // Real-time period duration calculation
+  // Real-time period duration calculation (only when end is filled)
   let calculatedDuration: number | null = null
-  if (startDate && hasEnded && endDate && endDate >= startDate) {
+  if (startDate && endDate && endDate >= startDate) {
     calculatedDuration = calculateInclusiveDays(startDate, endDate)
   }
 
@@ -75,25 +72,20 @@ function PeriodLogForm({ cycleToEdit, onClose, onSuccess }: PeriodLogFormProps) 
       return
     }
 
-    if (hasEnded && !endDate) {
-      setError("Please select an end date or uncheck 'Period has ended'.")
-      return
-    }
-
-    if (hasEnded && endDate) {
+    if (endDate) {
       if (endDate > todayStr) {
         setError("Period end date cannot be in the future.")
         return
       }
       if (endDate < startDate) {
-        setError("Period end date cannot precede the start date.")
+        setError("Period end date cannot be before the start date.")
         return
       }
     }
 
     const formData = new FormData()
     formData.append("startDate", startDate)
-    if (hasEnded && endDate) {
+    if (endDate) {
       formData.append("endDate", endDate)
     }
     if (notes.trim()) {
@@ -151,48 +143,21 @@ function PeriodLogForm({ cycleToEdit, onClose, onSuccess }: PeriodLogFormProps) 
         </p>
       </div>
 
-      {/* Has Ended Toggle */}
-      <div className="flex items-center justify-between rounded-xl bg-secondary/50 p-3 border border-border/60">
-        <div>
-          <p className="text-sm font-medium text-foreground">Period has ended</p>
-          <p className="text-xs text-muted-foreground">
-            Turn on if bleeding has finished
-          </p>
-        </div>
-        <input
-          type="checkbox"
-          id="hasEnded"
-          checked={hasEnded}
-          onChange={(e) => {
-            setHasEnded(e.target.checked)
-            if (!e.target.checked) {
-              setEndDate("")
-            } else if (!endDate && startDate) {
-              setEndDate(startDate)
-            }
-          }}
+      {/* End Date — always shown, optional */}
+      <div className="space-y-1.5">
+        <Label htmlFor="periodEndDate">Period End Date</Label>
+        <DatePicker
+          id="periodEndDate"
+          value={endDate}
+          onChange={setEndDate}
+          maxDate={todayStr}
+          placeholder="End date (leave blank if ongoing)"
           disabled={isPending}
-          className="size-5 rounded border-border text-primary accent-primary cursor-pointer"
         />
+        <p className="text-xs text-muted-foreground">
+          {endDate ? "Last day of bleeding for this cycle." : "Leave blank if your period is still ongoing."}
+        </p>
       </div>
-
-      {/* End Date (Conditional) */}
-      {hasEnded && (
-        <div className="space-y-1.5 animate-in fade-in-50 duration-150">
-          <Label htmlFor="periodEndDate">Period End Date *</Label>
-          <DatePicker
-            id="periodEndDate"
-            value={endDate}
-            onChange={setEndDate}
-            maxDate={todayStr}
-            placeholder="Select end date"
-            disabled={isPending}
-          />
-          <p className="text-xs text-muted-foreground">
-            Last day of bleeding for this cycle.
-          </p>
-        </div>
-      )}
 
       {/* Duration Preview */}
       {calculatedDuration !== null && (
@@ -241,6 +206,7 @@ function PeriodLogForm({ cycleToEdit, onClose, onSuccess }: PeriodLogFormProps) 
     </form>
   )
 }
+
 
 export function PeriodLogDialog({
   open,
