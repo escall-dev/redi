@@ -1,20 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getCyclesAction } from "@/app/actions/cycles"
-import { getSymptomsAction } from "@/app/actions/symptoms"
 import { getDailyNotesAction } from "@/app/actions/notes"
-import { CalendarView } from "@/components/calendar/calendar-view"
+import { NotesHistory } from "@/components/notes/notes-history"
 import { Badge } from "@/components/ui/badge"
-import { CalendarDays } from "lucide-react"
+import { BookOpen } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "Calendar — Redi",
-  description: "View and explore your menstrual cycle timeline and period tracking history.",
+  title: "Daily Notes — Redi",
+  description: "Private personal daily reflections and journal entries.",
 }
 
-export default async function CalendarPage() {
+export default async function NotesPage() {
   const supabase = await createClient()
   const {
     data: { user },
@@ -24,7 +22,6 @@ export default async function CalendarPage() {
     redirect("/login")
   }
 
-  // Verify onboarding status
   const { data: profile } = await supabase
     .from("profiles")
     .select("onboarding_completed")
@@ -35,36 +32,28 @@ export default async function CalendarPage() {
     redirect("/onboarding")
   }
 
-  // Fetch verified user cycles with period days and consecutive cycle lengths
-  const cycles = await getCyclesAction()
-
-  // Fetch all symptoms for calendar indicator dots and selected-date context
-  const symptoms = await getSymptomsAction()
-
-  // Fetch all daily notes for calendar indicators and selected-date context
   const notes = await getDailyNotesAction()
 
   return (
     <div className="space-y-6 pb-8">
       {/* Page Header */}
-      <div className="space-y-1">
+      <div className="space-y-1 max-w-2xl mx-auto">
         <div className="flex items-center gap-2">
           <Badge variant="lavender" className="gap-1 font-normal text-xs">
-            <CalendarDays className="size-3" />
-            Calendar
+            <BookOpen className="size-3 text-primary" />
+            Daily Notes
           </Badge>
         </div>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-          Calendar
+          Daily Notes
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Menstrual cycle timeline and period tracking history.
+          Your private personal journal. Record thoughts, reminders, and daily observations.
         </p>
       </div>
 
-      {/* Main Interactive Calendar View */}
-      <CalendarView cycles={cycles} symptoms={symptoms} notes={notes} />
+      {/* Main Notes Timeline View */}
+      <NotesHistory notes={notes} />
     </div>
   )
 }
-

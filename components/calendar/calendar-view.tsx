@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { CycleRecord, FlowLevel } from "@/app/actions/cycles"
 import type { SymptomRecord } from "@/app/actions/symptoms"
+import type { DailyNoteRecord } from "@/app/actions/notes"
 import {
   getCalendarGrid,
   getSelectedDateContext,
@@ -18,6 +19,7 @@ import {
 import { getTodayDateString } from "@/lib/calculations/cycle-calculations"
 import { getSeverityLabel } from "@/lib/symptoms/constants"
 import { SymptomLogDialog } from "@/components/symptoms/symptom-log-dialog"
+import { NoteEditorDialog } from "@/components/notes/note-editor-dialog"
 import {
   ChevronLeft,
   ChevronRight,
@@ -29,6 +31,8 @@ import {
   CalendarCheck,
   Activity,
   Plus,
+  FileText,
+  Pencil,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -36,9 +40,15 @@ interface CalendarViewProps {
   cycles: CycleRecord[]
   initialDate?: string // YYYY-MM-DD
   symptoms?: SymptomRecord[]
+  notes?: DailyNoteRecord[]
 }
 
-export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarViewProps) {
+export function CalendarView({
+  cycles,
+  initialDate,
+  symptoms = [],
+  notes = [],
+}: CalendarViewProps) {
   const todayStr = React.useMemo(() => getTodayDateString(), [])
   const [selectedDateStr, setSelectedDateStr] = React.useState<string>(
     initialDate || todayStr
@@ -107,6 +117,19 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
 
   // Symptom log dialog for calendar "Add Symptom" action
   const [symptomLogOpen, setSymptomLogOpen] = React.useState(false)
+
+  // Build set of dates that have daily note records for the note dot indicator
+  const noteDateSet = React.useMemo(() => {
+    return new Set(notes.map((n) => n.date))
+  }, [notes])
+
+  // Daily note for the currently selected date
+  const selectedDateNote = React.useMemo(() => {
+    return notes.find((n) => n.date === selectedDateStr) ?? null
+  }, [notes, selectedDateStr])
+
+  // Note editor dialog for calendar "Add Note" / "Edit Note" action
+  const [noteEditorOpen, setNoteEditorOpen] = React.useState(false)
 
   const monthTitle = `${getMonthName(viewMonth)} ${viewYear}`
 
@@ -316,12 +339,13 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
                     )}
                   </div>
 
-                  {/* Bottom Indicator: Flow dots for period days, symptom dot for symptom-only days */}
-                  <div className="w-full min-h-[14px] flex items-center justify-center pt-1 gap-0.5">
-                    {isPeriod
-                      ? renderFlowIndicator(flow, isSelected)
-                      : symptomDateSet.has(cell.dateStr) && isCurrentMonth
-                      ? (
+                  {/* Bottom Indicator: Flow dots for period days, symptom dot & note dot for non-period days */}
+                  <div className="w-full min-h-[14px] flex items-center justify-center pt-1 gap-1">
+                    {isPeriod ? (
+                      renderFlowIndicator(flow, isSelected)
+                    ) : (
+                      <>
+                        {symptomDateSet.has(cell.dateStr) && isCurrentMonth && (
                           <span
                             className={cn(
                               "size-1.5 rounded-full",
@@ -329,8 +353,18 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
                             )}
                             title="Symptoms logged"
                           />
-                        )
-                      : null}
+                        )}
+                        {noteDateSet.has(cell.dateStr) && isCurrentMonth && (
+                          <span
+                            className={cn(
+                              "size-1.5 rounded-sm",
+                              isSelected ? "bg-primary-foreground/80" : "bg-primary/70"
+                            )}
+                            title="Daily note logged"
+                          />
+                        )}
+                      </>
+                    )}
                   </div>
                 </button>
               )
@@ -367,7 +401,7 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-1.5">
                 <span className="size-2.5 rounded-sm ring-1.5 ring-primary/60" />
                 <span className="text-[11px] sm:text-xs">Today</span>
@@ -379,6 +413,10 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
               <div className="flex items-center gap-1.5">
                 <span className="size-1.5 rounded-full bg-pink-accent-foreground/70" />
                 <span className="text-[11px] sm:text-xs">Symptoms</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="size-1.5 rounded-sm bg-primary/70" />
+                <span className="text-[11px] sm:text-xs">Note</span>
               </div>
             </div>
           </div>
@@ -538,6 +576,47 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
             </div>
           )}
 
+          {/* Daily Note for selected date */}
+          {!selectedContext.isFuture && (
+            <div className="space-y-2 pt-1 border-t border-border/40">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                  <FileText className="size-3.5" />
+                  Daily Note
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setNoteEditorOpen(true)}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
+                >
+                  {selectedDateNote ? (
+                    <>
+                      <Pencil className="size-3" />
+                      Edit Note
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="size-3" />
+                      Add Note
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {selectedDateNote ? (
+                <div className="rounded-xl bg-secondary/40 p-3 border border-border/50 text-xs sm:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  &ldquo;{selectedDateNote.content}&rdquo;
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground py-0.5">
+                  No note for this day.
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Action: Link to View Associated Cycle (Section 9) */}
           {selectedContext.cycle && (
             <div className="pt-2 flex justify-end">
@@ -562,6 +641,16 @@ export function CalendarView({ cycles, initialDate, symptoms = [] }: CalendarVie
         open={symptomLogOpen}
         onOpenChange={setSymptomLogOpen}
         defaultDate={selectedDateStr}
+        onSuccess={() => { /* router.refresh() handled via revalidatePath server-side */ }}
+      />
+
+      {/* Daily Note Editor Dialog (opened from calendar selected date) */}
+      <NoteEditorDialog
+        open={noteEditorOpen}
+        onOpenChange={setNoteEditorOpen}
+        noteToEdit={selectedDateNote}
+        defaultDate={selectedDateStr}
+        existingNotes={notes}
         onSuccess={() => { /* router.refresh() handled via revalidatePath server-side */ }}
       />
     </div>

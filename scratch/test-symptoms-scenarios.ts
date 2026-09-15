@@ -5,7 +5,6 @@
 
 import {
   SYMPTOM_OPTIONS,
-  SEVERITY_OPTIONS,
   SEVERITY_VALUES,
   isValidSymptom,
   isValidSeverity,

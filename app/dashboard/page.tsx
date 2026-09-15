@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { getCyclesAction } from "@/app/actions/cycles"
 import { getSymptomsByDateAction } from "@/app/actions/symptoms"
+import { getDailyNoteByDateAction } from "@/app/actions/notes"
 import {
   getCurrentCycle,
   getCurrentCycleStatus,
@@ -18,6 +19,7 @@ import { CycleStatsSection } from "@/components/dashboard/cycle-stats-section"
 import { DashboardQuickActions } from "@/components/dashboard/dashboard-quick-actions"
 import { RecentCyclesSection } from "@/components/dashboard/recent-cycles-section"
 import { TodaySymptomsCard } from "@/components/dashboard/today-symptoms-card"
+import { TodayNoteCard } from "@/components/dashboard/today-note-card"
 
 export const dynamic = "force-dynamic"
 
@@ -51,6 +53,9 @@ export default async function DashboardPage() {
 
   // Fetch today's symptoms for dashboard summary
   const todaySymptoms = await getSymptomsByDateAction(getTodayDateString())
+
+  // Fetch today's daily note for dashboard summary
+  const todayNote = await getDailyNoteByDateAction(getTodayDateString())
 
   // 1. Current Cycle & Status
   const todayStr = getTodayDateString()
@@ -94,8 +99,11 @@ export default async function DashboardPage() {
       {/* H. Quick Actions (Log Period dialog, Calendar, Cycles) */}
       <DashboardQuickActions />
 
-      {/* I. Today's Symptoms */}
-      <TodaySymptomsCard todaySymptoms={todaySymptoms} todayStr={todayStr} />
+      {/* I. Daily Observations: Today's Symptoms & Today's Daily Note */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TodaySymptomsCard todaySymptoms={todaySymptoms} todayStr={todayStr} />
+        <TodayNoteCard todayNote={todayNote} todayStr={todayStr} />
+      </div>
 
       {/* E. Cycle Summary Statistics */}
       <CycleStatsSection
