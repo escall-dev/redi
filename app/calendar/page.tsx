@@ -10,7 +10,7 @@ import { CalendarDays } from "lucide-react"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "Calendar — Redi",
+  title: "Calendar",
   description: "View and explore your menstrual cycle timeline and period tracking history.",
 }
 

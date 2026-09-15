@@ -23,6 +23,11 @@ import { TodayNoteCard } from "@/components/dashboard/today-note-card"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = {
+  title: "Dashboard",
+  description: "Your personal cycle overview and insights.",
+}
+
 export default async function DashboardPage() {
   const supabase = await createClient()
   const {

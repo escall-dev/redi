@@ -6,6 +6,11 @@ import { Sliders } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = {
+  title: "Settings",
+  description: "Manage your profile, cycle preferences, and private data.",
+}
+
 export default async function SettingsPage() {
   const supabase = await createClient()
   const {

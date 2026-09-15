@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { OnboardingForm } from "@/components/onboarding/onboarding-form"
 
 export const metadata = {
-  title: "Welcome — Redi",
+  title: "Welcome",
   description: "Personalize your private cycle tracking in Redi.",
 }
 

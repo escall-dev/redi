@@ -4,8 +4,8 @@ import * as React from "react"
 import Link from "next/link"
 import { useActionState } from "react"
 import { registerAction, type AuthActionResult } from "@/app/actions/auth"
-import { RediBrand } from "@/components/brand/redi-brand"
-import { Card, CardHeader, CardContent } from "@/components/ui/card"
+import { RediLogo } from "@/components/brand/redi-logo"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -42,41 +42,40 @@ export function RegisterForm() {
 
   return (
     <div className="w-full space-y-6">
-      {/* Header & Branding */}
-      <div className="flex flex-col items-center text-center space-y-3">
-        <RediBrand size="lg" withLink={false} />
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-            Create your Redi account
-          </h1>
-          <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-            Start keeping your cycle information private and organized.
-          </p>
-        </div>
-      </div>
+      {/* Elevated Register Card */}
+      <Card className="border border-lavender-border/80 bg-card shadow-redi-card rounded-2xl sm:rounded-3xl transition-all">
+        <CardContent className="pt-8 pb-8 px-5 sm:px-8 space-y-6">
+          {/* Header & Logo Section inside the card */}
+          <div className="flex flex-col items-center text-center space-y-3">
+            <div className="relative flex items-center justify-center p-2 rounded-2xl bg-lavender/50 border border-lavender-border/60 shadow-xs">
+              <RediLogo size="lg" className="drop-shadow-sm" />
+            </div>
 
-      {/* Registration Card */}
-      <Card>
-        <CardHeader className="sr-only">
-          <h2>Registration form</h2>
-        </CardHeader>
+            <div className="space-y-1">
+              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+                Create Account
+              </h1>
+              <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+                Start keeping your cycle records calm, personal, and strictly private.
+              </p>
+            </div>
+          </div>
 
-        <CardContent className="pt-6">
           {state?.requiresEmailConfirmation ? (
             /* Email Verification Notice */
             <div className="space-y-4 text-center py-2">
-              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/70">
+              <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/70 shadow-xs">
                 <CheckCircle2 className="size-6" />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 <h3 className="text-lg font-semibold text-foreground">Check your inbox</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
-                  {state.message || "We sent a confirmation link to your email. Confirm your account to complete registration."}
+                  {state.message || "We sent a confirmation link to your email. Click the link to activate your account."}
                 </p>
               </div>
               <Link
                 href="/login"
-                className={cn(buttonVariants({ variant: "default" }), "w-full h-11 mt-2")}
+                className={cn(buttonVariants({ variant: "default" }), "w-full h-11 rounded-xl mt-3 shadow-redi-sm")}
               >
                 Continue to Sign In
               </Link>
@@ -95,8 +94,10 @@ export function RegisterForm() {
               )}
 
               {/* Display Name */}
-              <div className="space-y-1.5">
-                <Label htmlFor="displayName">Display Name</Label>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="displayName" className="text-sm font-medium text-foreground">
+                  Display Name
+                </Label>
                 <Input
                   id="displayName"
                   name="displayName"
@@ -105,13 +106,15 @@ export function RegisterForm() {
                   autoComplete="name"
                   required
                   disabled={isPending}
-                  className="h-11 sm:h-10"
+                  className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                 />
               </div>
 
               {/* Email */}
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                  Email
+                </Label>
                 <Input
                   id="email"
                   name="email"
@@ -120,13 +123,15 @@ export function RegisterForm() {
                   autoComplete="email"
                   required
                   disabled={isPending}
-                  className="h-11 sm:h-10"
+                  className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                 />
               </div>
 
               {/* Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="password">Password</Label>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                  Password
+                </Label>
                 <div className="relative">
                   <Input
                     id="password"
@@ -136,13 +141,13 @@ export function RegisterForm() {
                     autoComplete="new-password"
                     required
                     disabled={isPending}
-                    className="h-11 sm:h-10 pr-10"
+                    className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     aria-label={showPassword ? "Hide password" : "Show password"}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
                   >
                     {showPassword ? (
                       <EyeOff className="size-4" />
@@ -154,8 +159,10 @@ export function RegisterForm() {
               </div>
 
               {/* Confirm Password */}
-              <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <div className="space-y-1.5 text-left">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+                  Confirm Password
+                </Label>
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
@@ -164,7 +171,7 @@ export function RegisterForm() {
                   autoComplete="new-password"
                   required
                   disabled={isPending}
-                  className="h-11 sm:h-10"
+                  className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                 />
               </div>
 
@@ -172,7 +179,7 @@ export function RegisterForm() {
               <Button
                 type="submit"
                 disabled={isPending}
-                className="w-full h-11 text-sm font-medium mt-2"
+                className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all"
               >
                 {isPending ? (
                   <>
@@ -189,7 +196,7 @@ export function RegisterForm() {
       </Card>
 
       {/* Switch to Login */}
-      <div className="text-center space-y-4">
+      <div className="text-center space-y-3">
         <p className="text-sm text-muted-foreground">
           Already have an account?{" "}
           <Link

@@ -1,4 +1,4 @@
-﻿import { createClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { getSymptomsAction } from "@/app/actions/symptoms"
 import { SymptomHistory } from "@/components/symptoms/symptom-history"
@@ -6,7 +6,7 @@ import { SymptomHistory } from "@/components/symptoms/symptom-history"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "Symptoms — Redi",
+  title: "Symptoms",
   description: "Record and review your personal symptom observations.",
 }
 

@@ -63,12 +63,12 @@
 }
 
 :root {
-  /* Soft, warm, calm tinted background (not harsh sterile white) */
-  --background: oklch(0.988 0.006 295);
+  /* Subtle, calm lavender tinted page background (delicate light-purple atmosphere) */
+  --background: oklch(0.968 0.016 295);
   /* Deep plum-slate text (approachable, high-contrast, non-glaring) */
   --foreground: oklch(0.24 0.025 295);
 
-  /* Pure crisp card surface */
+  /* Pure crisp elevated card surface */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.24 0.025 295);
   --popover: oklch(1 0 0);
@@ -80,9 +80,9 @@
   --primary-foreground: oklch(0.99 0.005 295);
 
   /* Soft Lavender Supporting Tone */
-  --lavender: oklch(0.95 0.035 295);
-  --lavender-foreground: oklch(0.42 0.13 295);
-  --lavender-border: oklch(0.90 0.05 295);
+  --lavender: oklch(0.94 0.040 295);
+  --lavender-foreground: oklch(0.40 0.14 295);
+  --lavender-border: oklch(0.88 0.055 295);
 
   /* Subtle Pink Accent */
   --pink-accent: oklch(0.94 0.045 350);
@@ -90,15 +90,15 @@
   --pink-accent-border: oklch(0.90 0.06 350);
 
   /* Secondary Neutral Surface */
-  --secondary: oklch(0.965 0.015 295);
+  --secondary: oklch(0.952 0.020 295);
   --secondary-foreground: oklch(0.32 0.06 295);
 
   /* Muted Text & Elements */
-  --muted: oklch(0.96 0.012 295);
-  --muted-foreground: oklch(0.56 0.025 295);
+  --muted: oklch(0.945 0.018 295);
+  --muted-foreground: oklch(0.54 0.028 295);
 
   /* Accent surface */
-  --accent: oklch(0.945 0.025 295);
+  --accent: oklch(0.938 0.030 295);
   --accent-foreground: oklch(0.28 0.05 295);
 
   /* Semantic Feedback Colors */
@@ -112,8 +112,8 @@
   --success-border: oklch(0.88 0.06 155);
 
   /* Boundaries & Focus */
-  --border: oklch(0.925 0.012 295);
-  --input: oklch(0.925 0.012 295);
+  --border: oklch(0.912 0.018 295);
+  --input: oklch(0.912 0.018 295);
   --ring: oklch(0.65 0.12 295);
 
   /* Border radius (14px baseline for gentle friendly aesthetic) */

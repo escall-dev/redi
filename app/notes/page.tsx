@@ -8,7 +8,7 @@ import { BookOpen } from "lucide-react"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "Daily Notes — Redi",
+  title: "Daily Notes",
   description: "Private personal daily reflections and journal entries.",
 }
 

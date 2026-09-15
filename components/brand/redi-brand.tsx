@@ -1,5 +1,6 @@
 import * as React from "react"
 import Link from "next/link"
+import { RediLogo } from "@/components/brand/redi-logo"
 import { cn } from "@/lib/utils"
 
 interface RediBrandProps extends React.ComponentProps<"div"> {
@@ -18,28 +19,16 @@ export function RediBrand({
   const content = (
     <div
       className={cn(
-        "inline-flex items-center gap-2.5 select-none transition-opacity hover:opacity-90",
+        "inline-flex items-center gap-2.5 select-none transition-opacity hover:opacity-95 group",
         className
       )}
       {...props}
     >
-      {/* Redi Emblem Placeholder: Soft, calming cycle droplet/orb */}
-      <div
-        className={cn(
-          "relative flex items-center justify-center rounded-2xl bg-gradient-to-tr from-primary to-[oklch(0.62_0.16_305)] text-primary-foreground shadow-xs transition-transform group-hover:scale-105",
-          size === "sm" && "size-7 rounded-xl",
-          size === "md" && "size-9 rounded-xl",
-          size === "lg" && "size-11 rounded-2xl"
-        )}
-      >
-        {/* Soft inner organic petal/crescent accent */}
-        <div
-          className={cn(
-            "rounded-full bg-white/25 backdrop-blur-xs",
-            size === "sm" && "size-3",
-            size === "md" && "size-4",
-            size === "lg" && "size-5"
-          )}
+      {/* Authentic Redi Logo Emblem with soft elevation */}
+      <div className="relative flex items-center justify-center transition-transform group-hover:scale-105 duration-200">
+        <RediLogo
+          size={size === "sm" ? "sm" : size === "lg" ? "lg" : "md"}
+          className="drop-shadow-xs"
         />
       </div>
 
@@ -57,7 +46,7 @@ export function RediBrand({
         </span>
         {showTagline && (
           <span className="text-[11px] text-muted-foreground font-normal mt-0.5">
-            Private Cycle Care
+            Personal Cycle Tracker
           </span>
         )}
       </div>
@@ -66,7 +55,10 @@ export function RediBrand({
 
   if (withLink) {
     return (
-      <Link href="/dashboard" className="focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 rounded-xl">
+      <Link
+        href="/dashboard"
+        className="focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 rounded-xl"
+      >
         {content}
       </Link>
     )

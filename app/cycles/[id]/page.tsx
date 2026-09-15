@@ -8,7 +8,7 @@ interface CycleDetailPageProps {
 }
 
 export const metadata = {
-  title: "Cycle Details — Redi",
+  title: "Cycle Details",
   description: "View and edit cycle period days and flow.",
 }
 

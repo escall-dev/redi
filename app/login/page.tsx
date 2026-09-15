@@ -2,7 +2,7 @@ import * as React from "react"
 import { LoginForm } from "@/components/auth/login-form"
 
 export const metadata = {
-  title: "Sign In — Redi",
+  title: "Sign In",
   description: "Sign in to continue to Redi private cycle tracking.",
 }
 

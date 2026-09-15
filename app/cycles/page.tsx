@@ -4,7 +4,7 @@ import { getCyclesAction } from "@/app/actions/cycles"
 import { CycleList } from "@/components/cycles/cycle-list"
 
 export const metadata = {
-  title: "Cycle History — Redi",
+  title: "Cycles",
   description: "View and manage your menstrual cycles and period days.",
 }
 

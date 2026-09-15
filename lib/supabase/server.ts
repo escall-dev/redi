@@ -3,8 +3,6 @@ import { cookies } from "next/headers"
 import { assertSupabaseConfigured, getSupabaseEnv } from "./config"
 import type { Database } from "./types"
 
-const ONE_YEAR_IN_SECONDS = 60 * 60 * 24 * 365
-
 /**
  * Creates a Supabase client for use in Server Components, Server Actions,
  * and Route Handlers using Next.js App Router cookie store.
@@ -21,13 +19,7 @@ export async function createClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const isDelete = value === "" || options?.maxAge === 0
-            cookieStore.set(name, value, {
-              ...options,
-              maxAge: isDelete ? 0 : (options?.maxAge || ONE_YEAR_IN_SECONDS),
-              sameSite: options?.sameSite || "lax",
-              path: options?.path || "/",
-            })
+            cookieStore.set(name, value, options)
           })
         } catch {
           // The `setAll` method was called from a Server Component.
@@ -58,13 +50,7 @@ export async function getOptionalClient() {
       setAll(cookiesToSet) {
         try {
           cookiesToSet.forEach(({ name, value, options }) => {
-            const isDelete = value === "" || options?.maxAge === 0
-            cookieStore.set(name, value, {
-              ...options,
-              maxAge: isDelete ? 0 : (options?.maxAge || ONE_YEAR_IN_SECONDS),
-              sameSite: options?.sameSite || "lax",
-              path: options?.path || "/",
-            })
+            cookieStore.set(name, value, options)
           })
         } catch {
           // Ignored in Server Components

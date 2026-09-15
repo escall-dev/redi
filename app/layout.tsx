@@ -15,8 +15,12 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Redi — Private Cycle Care",
+  title: {
+    default: "Redi — Personal Cycle Tracker",
+    template: "%s | Redi — Personal Cycle Tracker",
+  },
   description: "A calm, personal, and private menstrual cycle tracking web application.",
+  applicationName: "Redi",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

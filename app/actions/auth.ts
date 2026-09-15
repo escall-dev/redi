@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { getSiteUrl } from "@/lib/config/site"
 import { redirect } from "next/navigation"
 
 export interface AuthActionResult {
@@ -140,10 +141,12 @@ export async function registerAction(
 
   try {
     const supabase = await createClient()
+    const siteUrl = getSiteUrl()
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${siteUrl}/auth/confirm`,
         data: {
           display_name: displayName,
         },
