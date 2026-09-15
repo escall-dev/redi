@@ -6,11 +6,41 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { RediBrand } from "@/components/brand/redi-brand"
 import { NAV_ITEMS } from "@/components/shell/app-nav-items"
+import { useQuickLog } from "@/components/shell/quick-log-context"
 import { Badge } from "@/components/ui/badge"
-import { Shield } from "lucide-react"
+import { Shield, Plus } from "lucide-react"
 
 export function DesktopHeader() {
   const pathname = usePathname()
+  const { openQuickLog } = useQuickLog()
+
+  const homeItem = NAV_ITEMS[0] // Home
+  const calendarItem = NAV_ITEMS[1] // Calendar
+  const historyItem = NAV_ITEMS[2] // History
+  const settingsItem = NAV_ITEMS[3] // Settings
+
+  const renderLink = (item: (typeof NAV_ITEMS)[number]) => {
+    const Icon = item.icon
+    const isActive =
+      pathname === item.href ||
+      (item.href !== "/dashboard" && pathname.startsWith(item.href))
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        className={cn(
+          "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150 select-none",
+          isActive
+            ? "bg-lavender text-lavender-foreground shadow-xs border border-lavender-border/70"
+            : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
+        )}
+      >
+        <Icon className={cn("size-4", isActive ? "text-primary" : "text-muted-foreground")} />
+        <span>{item.label}</span>
+      </Link>
+    )
+  }
 
   return (
     <header className="hidden sm:block sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur-md transition-all">
@@ -22,28 +52,27 @@ export function DesktopHeader() {
 
         {/* Navigation Menu: Centered Soft Pill */}
         <nav className="flex items-center gap-1 rounded-full border border-border/70 bg-card/60 p-1 shadow-xs backdrop-blur-xs">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon
-            const isActive =
-              pathname === item.href ||
-              (item.href !== "/dashboard" && pathname.startsWith(item.href))
+          {/* 1. Home */}
+          {renderLink(homeItem)}
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150 select-none",
-                  isActive
-                    ? "bg-lavender text-lavender-foreground shadow-xs border border-lavender-border/70"
-                    : "text-muted-foreground hover:bg-secondary/70 hover:text-foreground"
-                )}
-              >
-                <Icon className={cn("size-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                <span>{item.label}</span>
-              </Link>
-            )
-          })}
+          {/* 2. Calendar */}
+          {renderLink(calendarItem)}
+
+          {/* 3. Center Quick Log Button */}
+          <button
+            type="button"
+            onClick={openQuickLog}
+            className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-all duration-150 select-none bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs active:scale-95"
+          >
+            <Plus className="size-3.5 stroke-[2.5]" />
+            <span>Log Period</span>
+          </button>
+
+          {/* 4. History */}
+          {renderLink(historyItem)}
+
+          {/* 5. Settings */}
+          {renderLink(settingsItem)}
         </nav>
 
         {/* Right Action: Privacy Badge */}
