@@ -104,6 +104,24 @@ export function LoginForm() {
               </div>
             </div>
 
+            {/* Remember Me */}
+            <div className="flex items-center justify-between pt-0.5">
+              <label
+                htmlFor="rememberMe"
+                className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <input
+                  id="rememberMe"
+                  name="rememberMe"
+                  type="checkbox"
+                  defaultChecked
+                  disabled={isPending}
+                  className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+                />
+                <span>Remember me on this device</span>
+              </label>
+            </div>
+
             {/* Submit Button */}
             <Button
               type="submit"
@@ -137,7 +155,7 @@ export function LoginForm() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <Shield className="size-3.5 text-primary" />
-          <span>Develpoed by Escall</span>
+          <span>Developed by Escall</span>
         </div>
       </div>
     </div>

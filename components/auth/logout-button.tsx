@@ -6,20 +6,30 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { LogOut, Loader2 } from "lucide-react"
 
+import { useRouter } from "next/navigation"
+
 export function LogoutButton() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+  const router = useRouter()
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
-      // Clear client session
-      const supabase = createClient()
-      await supabase.auth.signOut()
-    } catch {
-      // Proceed even if client fails
+      await logoutAction()
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+        return
+      }
+      // Fallback in case server action failed or session was already invalidated
+      try {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      } catch {
+        // Ignore client error
+      }
+      router.push("/login")
+      router.refresh()
     }
-    // Server action to clear cookies and redirect to /login
-    await logoutAction()
   }
 
   return (

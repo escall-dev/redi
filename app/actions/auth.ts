@@ -56,16 +56,31 @@ export async function loginAction(
     }
 
     if (data.user) {
-      // Ensure profile exists upon successful login
       const displayName = data.user.user_metadata?.display_name || null
-      await supabase.from("profiles").upsert(
-        {
-          user_id: data.user.id,
-          display_name: displayName,
-        },
-        { onConflict: "user_id" }
-      )
-      targetRedirect = redirectUrl.startsWith("/") ? redirectUrl : "/dashboard"
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("user_id", data.user.id)
+        .single()
+
+      if (!profile) {
+        await supabase.from("profiles").upsert(
+          {
+            user_id: data.user.id,
+            display_name: displayName,
+          },
+          { onConflict: "user_id" }
+        )
+      }
+
+      if (!profile?.onboarding_completed) {
+        targetRedirect = "/onboarding"
+      } else {
+        targetRedirect =
+          redirectUrl.startsWith("/") && redirectUrl !== "/login"
+            ? redirectUrl
+            : "/dashboard"
+      }
     }
   } catch (err: unknown) {
     if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
@@ -159,7 +174,7 @@ export async function registerAction(
           },
           { onConflict: "user_id" }
         )
-        targetRedirect = "/dashboard"
+        targetRedirect = "/onboarding"
       } else {
         // Email confirmation is required by Supabase project settings
         return {

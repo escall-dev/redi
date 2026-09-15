@@ -14,7 +14,10 @@ interface AppShellProps {
 
 export function AppShell({ children, className }: AppShellProps) {
   const pathname = usePathname()
-  const isAuthRoute = pathname === "/login" || pathname === "/register"
+  const isAuthRoute =
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/onboarding"
 
   if (isAuthRoute) {
     return (
