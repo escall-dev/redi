@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { assertSupabaseConfigured, getSupabaseEnv } from "./config"
+import type { Database } from "./types"
 
 /**
  * Creates a Supabase client for use in Server Components, Server Actions,
@@ -10,7 +11,7 @@ export async function createClient() {
   const { url, key } = assertSupabaseConfigured()
   const cookieStore = await cookies()
 
-  return createServerClient(url, key, {
+  return createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll()
@@ -41,7 +42,7 @@ export async function getOptionalClient() {
 
   const cookieStore = await cookies()
 
-  return createServerClient(url, key, {
+  return createServerClient<Database>(url, key, {
     cookies: {
       getAll() {
         return cookieStore.getAll()

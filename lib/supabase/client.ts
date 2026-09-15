@@ -1,5 +1,6 @@
 import { createBrowserClient } from "@supabase/ssr"
 import { assertSupabaseConfigured, getSupabaseEnv } from "./config"
+import type { Database } from "./types"
 
 /**
  * Creates a Supabase client for use in Client Components (browser-side).
@@ -7,7 +8,7 @@ import { assertSupabaseConfigured, getSupabaseEnv } from "./config"
  */
 export function createClient() {
   const { url, key } = assertSupabaseConfigured()
-  return createBrowserClient(url, key)
+  return createBrowserClient<Database>(url, key)
 }
 
 /**
@@ -19,5 +20,5 @@ export function getOptionalClient() {
   if (!isConfigured || !url || !key) {
     return null
   }
-  return createBrowserClient(url, key)
+  return createBrowserClient<Database>(url, key)
 }
