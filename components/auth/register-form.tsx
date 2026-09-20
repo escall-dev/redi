@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils"
 
 export function RegisterForm() {
   const [showPassword, setShowPassword] = React.useState(false)
+  const [selectedSex, setSelectedSex] = React.useState<string>("")
   const [clientError, setClientError] = React.useState<string | null>(null)
 
   const [state, formAction, isPending] = useActionState<AuthActionResult | null, FormData>(
@@ -36,6 +37,12 @@ export function RegisterForm() {
     if (password !== confirmPassword) {
       e.preventDefault()
       setClientError("Passwords do not match.")
+      return
+    }
+
+    if (!selectedSex) {
+      e.preventDefault()
+      setClientError("Please select an option for sex.")
       return
     }
   }
@@ -173,6 +180,52 @@ export function RegisterForm() {
                   disabled={isPending}
                   className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                 />
+              </div>
+
+              {/* Sex */}
+              <div className="space-y-2 text-left">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium text-foreground">
+                    Sex
+                  </Label>
+                  <span className="text-xs text-muted-foreground">Required</span>
+                </div>
+                <div
+                  role="radiogroup"
+                  aria-label="Sex"
+                  className="grid grid-cols-3 gap-1 rounded-xl bg-background/80 dark:bg-card/90 p-1 border border-border/70 shadow-xs w-full"
+                >
+                  {[
+                    { value: "male", label: "Male" },
+                    { value: "female", label: "Female" },
+                    { value: "prefer_not_to_say", label: "Prefer not to say" },
+                  ].map((option) => {
+                    const isChecked = selectedSex === option.value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        role="radio"
+                        aria-checked={isChecked}
+                        onClick={() => {
+                          setSelectedSex(option.value)
+                          setClientError(null)
+                        }}
+                        disabled={isPending}
+                        className={cn(
+                          "inline-flex items-center justify-center px-1.5 py-2 sm:px-3 sm:py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 text-center",
+                          isChecked
+                            ? "bg-card text-foreground font-semibold shadow-xs border border-border/80"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60",
+                          isPending && "opacity-50 pointer-events-none"
+                        )}
+                      >
+                        <span className="truncate">{option.label}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+                <input type="hidden" name="sex" value={selectedSex} />
               </div>
 
               {/* Submit Button */}

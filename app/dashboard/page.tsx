@@ -13,6 +13,7 @@ import {
   getTodayDateString,
 } from "@/lib/calculations/cycle-calculations"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { SupporterBanner } from "@/components/dashboard/supporter-banner"
 import { CurrentCycleCard } from "@/components/dashboard/current-cycle-card"
 import { PeriodInsights } from "@/components/dashboard/period-insights"
 import { CycleStatsSection } from "@/components/dashboard/cycle-stats-section"
@@ -41,7 +42,7 @@ export default async function DashboardPage() {
   // Fetch profile information
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, last_period_start, typical_cycle_length, onboarding_completed")
+    .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
     .eq("user_id", user.id)
     .single()
 
@@ -52,6 +53,7 @@ export default async function DashboardPage() {
   const displayName = profile?.display_name || user.user_metadata?.display_name || "Friend"
   const typicalCycleLength = profile?.typical_cycle_length ?? 28
   const onboardingStartDate = profile?.last_period_start ?? null
+  const isSupporter = profile?.usage_role === "supporter"
 
   // Fetch all user cycles with period days and computed consecutive cycle lengths
   const cycles = await getCyclesAction()
@@ -86,6 +88,9 @@ export default async function DashboardPage() {
     <div className="space-y-6 pb-8 max-w-4xl mx-auto">
       {/* A. Personalized Greeting Header */}
       <DashboardHeader displayName={displayName} />
+
+      {/* Supporter Informational Notice */}
+      {isSupporter && <SupporterBanner />}
 
       {/* B & G. Current Cycle Card with Progress Visualizer */}
       <CurrentCycleCard

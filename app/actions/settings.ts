@@ -41,6 +41,7 @@ export async function updateSettingsAction(
   const rawDisplayName = (formData.get("displayName") as string | null) ?? ""
   const displayName = rawDisplayName.trim()
   const avatarUrl = (formData.get("avatarUrl") as string | null)?.trim() || null
+  const sex = (formData.get("sex") as string | null)?.trim() || null
   const cycleLengthStr = (formData.get("typicalCycleLength") as string | null)?.trim() ?? ""
   const lastPeriodStart = (formData.get("lastPeriodStart") as string | null)?.trim() ?? ""
 
@@ -73,43 +74,73 @@ export async function updateSettingsAction(
     }
   }
 
-  // 2. Validate Typical Cycle Length (21–45 days, integer only, no decimals)
-  if (!cycleLengthStr) {
+  // 2. Validate Sex (if provided)
+  if (sex && !["male", "female", "prefer_not_to_say"].includes(sex)) {
     return {
       success: false,
-      error: "Please enter your typical cycle length.",
+      error: "Please select a valid option for sex.",
     }
   }
 
-  // Check for decimals or non-numeric characters
-  if (!/^\d+$/.test(cycleLengthStr)) {
-    return {
-      success: false,
-      error: "Typical cycle length must be a whole number of days.",
-    }
-  }
+  // Check current profile to determine if user is supporter
+  const { data: currentProfile } = await supabase
+    .from("profiles")
+    .select("usage_role")
+    .eq("user_id", user.id)
+    .single()
 
-  const cycleLength = parseInt(cycleLengthStr, 10)
-  if (isNaN(cycleLength) || cycleLength < 21 || cycleLength > 45) {
-    return {
-      success: false,
-      error: "Typical cycle length must be between 21 and 45 days.",
-    }
-  }
+  const isSupporter = currentProfile?.usage_role === "supporter"
 
-  // 3. Validate Last Period Start Date
-  if (!lastPeriodStart || !isValidDateFormat(lastPeriodStart)) {
-    return {
-      success: false,
-      error: "Please select a valid date for when your last period started.",
-    }
-  }
+  // 3. Conditionally Validate Cycle Details
+  let cycleLength: number | null = null
 
-  const todayStr = new Date().toISOString().split("T")[0]
-  if (lastPeriodStart > todayStr) {
-    return {
-      success: false,
-      error: "Last period start date cannot be in the future.",
+  if (!isSupporter || lastPeriodStart || cycleLengthStr) {
+    if (!cycleLengthStr && !isSupporter) {
+      return {
+        success: false,
+        error: "Please enter your typical cycle length.",
+      }
+    }
+
+    if (cycleLengthStr) {
+      if (!/^\d+$/.test(cycleLengthStr)) {
+        return {
+          success: false,
+          error: "Typical cycle length must be a whole number of days.",
+        }
+      }
+
+      const parsedLength = parseInt(cycleLengthStr, 10)
+      if (isNaN(parsedLength) || parsedLength < 21 || parsedLength > 45) {
+        return {
+          success: false,
+          error: "Typical cycle length must be between 21 and 45 days.",
+        }
+      }
+      cycleLength = parsedLength
+    }
+
+    if (!isSupporter && (!lastPeriodStart || !isValidDateFormat(lastPeriodStart))) {
+      return {
+        success: false,
+        error: "Please select a valid date for when your last period started.",
+      }
+    }
+
+    if (lastPeriodStart) {
+      if (!isValidDateFormat(lastPeriodStart)) {
+        return {
+          success: false,
+          error: "Please select a valid date for when your last period started.",
+        }
+      }
+      const todayStr = new Date().toISOString().split("T")[0]
+      if (lastPeriodStart > todayStr) {
+        return {
+          success: false,
+          error: "Last period start date cannot be in the future.",
+        }
+      }
     }
   }
 
@@ -117,19 +148,30 @@ export async function updateSettingsAction(
   try {
     const updatePayload: {
       display_name: string
-      typical_cycle_length: number
-      last_period_start: string
       updated_at: string
+      sex?: "male" | "female" | "prefer_not_to_say" | null
+      typical_cycle_length?: number | null
+      last_period_start?: string | null
       avatar_url?: string | null
     } = {
       display_name: displayName,
-      typical_cycle_length: cycleLength,
-      last_period_start: lastPeriodStart,
       updated_at: new Date().toISOString(),
+    }
+
+    if (sex !== null) {
+      updatePayload.sex = sex as "male" | "female" | "prefer_not_to_say"
     }
 
     if (avatarUrl !== undefined) {
       updatePayload.avatar_url = avatarUrl
+    }
+
+    if (cycleLength !== null) {
+      updatePayload.typical_cycle_length = cycleLength
+    }
+
+    if (lastPeriodStart) {
+      updatePayload.last_period_start = lastPeriodStart
     }
 
     const { error: updateError } = await supabase
@@ -138,18 +180,29 @@ export async function updateSettingsAction(
       .eq("user_id", user.id)
 
     if (updateError) {
-      console.error("[updateSettingsAction]", updateError.message)
-      return {
-        success: false,
-        error: "Unable to save your settings. Please try again.",
+      // If sex column migration is pending, retry without sex
+      if (
+        updateError.message.toLowerCase().includes("column") ||
+        updateError.message.toLowerCase().includes("does not exist")
+      ) {
+        const fallbackPayload = { ...updatePayload }
+        delete fallbackPayload.sex
+        await supabase.from("profiles").update(fallbackPayload).eq("user_id", user.id)
+      } else {
+        console.error("[updateSettingsAction]", updateError.message)
+        return {
+          success: false,
+          error: "Unable to save your settings. Please try again.",
+        }
       }
     }
 
-    // Also update auth user metadata for display_name and avatar_url
+    // Also update auth user metadata for display_name, avatar_url, and sex
     await supabase.auth.updateUser({
       data: {
         display_name: displayName,
         avatar_url: avatarUrl,
+        ...(sex ? { sex } : {}),
       },
     })
 

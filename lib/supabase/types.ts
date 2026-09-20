@@ -6,6 +6,9 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export type ProfileSex = "male" | "female" | "prefer_not_to_say"
+export type ProfileUsageRole = "cycle_tracker" | "supporter" | "both"
+
 export interface Database {
   public: {
     Tables: {
@@ -15,6 +18,8 @@ export interface Database {
           user_id: string
           display_name: string | null
           avatar_url: string | null
+          sex: ProfileSex | null
+          usage_role: ProfileUsageRole | null
           last_period_start: string | null
           typical_cycle_length: number | null
           onboarding_completed: boolean
@@ -26,6 +31,8 @@ export interface Database {
           user_id: string
           display_name?: string | null
           avatar_url?: string | null
+          sex?: ProfileSex | null
+          usage_role?: ProfileUsageRole | null
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
@@ -37,6 +44,8 @@ export interface Database {
           user_id?: string
           display_name?: string | null
           avatar_url?: string | null
+          sex?: ProfileSex | null
+          usage_role?: ProfileUsageRole | null
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean

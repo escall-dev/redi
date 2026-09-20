@@ -24,11 +24,14 @@ import {
   Mail,
   Calendar,
   SunMoon,
+  HeartHandshake,
 } from "lucide-react"
 
 export interface ProfileSettingsData {
   displayName: string
   avatarUrl?: string | null
+  sex?: "male" | "female" | "prefer_not_to_say" | null
+  usageRole?: "cycle_tracker" | "supporter" | "both" | null
   typicalCycleLength: number
   lastPeriodStart: string
   email: string
@@ -60,6 +63,8 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
     initialData.avatarUrl && !initialData.avatarUrl.startsWith("preset:") ? initialData.avatarUrl : ""
   )
   const [avatarFile, setAvatarFile] = React.useState<File | null>(null)
+  const [sex, setSex] = React.useState<string>(initialData.sex || "prefer_not_to_say")
+  const [isEditingSex, setIsEditingSex] = React.useState<boolean>(!initialData.sex)
   const [typicalCycleLength, setTypicalCycleLength] = React.useState<string>(
     initialData.typicalCycleLength ? String(initialData.typicalCycleLength) : "28"
   )
@@ -185,27 +190,35 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       return
     }
 
+    const isSupporter = initialData.usageRole === "supporter"
+
     // 2. Client validation: Cycle Length (21–45 days)
-    if (!typicalCycleLength.trim()) {
-      setErrorMessage("Please enter your typical cycle length.")
-      return
-    }
-    if (!/^\d+$/.test(typicalCycleLength.trim())) {
-      setErrorMessage("Typical cycle length must be a whole number of days.")
-      return
-    }
-    const cycleLengthNum = parseInt(typicalCycleLength.trim(), 10)
-    if (isNaN(cycleLengthNum) || cycleLengthNum < 21 || cycleLengthNum > 45) {
-      setErrorMessage("Typical cycle length must be between 21 and 45 days.")
-      return
+    let cycleLengthNum: number | null = null
+    if (!isSupporter || typicalCycleLength.trim()) {
+      if (!typicalCycleLength.trim() && !isSupporter) {
+        setErrorMessage("Please enter your typical cycle length.")
+        return
+      }
+      if (typicalCycleLength.trim()) {
+        if (!/^\d+$/.test(typicalCycleLength.trim())) {
+          setErrorMessage("Typical cycle length must be a whole number of days.")
+          return
+        }
+        const parsed = parseInt(typicalCycleLength.trim(), 10)
+        if (isNaN(parsed) || parsed < 21 || parsed > 45) {
+          setErrorMessage("Typical cycle length must be between 21 and 45 days.")
+          return
+        }
+        cycleLengthNum = parsed
+      }
     }
 
     // 3. Client validation: Last Period Start Date
-    if (!lastPeriodStart) {
+    if (!isSupporter && !lastPeriodStart) {
       setErrorMessage("Please select when your last period started.")
       return
     }
-    if (lastPeriodStart > todayStr) {
+    if (lastPeriodStart && lastPeriodStart > todayStr) {
       setErrorMessage("Last period start date cannot be in the future.")
       return
     }
@@ -229,8 +242,13 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       const formData = new FormData()
       formData.set("displayName", trimmedName)
       formData.set("avatarUrl", finalAvatar)
-      formData.set("typicalCycleLength", String(cycleLengthNum))
-      formData.set("lastPeriodStart", lastPeriodStart)
+      formData.set("sex", sex)
+      if (cycleLengthNum !== null) {
+        formData.set("typicalCycleLength", String(cycleLengthNum))
+      }
+      if (lastPeriodStart) {
+        formData.set("lastPeriodStart", lastPeriodStart)
+      }
 
       const result = await updateSettingsAction(null, formData)
 
@@ -365,6 +383,106 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
               Used for your greeting on the dashboard and journal entries.
             </p>
           </div>
+
+          {/* Sex Selection */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">Sex</Label>
+              {isEditingSex && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditingSex(false)}
+                  disabled={isPending}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
+
+            {!isEditingSex ? (
+              <div className="flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-border/70 bg-background/50 shadow-xs">
+                <span className="text-xs sm:text-sm font-medium text-foreground">
+                  {sex === "male"
+                    ? "Male"
+                    : sex === "female"
+                    ? "Female"
+                    : "Prefer not to say"}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsEditingSex(true)}
+                  disabled={isPending}
+                  className="h-7 px-2.5 text-xs font-medium text-primary hover:text-primary hover:bg-lavender/50 rounded-lg cursor-pointer"
+                >
+                  Change
+                </Button>
+              </div>
+            ) : (
+              <div
+                role="radiogroup"
+                aria-label="Sex"
+                className="grid grid-cols-3 gap-1 rounded-xl bg-background/80 dark:bg-card/90 p-1 border border-border/70 shadow-xs w-full"
+              >
+                {[
+                  { value: "male", label: "Male" },
+                  { value: "female", label: "Female" },
+                  { value: "prefer_not_to_say", label: "Prefer not to say" },
+                ].map((option) => {
+                  const isSelected = sex === option.value
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => {
+                        setSex(option.value)
+                        setIsEditingSex(false)
+                      }}
+                      disabled={isPending}
+                      className={cn(
+                        "inline-flex items-center justify-center px-1.5 py-2 sm:px-3 sm:py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary/40 active:scale-95 text-center",
+                        isSelected
+                          ? "bg-card text-foreground font-semibold shadow-xs border border-border/80"
+                          : "text-muted-foreground hover:text-foreground hover:bg-secondary/60",
+                        isPending && "opacity-50 pointer-events-none"
+                      )}
+                    >
+                      <span className="truncate">{option.label}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Descriptive profile information. Never used to restrict features or permissions.
+            </p>
+          </div>
+
+          {/* Your Role */}
+          <div className="space-y-1.5 pt-1">
+            <Label className="text-sm font-medium">Your Role</Label>
+            <div className="flex items-center gap-2.5">
+              <Badge variant="lavender" className="px-3 py-1 text-xs font-medium gap-1.5">
+                <Sparkles className="size-3 text-primary" />
+                {initialData.usageRole === "supporter"
+                  ? "Partner & Supporter"
+                  : initialData.usageRole === "both"
+                  ? "Cycle Tracker & Supporter"
+                  : "Cycle Tracker"}
+              </Badge>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {initialData.usageRole === "supporter"
+                ? "You support a partner or friend's cycle. When 1:1 Partner Connections launch, you'll be able to link accounts and view their shared menstrual data."
+                : initialData.usageRole === "both"
+                ? "You track your own cycle and symptoms while also being ready to connect and support a partner or friend."
+                : "You track your own menstrual cycle, log personal symptoms and daily notes, and receive tailored period predictions."}
+            </p>
+          </div>
         </CardContent>
       </Card>
 
@@ -384,6 +502,14 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
           </div>
         </CardHeader>
         <CardContent className="space-y-5">
+          {initialData.usageRole === "supporter" && (
+            <div className="flex items-start gap-2.5 rounded-xl bg-lavender/40 p-3.5 border border-lavender-border/70 text-xs text-muted-foreground leading-relaxed">
+              <HeartHandshake className="size-4 text-primary shrink-0 mt-0.5" />
+              <span>
+                <strong>Supporter account:</strong> Personal cycle tracking is optional. You may enter cycle values below if you also wish to track personal cycle data.
+              </span>
+            </div>
+          )}
           {/* Informational Disclaimer Badge */}
           <div className="flex items-start gap-2.5 rounded-xl bg-secondary/60 p-3.5 border border-border/50 text-xs text-muted-foreground leading-relaxed">
             <Sparkles className="size-4 text-primary shrink-0 mt-0.5" />

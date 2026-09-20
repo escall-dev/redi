@@ -19,6 +19,7 @@ export async function saveOnboardingAction(
   formData: FormData
 ): Promise<OnboardingActionResult> {
   const displayName = (formData.get("displayName") as string)?.trim()
+  const usageRole = (formData.get("usageRole") as string)?.trim()
   const lastPeriodStart = (formData.get("lastPeriodStart") as string)?.trim()
   const cycleLengthStr = (formData.get("typicalCycleLength") as string)?.trim()
 
@@ -30,29 +31,43 @@ export async function saveOnboardingAction(
     }
   }
 
-  // 2. Validate Last Period Start Date
-  if (!lastPeriodStart || !isValidDateFormat(lastPeriodStart)) {
+  // 2. Validate Usage Role
+  if (!usageRole || !["cycle_tracker", "supporter", "both"].includes(usageRole)) {
     return {
       success: false,
-      error: "Please select a valid date for when your last period started.",
+      error: "Please select how you will use Seijun.",
     }
   }
 
-  const todayStr = new Date().toISOString().split("T")[0]
-  if (lastPeriodStart > todayStr) {
-    return {
-      success: false,
-      error: "Last period start date cannot be in the future.",
-    }
-  }
+  // 3. Conditionally Validate Cycle Details
+  let cycleLength: number | null = null
+  let periodStart: string | null = null
 
-  // 3. Validate Typical Cycle Length (21–45 days)
-  const cycleLength = parseInt(cycleLengthStr, 10)
-  if (isNaN(cycleLength) || cycleLength < 21 || cycleLength > 45) {
-    return {
-      success: false,
-      error: "Typical cycle length must be between 21 and 45 days.",
+  if (usageRole === "cycle_tracker" || usageRole === "both") {
+    if (!lastPeriodStart || !isValidDateFormat(lastPeriodStart)) {
+      return {
+        success: false,
+        error: "Please select a valid date for when your last period started.",
+      }
     }
+
+    const todayStr = new Date().toISOString().split("T")[0]
+    if (lastPeriodStart > todayStr) {
+      return {
+        success: false,
+        error: "Last period start date cannot be in the future.",
+      }
+    }
+
+    const parsedLen = parseInt(cycleLengthStr, 10)
+    if (isNaN(parsedLen) || parsedLen < 21 || parsedLen > 45) {
+      return {
+        success: false,
+        error: "Typical cycle length must be between 21 and 45 days.",
+      }
+    }
+    cycleLength = parsedLen
+    periodStart = lastPeriodStart
   }
 
   // 4. Authenticate & Save to profiles
@@ -73,17 +88,30 @@ export async function saveOnboardingAction(
 
     const avatarUrl = user.user_metadata?.avatar_url || null
 
-    const { error: upsertError } = await supabase.from("profiles").upsert(
-      {
-        user_id: user.id,
-        display_name: displayName,
-        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
-        last_period_start: lastPeriodStart,
-        typical_cycle_length: cycleLength,
-        onboarding_completed: true,
-      },
-      { onConflict: "user_id" }
-    )
+    const profilePayload: {
+      user_id: string
+      display_name: string
+      avatar_url?: string | null
+      usage_role: "cycle_tracker" | "supporter" | "both"
+      last_period_start: string | null
+      typical_cycle_length: number | null
+      onboarding_completed: boolean
+    } = {
+      user_id: user.id,
+      display_name: displayName,
+      usage_role: usageRole as "cycle_tracker" | "supporter" | "both",
+      last_period_start: periodStart,
+      typical_cycle_length: cycleLength,
+      onboarding_completed: true,
+    }
+
+    if (avatarUrl) {
+      profilePayload.avatar_url = avatarUrl
+    }
+
+    const { error: upsertError } = await supabase
+      .from("profiles")
+      .upsert(profilePayload, { onConflict: "user_id" })
 
     if (upsertError) {
       // If the migration has not yet been applied to Supabase, handle gracefully
@@ -91,11 +119,15 @@ export async function saveOnboardingAction(
         upsertError.message.toLowerCase().includes("column") ||
         upsertError.message.toLowerCase().includes("does not exist")
       ) {
-        // Fallback: update display_name and allow user to continue
+        // Fallback: update basic fields without usage_role
         await supabase.from("profiles").upsert(
           {
             user_id: user.id,
             display_name: displayName,
+            ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
+            last_period_start: periodStart,
+            typical_cycle_length: cycleLength,
+            onboarding_completed: true,
           },
           { onConflict: "user_id" }
         )

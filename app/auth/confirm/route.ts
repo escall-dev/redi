@@ -42,14 +42,38 @@ export async function GET(request: NextRequest) {
 
       if (user) {
         // Ensure profile row exists securely for verified user
-        await supabase.from("profiles").upsert(
-          {
-            user_id: user.id,
-            display_name: user.user_metadata?.display_name || null,
-            avatar_url: user.user_metadata?.avatar_url || null,
-          },
-          { onConflict: "user_id" }
-        )
+        const profilePayload: {
+          user_id: string
+          display_name: string | null
+          avatar_url: string | null
+          sex?: "male" | "female" | "prefer_not_to_say" | null
+        } = {
+          user_id: user.id,
+          display_name: user.user_metadata?.display_name || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        }
+        if (user.user_metadata?.sex) {
+          profilePayload.sex = user.user_metadata.sex
+        }
+
+        const { error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "user_id" })
+
+        if (
+          upsertError &&
+          (upsertError.message.toLowerCase().includes("column") ||
+            upsertError.message.toLowerCase().includes("does not exist"))
+        ) {
+          await supabase.from("profiles").upsert(
+            {
+              user_id: user.id,
+              display_name: user.user_metadata?.display_name || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
+            },
+            { onConflict: "user_id" }
+          )
+        }
       }
 
       return NextResponse.redirect(redirectUrl)
@@ -66,14 +90,38 @@ export async function GET(request: NextRequest) {
       } = await supabase.auth.getUser()
 
       if (user) {
-        await supabase.from("profiles").upsert(
-          {
-            user_id: user.id,
-            display_name: user.user_metadata?.display_name || null,
-            avatar_url: user.user_metadata?.avatar_url || null,
-          },
-          { onConflict: "user_id" }
-        )
+        const profilePayload: {
+          user_id: string
+          display_name: string | null
+          avatar_url: string | null
+          sex?: "male" | "female" | "prefer_not_to_say" | null
+        } = {
+          user_id: user.id,
+          display_name: user.user_metadata?.display_name || null,
+          avatar_url: user.user_metadata?.avatar_url || null,
+        }
+        if (user.user_metadata?.sex) {
+          profilePayload.sex = user.user_metadata.sex
+        }
+
+        const { error: upsertError } = await supabase
+          .from("profiles")
+          .upsert(profilePayload, { onConflict: "user_id" })
+
+        if (
+          upsertError &&
+          (upsertError.message.toLowerCase().includes("column") ||
+            upsertError.message.toLowerCase().includes("does not exist"))
+        ) {
+          await supabase.from("profiles").upsert(
+            {
+              user_id: user.id,
+              display_name: user.user_metadata?.display_name || null,
+              avatar_url: user.user_metadata?.avatar_url || null,
+            },
+            { onConflict: "user_id" }
+          )
+        }
       }
 
       return NextResponse.redirect(redirectUrl)

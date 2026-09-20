@@ -132,6 +132,7 @@ export async function registerAction(
   const email = (formData.get("email") as string)?.trim().toLowerCase()
   const password = formData.get("password") as string
   const confirmPassword = formData.get("confirmPassword") as string
+  const sex = (formData.get("sex") as string)?.trim()
 
   if (!displayName || displayName.length < 2) {
     return {
@@ -158,6 +159,13 @@ export async function registerAction(
     }
   }
 
+  if (!sex || !["male", "female", "prefer_not_to_say"].includes(sex)) {
+    return {
+      success: false,
+      error: "Please select an option for sex.",
+    }
+  }
+
   let targetRedirect: string | null = null
 
   try {
@@ -171,6 +179,7 @@ export async function registerAction(
         data: {
           display_name: displayName,
           avatar_url: avatarUrl,
+          sex: sex,
         },
       },
     })
@@ -192,14 +201,31 @@ export async function registerAction(
       // If immediate session is established (email confirmation disabled in Supabase)
       if (data.session) {
         // Create initial profile record securely using authenticated user ID
-        await supabase.from("profiles").upsert(
+        const { error: profileError } = await supabase.from("profiles").upsert(
           {
             user_id: data.user.id,
             display_name: displayName,
             avatar_url: avatarUrl,
+            sex: sex as "male" | "female" | "prefer_not_to_say",
           },
           { onConflict: "user_id" }
         )
+
+        // If sex column migration is pending in Supabase, fallback gracefully
+        if (
+          profileError &&
+          (profileError.message.toLowerCase().includes("column") ||
+            profileError.message.toLowerCase().includes("does not exist"))
+        ) {
+          await supabase.from("profiles").upsert(
+            {
+              user_id: data.user.id,
+              display_name: displayName,
+              avatar_url: avatarUrl,
+            },
+            { onConflict: "user_id" }
+          )
+        }
         targetRedirect = "/onboarding"
       } else {
         // Email confirmation is required by Supabase project settings
