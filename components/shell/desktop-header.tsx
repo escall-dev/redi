@@ -7,12 +7,40 @@ import { cn } from "@/lib/utils"
 import { RediBrand } from "@/components/brand/redi-brand"
 import { NAV_ITEMS } from "@/components/shell/app-nav-items"
 import { useQuickLog } from "@/components/shell/quick-log-context"
-import { Badge } from "@/components/ui/badge"
-import { Shield, Plus } from "lucide-react"
+import { Plus, Bell, LogOut, Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { logoutAction } from "@/app/actions/auth"
+import { createClient } from "@/lib/supabase/client"
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover"
 
 export function DesktopHeader() {
   const pathname = usePathname()
+  const router = useRouter()
   const { openQuickLog } = useQuickLog()
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true)
+    try {
+      await logoutAction()
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+        return
+      }
+      try {
+        const supabase = createClient()
+        await supabase.auth.signOut()
+      } catch {
+        // Ignore client error
+      }
+      router.push("/login")
+      router.refresh()
+    }
+  }
 
   const homeItem = NAV_ITEMS[0] // Home
   const calendarItem = NAV_ITEMS[1] // Calendar
@@ -43,7 +71,7 @@ export function DesktopHeader() {
   }
 
   return (
-    <header className="hidden sm:block sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur-md transition-all">
+    <header className="hidden sm:block sticky top-0 z-40 w-full bg-background/85 backdrop-blur-md transition-all">
       <div className="mx-auto flex h-16 w-full max-w-4xl items-center justify-between px-6">
         {/* Brand */}
         <div className="flex items-center gap-3">
@@ -75,15 +103,39 @@ export function DesktopHeader() {
           {renderLink(settingsItem)}
         </nav>
 
-        {/* Right Action: Privacy Badge */}
+        {/* Right Action: Notifications & Logout (Private badge removed) */}
         <div className="flex items-center gap-2">
-          <Badge
-            variant="lavender"
-            className="hidden md:inline-flex gap-1.5 py-1 px-3 text-[11px] font-normal"
+          {/* Notification Popover */}
+          <Popover>
+            <PopoverTrigger
+              aria-label="Notifications"
+              className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs focus:outline-none"
+            >
+              <Bell className="size-4 stroke-[2.2]" />
+            </PopoverTrigger>
+            <PopoverContent align="end" side="bottom" className="w-64 p-3 text-center">
+              <div className="flex flex-col items-center gap-1.5 py-2">
+                <Bell className="size-6 text-primary stroke-[1.8]" />
+                <span className="font-semibold text-xs">Notifications</span>
+                <p className="text-[11px] text-muted-foreground">All caught up! No new notifications.</p>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            aria-label="Sign Out"
+            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs disabled:opacity-50"
           >
-            <Shield className="size-3 text-primary" />
-            <span>Private</span>
-          </Badge>
+            {isLoggingOut ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <LogOut className="size-4 stroke-[2.2]" />
+            )}
+          </button>
         </div>
       </div>
     </header>

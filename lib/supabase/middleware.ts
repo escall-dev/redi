@@ -73,9 +73,16 @@ export async function updateSession(request: NextRequest) {
   const isRoot = pathname === "/"
   const isServerAction = request.headers.has("next-action")
 
+  // CRITICAL: Never intercept or redirect Server Actions in proxy/middleware.
+  // Server Actions handle their own auth checks and return RSC action payloads.
+  // Redirecting a Server Action with NextResponse.redirect causes Next.js to throw:
+  // "An unexpected response was received from the server" on the client.
+  if (isServerAction) {
+    return supabaseResponse
+  }
+
   // 1. Unauthenticated user on protected route -> /login
-  // (Skip Server Action requests so action executors handle auth and returns cleanly)
-  if (!user && isProtectedRoute && !isServerAction) {
+  if (!user && isProtectedRoute) {
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/login"
     if (pathname !== "/dashboard" && pathname !== "/onboarding") {
