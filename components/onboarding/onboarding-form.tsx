@@ -65,13 +65,13 @@ export function OnboardingForm({ initialDisplayName = "" }: OnboardingFormProps)
         <div className="space-y-1">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-lavender text-lavender-foreground text-xs font-medium mb-1">
             <Sparkles className="size-3" />
-            <span>Welcome to Redi</span>
+            <span>Welcome to Seijun</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
             Let&apos;s get to know you
           </h1>
           <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-            A few details will help Redi personalize your cycle tracking.
+            A few details will help Seijun personalize your cycle tracking.
           </p>
         </div>
       </div>
@@ -111,7 +111,7 @@ export function OnboardingForm({ initialDisplayName = "" }: OnboardingFormProps)
                 className="h-11 sm:h-10"
               />
               <p className="text-xs text-muted-foreground">
-                How Redi will greet you on your dashboard.
+                How Seijun will greet you on your dashboard.
               </p>
             </div>
 

@@ -16,11 +16,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Redi — Personal Cycle Tracker",
-    template: "%s | Redi — Personal Cycle Tracker",
+    default: "Seijun — Personal Cycle Tracker",
+    template: "%s | Seijun — Personal Cycle Tracker",
   },
   description: "A calm, personal, and private menstrual cycle tracking web application.",
-  applicationName: "Redi",
+  applicationName: "Seijun",
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

@@ -175,7 +175,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
             <div>
               <CardTitle>Profile Details</CardTitle>
               <CardDescription>
-                How you appear throughout your personal Redi space
+                How you appear throughout your personal Seijun space
               </CardDescription>
             </div>
           </div>
@@ -312,7 +312,7 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
         </CardContent>
         <CardFooter className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/50">
           <p className="text-xs text-muted-foreground">
-            Sign out of Redi on this device.
+            Sign out of Seijun on this device.
           </p>
           <LogoutButton />
         </CardFooter>

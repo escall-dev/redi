@@ -33,7 +33,7 @@ const newlyOnboardedCycles: CycleRecord[] = [
     end_date: null,
     cycle_length: null,
     period_duration: null,
-    notes: "Initial cycle from Redi onboarding.",
+    notes: "Initial cycle from Seijun onboarding.",
     created_at: "2026-09-01T00:00:00Z",
     updated_at: "2026-09-01T00:00:00Z",
     period_days: [],

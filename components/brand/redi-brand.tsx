@@ -42,7 +42,7 @@ export function RediBrand({
             size === "lg" && "text-2xl"
           )}
         >
-          Redi
+          Seijun
         </span>
         {showTagline && (
           <span className="text-[11px] text-muted-foreground font-normal mt-0.5">

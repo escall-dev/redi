@@ -523,14 +523,14 @@ export function CalendarView({
           {selectedContext.isFuture && (
             <div className="rounded-xl bg-secondary/40 p-3.5 border border-border/40 text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <Info className="size-4 shrink-0 text-muted-foreground" />
-              <span>This date is in the future. Redi only displays verified tracked history.</span>
+              <span>This date is in the future. Seijun only displays verified tracked history.</span>
             </div>
           )}
 
           {selectedContext.isBeforeHistory && (
             <div className="rounded-xl bg-secondary/40 p-3.5 border border-border/40 text-xs sm:text-sm text-muted-foreground flex items-center gap-2">
               <Info className="size-4 shrink-0 text-muted-foreground" />
-              <span>This date precedes your tracked cycle history in Redi.</span>
+              <span>This date precedes your tracked cycle history in Seijun.</span>
             </div>
           )}
 

@@ -150,7 +150,7 @@ export async function ensureInitialCycleAction(): Promise<void> {
         end_date: null,
         period_duration: null,
         cycle_length: null,
-        notes: "Initial cycle from Redi onboarding.",
+        notes: "Initial cycle from Seijun onboarding.",
       })
     }
   } catch {

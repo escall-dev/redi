@@ -137,7 +137,7 @@ export function PeriodInsights({
             <div className="space-y-2 pt-1">
               <p className="text-sm font-medium text-foreground">Keep tracking</p>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                As you record more cycle starts, Redi will calculate your estimated next period window.
+                As you record more cycle starts, Seijun will calculate your estimated next period window.
               </p>
             </div>
           )}

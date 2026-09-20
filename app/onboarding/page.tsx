@@ -4,7 +4,7 @@ import { OnboardingForm } from "@/components/onboarding/onboarding-form"
 
 export const metadata = {
   title: "Welcome",
-  description: "Personalize your private cycle tracking in Redi.",
+  description: "Personalize your private cycle tracking in Seijun.",
 }
 
 export default async function OnboardingPage() {

@@ -3,7 +3,7 @@ import { LoginForm } from "@/components/auth/login-form"
 
 export const metadata = {
   title: "Sign In",
-  description: "Sign in to continue to Redi private cycle tracking.",
+  description: "Sign in to continue to Seijun private cycle tracking.",
 }
 
 export default function LoginPage() {
