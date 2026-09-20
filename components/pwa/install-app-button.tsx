@@ -3,7 +3,6 @@
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Info, X } from "lucide-react"
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[]
@@ -57,7 +56,7 @@ export function InstallAppButton({
 }: InstallAppButtonProps) {
   const [deferredPrompt, setDeferredPrompt] =
     React.useState<BeforeInstallPromptEvent | null>(null)
-  const [showGuide, setShowGuide] = React.useState<boolean>(false)
+  const [isInstalled, setIsInstalled] = React.useState<boolean>(false)
 
   const isStandalone = React.useSyncExternalStore(
     subscribeStandalone,
@@ -66,85 +65,88 @@ export function InstallAppButton({
   )
 
   React.useEffect(() => {
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar on mobile browsers
-      e.preventDefault()
-      setDeferredPrompt(e as BeforeInstallPromptEvent)
+    // 1. Query browser/OS to check if PWA is already installed on this device
+    if (
+      typeof navigator !== "undefined" &&
+      "getInstalledRelatedApps" in navigator
+    ) {
+      ;(
+        navigator as unknown as {
+          getInstalledRelatedApps: () => Promise<unknown[]>
+        }
+      )
+        .getInstalledRelatedApps()
+        .then((apps) => {
+          if (Array.isArray(apps) && apps.length > 0) {
+            setIsInstalled(true)
+          }
+        })
+        .catch(() => {})
     }
 
-    window.addEventListener(
-      "beforeinstallprompt",
-      handleBeforeInstallPrompt
-    )
+    // 2. Listen for beforeinstallprompt
+    // The browser dispatches this event ONLY when the PWA is NOT installed on the device.
+    // If the user uninstalls the PWA and returns, this event fires again.
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault()
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
+      setIsInstalled(false)
+    }
+
+    // 3. Listen for appinstalled
+    // Fires immediately when the user accepts and the app is installed.
+    const handleAppInstalled = () => {
+      setIsInstalled(true)
+      setDeferredPrompt(null)
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+    window.addEventListener("appinstalled", handleAppInstalled)
 
     return () => {
       window.removeEventListener(
         "beforeinstallprompt",
         handleBeforeInstallPrompt
       )
+      window.removeEventListener("appinstalled", handleAppInstalled)
     }
   }, [])
 
   const handleInstall = async () => {
-    if (deferredPrompt) {
-      try {
-        await deferredPrompt.prompt()
-        await deferredPrompt.userChoice
-      } catch {
-        // Ignore or handle gracefully
-      } finally {
-        setDeferredPrompt(null)
+    if (!deferredPrompt) return
+
+    try {
+      await deferredPrompt.prompt()
+      const choice = await deferredPrompt.userChoice
+      if (choice.outcome === "accepted") {
+        setIsInstalled(true)
       }
-    } else {
-      // Toggle installation guidance for iOS or browsers without beforeinstallprompt
-      setShowGuide((prev) => !prev)
+    } catch {
+      // Gracefully handle any browser error or cancellation
+    } finally {
+      setDeferredPrompt(null)
     }
   }
 
-  // Do not show button if Seijun is already running as an installed standalone PWA
-  if (isStandalone) {
+  // Hide the button if:
+  // 1. The app is already running in standalone PWA mode
+  // 2. The app is already installed on the device (detected via getInstalledRelatedApps or appinstalled)
+  // 3. No install prompt is available (browser suppresses it when installed, or unsupported)
+  if (isStandalone || isInstalled || !deferredPrompt) {
     return null
   }
 
   return (
-    <div className="w-full space-y-2">
-      <Button
-        type="button"
-        variant="outline"
-        onClick={handleInstall}
-        className={cn(
-          "w-full h-11 text-sm font-semibold rounded-xl border border-primary/25 bg-card text-primary hover:bg-lavender/40 hover:text-primary transition-all cursor-pointer shadow-2xs",
-          className
-        )}
-      >
-        {label}
-      </Button>
-
-      {showGuide && (
-        <div
-          role="status"
-          className="relative flex items-start gap-2.5 rounded-xl border border-lavender-border/80 bg-lavender/40 p-3 text-xs text-foreground animate-in fade-in-50 duration-200"
-        >
-          <Info className="size-4 shrink-0 mt-0.5 text-primary" />
-          <div className="flex-1 leading-snug">
-            <p className="font-medium text-foreground">How to install:</p>
-            <p className="text-muted-foreground mt-0.5">
-              • <strong>iOS (Safari)</strong>: Tap the Share button, then select <em>Add to Home Screen</em>.
-            </p>
-            <p className="text-muted-foreground mt-0.5">
-              • <strong>Chrome/Edge</strong>: Tap the install icon in the address bar or browser menu.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowGuide(false)}
-            aria-label="Close instructions"
-            className="text-muted-foreground hover:text-foreground p-0.5 transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
-        </div>
+    <Button
+      type="button"
+      variant="outline"
+      onClick={handleInstall}
+      className={cn(
+        "w-full h-11 text-sm font-semibold rounded-xl border border-primary/25 bg-card text-primary hover:bg-lavender/40 hover:text-primary transition-all cursor-pointer shadow-2xs",
+        className
       )}
-    </div>
+    >
+      {label}
+    </Button>
   )
 }
