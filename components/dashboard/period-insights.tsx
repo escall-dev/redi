@@ -1,6 +1,5 @@
 import * as React from "react"
 import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import type { LatestPeriodInfo, EstimatedNextPeriod } from "@/lib/calculations/cycle-calculations"
 import { Droplet, Calendar, Clock, ArrowRight } from "lucide-react"
@@ -11,14 +10,14 @@ interface PeriodInsightsProps {
   onboardingStartDate?: string | null
 }
 
-function formatDate(dateStr: string): string {
+function formatDate(dateStr: string, includeYear: boolean = true): string {
   if (!dateStr) return ""
   const [y, m, d] = dateStr.split("-").map(Number)
   const date = new Date(y, m - 1, d)
   return date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    year: "numeric",
+    ...(includeYear ? { year: "numeric" } : {}),
   })
 }
 
@@ -28,121 +27,134 @@ export function PeriodInsights({
   onboardingStartDate,
 }: PeriodInsightsProps) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      {/* 1. Last Period Card */}
-      <Card>
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
-                <Droplet className="size-4" />
+    <div className="rounded-2xl border border-border/80 dark:border-border/60 bg-card p-4 sm:p-5 shadow-redi-card">
+      <div className="grid grid-cols-2 gap-3 sm:gap-6 divide-x divide-border/60">
+        {/* 1. Last Period (Left Column) */}
+        <div className="pr-3 sm:pr-6 flex flex-col justify-between space-y-3">
+          <div className="flex items-start sm:items-center justify-between gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg sm:rounded-xl bg-lavender text-primary border border-lavender-border/60 shrink-0">
+                <Droplet className="size-3.5 sm:size-4 fill-current" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Last Period</h3>
-                <p className="text-xs text-muted-foreground">Recorded flow</p>
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground leading-tight">
+                  Last Period
+                </h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+                  Recorded flow
+                </p>
               </div>
             </div>
+
             {latestPeriod && (
-              <Badge variant="lavender" className="text-[11px] font-normal px-2 py-0.5">
+              <Badge
+                variant="lavender"
+                className="text-[10px] sm:text-[11px] font-normal px-1.5 sm:px-2 py-0 h-4 sm:h-5"
+              >
                 {latestPeriod.isOngoing ? "Ongoing" : "Completed"}
               </Badge>
             )}
           </div>
 
           {latestPeriod ? (
-            <div className="space-y-2 pt-1">
-              <div className="text-lg font-semibold text-foreground">
+            <div className="space-y-1.5">
+              <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-snug break-words">
                 {latestPeriod.endDate
-                  ? `${formatDate(latestPeriod.startDate)} – ${formatDate(latestPeriod.endDate)}`
+                  ? `${formatDate(latestPeriod.startDate, false)} – ${formatDate(latestPeriod.endDate)}`
                   : `${formatDate(latestPeriod.startDate)} (Ongoing)`}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
                 {latestPeriod.duration ? (
                   <span className="inline-flex items-center gap-1 font-medium text-primary">
-                    <Droplet className="size-3" />
-                    {latestPeriod.duration} days duration
+                    <Droplet className="size-3 fill-current" />
+                    <span>{latestPeriod.duration} days</span>
                   </span>
                 ) : (
-                  <span>{latestPeriod.periodDaysCount} period days logged</span>
+                  <span>{latestPeriod.periodDaysCount} days logged</span>
                 )}
               </div>
 
-              <div className="pt-2">
+              <div className="pt-0.5">
                 <Link
                   href={`/cycles/${latestPeriod.cycleId}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] sm:text-xs font-medium text-primary hover:underline group"
                 >
-                  <span>View cycle record</span>
-                  <ArrowRight className="size-3" />
+                  <span>View cycle</span>
+                  <ArrowRight className="size-3 group-hover:translate-x-0.5 transition-transform" />
                 </Link>
               </div>
             </div>
           ) : (
-            <div className="space-y-2 pt-1">
-              <p className="text-sm font-medium text-foreground">No period logged yet</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
+            <div className="space-y-1">
+              <p className="text-xs sm:text-sm font-medium text-foreground">No period logged</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
                 {onboardingStartDate
-                  ? `Your tracking started on ${formatDate(onboardingStartDate)}. Log your period days whenever you're ready.`
-                  : "Start logging your period days to record duration and flow."}
+                  ? `Started ${formatDate(onboardingStartDate)}`
+                  : "Log period days to track duration."}
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* 2. Next Expected Period Card */}
-      <Card>
-        <CardContent className="p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
-                <Calendar className="size-4" />
+        {/* 2. Next Expected Period (Right Column) */}
+        <div className="pl-3 sm:pl-6 flex flex-col justify-between space-y-3">
+          <div className="flex items-start sm:items-center justify-between gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex size-7 sm:size-8 items-center justify-center rounded-lg sm:rounded-xl bg-lavender text-primary border border-lavender-border/60 shrink-0">
+                <Calendar className="size-3.5 sm:size-4" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold text-foreground">Next Expected Period</h3>
-                <p className="text-xs text-muted-foreground">Estimated timeframe</p>
+                <h3 className="text-xs sm:text-sm font-semibold text-foreground leading-tight">
+                  Next Period
+                </h3>
+                <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
+                  Estimated date
+                </p>
               </div>
             </div>
 
-            <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground px-2 py-0.5">
+            <Badge
+              variant="outline"
+              className="text-[10px] sm:text-[11px] font-normal text-muted-foreground px-1.5 sm:px-2 py-0 h-4 sm:h-5"
+            >
               Estimate
             </Badge>
           </div>
 
           {estimatedNextPeriod ? (
-            <div className="space-y-2 pt-1">
-              <div className="text-lg font-semibold text-foreground">
+            <div className="space-y-1.5">
+              <div className="text-sm sm:text-base md:text-lg font-semibold text-foreground leading-snug">
                 {formatDate(estimatedNextPeriod.estimatedStartDate)}
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Clock className="size-3 text-muted-foreground/70" />
+              <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
+                <Clock className="size-3 text-muted-foreground/70 shrink-0" />
                 <span>
                   {estimatedNextPeriod.daysUntil > 0
-                    ? `In approximately ${estimatedNextPeriod.daysUntil} days`
+                    ? `In ~${estimatedNextPeriod.daysUntil} days`
                     : estimatedNextPeriod.daysUntil === 0
-                    ? "Expected around today"
-                    : `Approximately ${Math.abs(estimatedNextPeriod.daysUntil)} days ago`}
+                    ? "Expected today"
+                    : `~${Math.abs(estimatedNextPeriod.daysUntil)} days ago`}
                 </span>
               </div>
 
-              <p className="text-[11px] text-muted-foreground/80 pt-1 leading-relaxed">
+              <p className="text-[10px] sm:text-[11px] text-muted-foreground/80 leading-tight pt-0.5">
                 {estimatedNextPeriod.isFallback
-                  ? `Based on your typical ${estimatedNextPeriod.cycleLengthUsed}-day cycle from setup.`
-                  : `Based on your average ${estimatedNextPeriod.cycleLengthUsed}-day cycle history.`}
+                  ? `Based on typical ${estimatedNextPeriod.cycleLengthUsed}d cycle`
+                  : `Based on average ${estimatedNextPeriod.cycleLengthUsed}d cycle`}
               </p>
             </div>
           ) : (
-            <div className="space-y-2 pt-1">
-              <p className="text-sm font-medium text-foreground">Keep tracking</p>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                As you record more cycle starts, Seijun will calculate your estimated next period window.
+            <div className="space-y-1">
+              <p className="text-xs sm:text-sm font-medium text-foreground">Keep tracking</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground leading-relaxed">
+                Calculates as you log cycle starts.
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   )
 }

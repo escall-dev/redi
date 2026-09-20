@@ -26,59 +26,80 @@ export function CycleProgressVisualizer({
     ? Math.min(100, Math.round((periodDaysCount / safeTotal) * 100))
     : 0
 
+  // Position for the glowing thumb indicator, safely clamped to avoid edge clipping
+  const indicatorPosition = Math.min(98, Math.max(2, progressPercent))
+
   return (
-    <div className={cn("space-y-3", className)}>
-      {/* Visual Header / Metric Row */}
-      <div className="flex items-center justify-between text-xs">
-        <div className="flex items-center gap-1.5 font-medium text-foreground">
-          <span className="text-primary font-semibold">Day {clampedDay}</span>
-          <span className="text-muted-foreground">of ~{safeTotal} days</span>
-        </div>
-        <span className="text-xs text-muted-foreground font-medium">
-          {progressPercent}% through cycle
-        </span>
-      </div>
+    <div
+      className={cn("w-full space-y-3 relative", className)}
+      role="progressbar"
+      aria-valuenow={progressPercent}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuetext={`Cycle day ${clampedDay} of ${safeTotal} days, ${progressPercent}% through cycle`}
+    >
+      {/* Progress Track Layer */}
+      <div className="relative w-full py-1">
+        {/* Track Background */}
+        <div className="relative h-2.5 sm:h-3 w-full rounded-full bg-secondary/80 dark:bg-secondary/40 overflow-hidden border border-border/50">
+          {/* Period Days Zone (if period days are recorded) */}
+          {periodDaysPercent > 0 && (
+            <div
+              className="absolute top-0 bottom-0 left-0 bg-primary/25 border-r border-primary/40 z-0 transition-all duration-300"
+              style={{ width: `${periodDaysPercent}%` }}
+              title={`${periodDaysCount} period days logged`}
+            />
+          )}
 
-      {/* Progress Track */}
-      <div className="relative h-3 w-full rounded-full bg-secondary/80 overflow-hidden border border-border/60">
-        {/* Period Days Zone (if period days are recorded) */}
-        {periodDaysPercent > 0 && (
+          {/* Main Cycle Progress Fill */}
           <div
-            className="absolute top-0 bottom-0 left-0 bg-primary/20 border-r border-primary/40 z-0 transition-all duration-300"
-            style={{ width: `${periodDaysPercent}%` }}
-            title={`${periodDaysCount} period days logged`}
+            className={cn(
+              "h-full rounded-full transition-all duration-500 relative z-10",
+              isOnPeriod
+                ? "bg-gradient-to-r from-primary via-primary to-primary/90"
+                : "bg-gradient-to-r from-primary via-primary/90 to-pink-accent-foreground"
+            )}
+            style={{ width: `${progressPercent}%` }}
           />
-        )}
+        </div>
 
-        {/* Main Cycle Progress Fill */}
+        {/* Dynamic Current Position Indicator Node */}
         <div
-          className={cn(
-            "h-full rounded-full transition-all duration-500 relative z-10",
-            isOnPeriod
-              ? "bg-gradient-to-r from-primary via-primary to-primary/90"
-              : "bg-gradient-to-r from-primary/80 via-primary to-pink-accent-foreground"
-          )}
-          style={{ width: `${progressPercent}%` }}
-        />
+          aria-hidden="true"
+          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-500 ease-out"
+          style={{ left: `${indicatorPosition}%` }}
+        >
+          <div className="relative flex items-center justify-center">
+            {/* Ambient Pulse Halo */}
+            <div className="absolute size-6 rounded-full bg-primary/20 dark:bg-primary/30 animate-pulse" />
+            {/* Glowing Center Bead */}
+            <div className="size-4 sm:size-4.5 rounded-full bg-primary border-2 border-background shadow-md ring-2 ring-primary/30" />
+          </div>
+        </div>
       </div>
 
-      {/* Track Legend / Markers */}
-      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
+      {/* Track Legend / Markers Row */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground font-medium px-0.5">
         <span className="flex items-center gap-1">
-          {periodDaysCount > 0 && (
-            <span className="inline-flex items-center gap-0.5 text-primary font-medium">
-              <Droplet className="size-3" />
-              {periodDaysCount}d period
+          {periodDaysCount > 0 ? (
+            <span className="inline-flex items-center gap-1 text-primary font-semibold">
+              <Droplet className="size-3 fill-current" />
+              <span>{periodDaysCount}d period</span>
             </span>
+          ) : (
+            <span>Start (Day 1)</span>
           )}
-          {periodDaysCount === 0 && <span>Start (Day 1)</span>}
         </span>
 
-        <span className="text-muted-foreground/80">
-          Day {Math.round(safeTotal / 2)}
-        </span>
+        {/* Dynamic Current Position Highlight Badge */}
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary text-xs font-semibold shadow-xs">
+          <span>Day {clampedDay}</span>
+          <span className="text-muted-foreground font-normal">· {progressPercent}%</span>
+        </div>
 
-        <span>~Day {safeTotal}</span>
+        <span className="text-muted-foreground/90">
+          ~Day {safeTotal}
+        </span>
       </div>
     </div>
   )

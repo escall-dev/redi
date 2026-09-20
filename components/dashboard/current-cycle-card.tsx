@@ -1,6 +1,5 @@
 import * as React from "react"
 import Link from "next/link"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CycleProgressVisualizer } from "@/components/dashboard/cycle-progress-visualizer"
 import type { CycleRecord } from "@/app/actions/cycles"
@@ -31,33 +30,45 @@ export function CurrentCycleCard({
 }: CurrentCycleCardProps) {
   if (!currentCycle) {
     return (
-      <Card>
-        <CardContent className="p-6 sm:p-7 space-y-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <Badge variant="outline" className="text-xs font-normal">
+      <section
+        aria-label="Cycle Tracking Overview"
+        className="relative w-full rounded-3xl overflow-hidden p-6 sm:p-8 bg-gradient-to-b from-lavender/35 via-secondary/20 to-transparent dark:from-lavender/10 dark:via-secondary/10 dark:to-transparent select-none transition-all"
+      >
+        {/* Subtle decorative atmosphere */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-10 -right-10 w-48 h-48 rounded-full bg-primary/5 dark:bg-primary/10 blur-2xl pointer-events-none -z-10"
+        />
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+          <div className="space-y-2 max-w-lg">
+            <div className="flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className="text-xs font-normal border-border/60 bg-background/50 backdrop-blur-xs"
+              >
                 Cycle Tracking
               </Badge>
-              <h2 className="text-xl font-semibold text-foreground">No active cycle</h2>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Start tracking to follow your cycle progress, log period days, and view personal statistics.
-              </p>
             </div>
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-secondary text-muted-foreground shrink-0">
-              <Activity className="size-5" />
-            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              No active cycle
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Start tracking to follow your cycle progress, log period days, and view personal statistics.
+            </p>
           </div>
-          <div className="pt-2">
+
+          <div className="flex items-center gap-4 shrink-0">
             <Link
               href="/cycles"
-              className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold hover:bg-primary-hover shadow-sm transition-all group"
             >
               <span>Go to Cycles</span>
-              <ArrowRight className="size-4" />
+              <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
             </Link>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     )
   }
 
@@ -65,60 +76,95 @@ export function CurrentCycleCard({
   const currentDay = statusInfo.currentDay ?? 1
 
   return (
-    <Card className="bg-gradient-to-br from-card via-card to-secondary/30 relative overflow-hidden">
-      <CardContent className="p-6 sm:p-7 space-y-6">
-        {/* Top Meta Row */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge
-                variant={statusInfo.isOnPeriod ? "default" : "lavender"}
-                className="gap-1 px-2.5 py-0.5 text-xs font-medium"
-              >
-                {statusInfo.isOnPeriod ? (
-                  <>
-                    <Droplet className="size-3 fill-current" />
-                    <span>On Period</span>
-                  </>
-                ) : (
-                  <>
-                    <Activity className="size-3" />
-                    <span>{statusInfo.displayStatus}</span>
-                  </>
-                )}
-              </Badge>
+    <section
+      aria-label="Cycle Day Hero Overview"
+      className="relative w-full rounded-3xl overflow-hidden sm:overflow-visible p-5 sm:p-7 md:p-8 transition-all select-none"
+    >
+      {/* 1. Atmospheric Ambient Background Layer (Layer 0) */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 rounded-3xl bg-gradient-to-b from-lavender/35 via-secondary/15 to-transparent dark:from-lavender/10 dark:via-secondary/10 dark:to-transparent -z-10 pointer-events-none"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -top-12 -right-8 w-64 h-64 sm:w-80 sm:h-80 rounded-full bg-primary/5 dark:bg-primary/10 blur-3xl -z-10 pointer-events-none"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute -bottom-10 -left-6 w-56 h-56 rounded-full bg-lavender/40 dark:bg-lavender/10 blur-2xl -z-10 pointer-events-none"
+      />
 
-              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
-                Current Cycle
-              </Badge>
-            </div>
+      {/* 2. Out-of-bounds Decorative Number Echo (Layer 0 / Breakout) */}
+      <div
+        aria-hidden="true"
+        className="absolute -top-4 sm:-top-8 -right-2 sm:right-4 text-[7.5rem] sm:text-[10rem] md:text-[12rem] lg:text-[14rem] font-black text-primary/[0.04] dark:text-primary/[0.07] leading-none pointer-events-none select-none tracking-tighter -z-10 overflow-hidden"
+      >
+        {currentDay}
+      </div>
 
-            <div className="flex items-baseline gap-2 pt-1">
-              <span className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
-                Day {currentDay}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                of cycle
-              </span>
-            </div>
-
-            <p className="text-xs text-muted-foreground flex items-center gap-1.5 pt-0.5">
-              <Calendar className="size-3.5 text-muted-foreground/80" />
-              <span>Cycle started {formatDate(currentCycle.start_date)}</span>
-            </p>
-          </div>
-
-          <Link
-            href={`/cycles/${currentCycle.id}`}
-            className="size-10 flex items-center justify-center rounded-xl bg-secondary text-muted-foreground hover:bg-lavender hover:text-primary transition-all shrink-0"
-            title="View cycle details"
+      {/* 3. Top Meta Row (Layer 3 - z-30) */}
+      <div className="flex items-center justify-between gap-3 relative z-30 mb-2 sm:mb-4">
+        {/* Left: Status Badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge
+            variant={statusInfo.isOnPeriod ? "default" : "lavender"}
+            className="gap-1.5 px-3 py-1 text-xs font-semibold shadow-xs"
           >
-            <ArrowRight className="size-4" />
-          </Link>
+            {statusInfo.isOnPeriod ? (
+              <>
+                <Droplet className="size-3.5 fill-current text-primary-foreground animate-pulse" />
+                <span>On Period</span>
+              </>
+            ) : (
+              <>
+                <Activity className="size-3.5" />
+                <span>{statusInfo.displayStatus}</span>
+              </>
+            )}
+          </Badge>
+
+          <Badge
+            variant="outline"
+            className="text-[11px] font-medium text-muted-foreground border-border/60 bg-background/50 backdrop-blur-xs"
+          >
+            Current Cycle
+          </Badge>
         </div>
 
-        {/* Cycle Progress Visualizer */}
-        <div className="pt-1">
+        {/* Right: View cycle details link */}
+        <Link
+          href={`/cycles/${currentCycle.id}`}
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary-hover transition-colors group px-2.5 py-1.5 rounded-full hover:bg-lavender/40 shrink-0"
+          title="View cycle details"
+        >
+          <span>Cycle Details</span>
+          <ArrowRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+        </Link>
+      </div>
+
+      {/* 4. Hero Breakout Focal Area & Overlapping Layers (Layer 2 & Layer 1) */}
+      <div className="relative flex flex-col items-center justify-center text-center">
+        {/* Contextual Label */}
+        <div className="relative z-20 flex items-center gap-2 mb-1">
+          <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary/80 dark:text-primary/90">
+            Cycle Day
+          </span>
+        </div>
+
+        {/* Large Dynamic Breakout Numeral */}
+        <div className="relative z-20 select-none -mb-3 sm:-mb-5 md:-mb-6">
+          <span className="text-7xl sm:text-8xl md:text-9xl font-black tracking-tighter leading-none text-foreground block drop-shadow-xs">
+            {currentDay}
+          </span>
+        </div>
+
+        {/* Supporting Subtitle: Day X of ~Y days */}
+        <div className="relative z-20 text-xs sm:text-sm text-muted-foreground font-medium mb-1">
+          Day {currentDay} of ~{expectedCycleLength} days
+        </div>
+
+        {/* Overlapping Progress Line passing directly behind / underneath the numeral */}
+        <div className="w-full relative z-10 pt-2 sm:pt-3">
           <CycleProgressVisualizer
             currentDay={currentDay}
             expectedTotalDays={expectedCycleLength}
@@ -126,17 +172,30 @@ export function CurrentCycleCard({
             isOnPeriod={statusInfo.isOnPeriod}
           />
         </div>
+      </div>
 
-        {/* Additional Status Notice if no period days logged */}
-        {periodDaysCount === 0 && (
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-secondary/50 border border-border/50 text-xs text-muted-foreground">
-            <Droplets className="size-4 text-primary shrink-0" />
-            <span>
-              Tracking started on {formatDate(currentCycle.start_date)}. You can log period days whenever you are ready.
-            </span>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      {/* 5. Tertiary Supporting Information Row */}
+      <div className="mt-5 flex items-center justify-between flex-wrap gap-2 pt-3 border-t border-border/30 text-xs text-muted-foreground">
+        <p className="flex items-center gap-1.5">
+          <Calendar className="size-3.5 text-muted-foreground/80" />
+          <span>Cycle started {formatDate(currentCycle.start_date)}</span>
+        </p>
+        <p className="text-xs text-muted-foreground/80">
+          Expected cycle length:{" "}
+          <span className="font-semibold text-foreground">~{expectedCycleLength} days</span>
+        </p>
+      </div>
+
+      {/* 6. Additional Status Notice if no period days logged */}
+      {periodDaysCount === 0 && (
+        <div className="mt-3 flex items-center gap-2.5 p-3 rounded-2xl bg-lavender/40 dark:bg-lavender/20 border border-lavender-border/50 text-xs text-muted-foreground">
+          <Droplets className="size-4 text-primary shrink-0" />
+          <span>
+            Tracking started on {formatDate(currentCycle.start_date)}. You can log period days whenever you are ready.
+          </span>
+        </div>
+      )}
+    </section>
   )
 }
+
