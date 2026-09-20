@@ -11,8 +11,13 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Shield } from "lucide-react"
+import { InstallAppButton } from "@/components/pwa/install-app-button"
 
-export function LoginForm() {
+export interface LoginFormProps {
+  version?: string
+}
+
+export function LoginForm({ version }: LoginFormProps = {}) {
   const searchParams = useSearchParams()
   const redirectTarget = searchParams.get("redirect") || "/dashboard"
   const urlError = searchParams.get("error")
@@ -162,7 +167,19 @@ export function LoginForm() {
                 "Sign In"
               )}
             </Button>
+
+            {/* Download as App Button */}
+            <InstallAppButton />
           </form>
+
+          {/* Form Version Display at Lower Right */}
+          {version && (
+            <div className="flex justify-end pt-1 -mb-3">
+              <span className="text-[11px] text-muted-foreground/60 select-none tracking-tight font-mono">
+                v{version}
+              </span>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -180,7 +197,7 @@ export function LoginForm() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <Shield className="size-3.5 text-primary" />
-          <span>Zero third-party trackers • Strictly confidential</span>
+          <span>Developed By: Escall for Seijun.</span>
         </div>
       </div>
     </div>

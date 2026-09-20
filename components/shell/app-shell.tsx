@@ -22,7 +22,7 @@ export function AppShell({ children, className }: AppShellProps) {
 
   if (isAuthRoute) {
     return (
-      <div className="relative min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-hidden">
+      <div className="relative min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-hidden pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
         <main className="w-full max-w-md mx-auto">{children}</main>
       </div>
     )

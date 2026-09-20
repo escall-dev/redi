@@ -7,7 +7,7 @@ import { Shield } from "lucide-react"
 
 export function MobileHeader() {
   return (
-    <header className="sticky top-0 z-40 flex h-14 w-full items-center justify-between border-b border-border/60 bg-background/90 px-4 backdrop-blur-md sm:hidden">
+    <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] w-full items-center justify-between border-b border-border/60 bg-background/90 px-4 backdrop-blur-md sm:hidden">
       <RediBrand size="sm" />
       <Badge
         variant="lavender"

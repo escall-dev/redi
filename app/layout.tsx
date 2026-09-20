@@ -1,4 +1,4 @@
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AppShell } from "@/components/shell/app-shell"
@@ -14,6 +14,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+export const viewport: Viewport = {
+  themeColor: "#7152b5",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+}
+
 export const metadata: Metadata = {
   title: {
     default: "Seijun — Personal Cycle Tracker",
@@ -21,6 +28,11 @@ export const metadata: Metadata = {
   },
   description: "A calm, personal, and private menstrual cycle tracking web application.",
   applicationName: "Seijun",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Seijun",
+  },
   icons: {
     icon: [
       { url: "/icon.svg", type: "image/svg+xml" },

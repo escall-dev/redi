@@ -1,4 +1,5 @@
 import * as React from "react"
+import packageJson from "@/package.json"
 import { LoginForm } from "@/components/auth/login-form"
 
 export const metadata = {
@@ -9,7 +10,10 @@ export const metadata = {
 export default function LoginPage() {
   return (
     <React.Suspense fallback={<div className="text-sm text-muted-foreground text-center">Loading...</div>}>
-      <LoginForm />
+      <LoginForm version={packageJson.version} />
     </React.Suspense>
   )
 }
+
+
+
