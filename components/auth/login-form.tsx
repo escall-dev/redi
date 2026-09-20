@@ -197,7 +197,7 @@ export function LoginForm({ version }: LoginFormProps = {}) {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <Shield className="size-3.5 text-primary" />
-          <span>Developed By: Escall for Seijun.</span>
+          <span>Developed By: Alex for Seijun.</span>
         </div>
       </div>
     </div>

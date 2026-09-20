@@ -71,10 +71,13 @@ export async function saveOnboardingAction(
       }
     }
 
+    const avatarUrl = user.user_metadata?.avatar_url || null
+
     const { error: upsertError } = await supabase.from("profiles").upsert(
       {
         user_id: user.id,
         display_name: displayName,
+        ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
         last_period_start: lastPeriodStart,
         typical_cycle_length: cycleLength,
         onboarding_completed: true,

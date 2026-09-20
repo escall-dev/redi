@@ -14,6 +14,7 @@ export interface Database {
           id: string
           user_id: string
           display_name: string | null
+          avatar_url: string | null
           last_period_start: string | null
           typical_cycle_length: number | null
           onboarding_completed: boolean
@@ -24,6 +25,7 @@ export interface Database {
           id?: string
           user_id: string
           display_name?: string | null
+          avatar_url?: string | null
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
@@ -34,6 +36,7 @@ export interface Database {
           id?: string
           user_id?: string
           display_name?: string | null
+          avatar_url?: string | null
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean

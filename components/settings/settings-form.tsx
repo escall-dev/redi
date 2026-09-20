@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { DatePicker } from "@/components/ui/date-picker"
 import { LogoutButton } from "@/components/auth/logout-button"
-import { updateSettingsAction } from "@/app/actions/settings"
+import { updateSettingsAction, uploadAvatarAction } from "@/app/actions/settings"
 import { ThemeSelector } from "@/components/settings/theme-selector"
+import { AvatarPicker } from "@/components/profile/avatar-picker"
+import { cn } from "@/lib/utils"
 import {
   User,
   CalendarHeart,
@@ -26,6 +28,7 @@ import {
 
 export interface ProfileSettingsData {
   displayName: string
+  avatarUrl?: string | null
   typicalCycleLength: number
   lastPeriodStart: string
   email: string
@@ -41,10 +44,11 @@ function formatDateDisplay(isoString: string): string {
   try {
     const d = new Date(isoString)
     if (isNaN(d.getTime())) return isoString
-    return d.toLocaleDateString("en-US", {
-      month: "long",
+    return new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
       year: "numeric",
-    })
+    }).format(d)
   } catch {
     return isoString
   }
@@ -52,6 +56,10 @@ function formatDateDisplay(isoString: string): string {
 
 export function SettingsForm({ initialData }: SettingsFormProps) {
   const [displayName, setDisplayName] = React.useState(initialData.displayName || "")
+  const [avatarUrl, setAvatarUrl] = React.useState<string>(
+    initialData.avatarUrl && !initialData.avatarUrl.startsWith("preset:") ? initialData.avatarUrl : ""
+  )
+  const [avatarFile, setAvatarFile] = React.useState<File | null>(null)
   const [typicalCycleLength, setTypicalCycleLength] = React.useState<string>(
     initialData.typicalCycleLength ? String(initialData.typicalCycleLength) : "28"
   )
@@ -60,14 +68,102 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
   )
 
   const [isPending, setIsPending] = React.useState(false)
-  const [successMessage, setSuccessMessage] = React.useState<string | null>(null)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+
+  // Ephemeral Pop-up Modal Notification (disappears automatically after 0.5s)
+  const [modalNotif, setModalNotif] = React.useState<{
+    title: string
+    message: string
+  } | null>(null)
+  const [isModalExiting, setIsModalExiting] = React.useState(false)
+  const modalTimerRef = React.useRef<NodeJS.Timeout | null>(null)
+  const modalExitTimerRef = React.useRef<NodeJS.Timeout | null>(null)
+
+  const showModalNotification = React.useCallback((title: string, message: string, durationMs: number = 1000) => {
+    if (modalTimerRef.current) clearTimeout(modalTimerRef.current)
+    if (modalExitTimerRef.current) clearTimeout(modalExitTimerRef.current)
+
+    setErrorMessage(null)
+    setIsModalExiting(false)
+    setModalNotif({ title, message })
+
+    // Automatically disappear after specified duration (defaults to 1s / 1000ms)
+    modalTimerRef.current = setTimeout(() => {
+      setIsModalExiting(true)
+      modalExitTimerRef.current = setTimeout(() => {
+        setModalNotif(null)
+        setIsModalExiting(false)
+      }, 150)
+    }, durationMs)
+  }, [])
+
+  React.useEffect(() => {
+    return () => {
+      if (modalTimerRef.current) clearTimeout(modalTimerRef.current)
+      if (modalExitTimerRef.current) clearTimeout(modalExitTimerRef.current)
+    }
+  }, [])
 
   const todayStr = React.useMemo(() => new Date().toISOString().split("T")[0], [])
 
+  const handleAvatarChange = async (newVal: string, file?: File | null) => {
+    setErrorMessage(null)
+    setAvatarUrl(newVal)
+
+    // Photo Removal: Revert to user initials
+    if (!newVal) {
+      setAvatarFile(null)
+      try {
+        const uploadFd = new FormData()
+        uploadFd.set("remove", "true")
+        const uploadRes = await uploadAvatarAction(uploadFd)
+        if (uploadRes.success) {
+          showModalNotification("Profile Photo Removed", "Showing your initials.")
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("seijun:profile-updated", {
+                detail: { avatarUrl: null },
+              })
+            )
+          }
+        } else if (uploadRes.error) {
+          setErrorMessage(uploadRes.error)
+        }
+      } catch {
+        setErrorMessage("Failed to remove profile photo.")
+      }
+      return
+    }
+
+    if (file) {
+      setAvatarFile(file)
+      try {
+        const uploadFd = new FormData()
+        uploadFd.set("file", file)
+        uploadFd.set("dataUrl", newVal)
+        const uploadRes = await uploadAvatarAction(uploadFd)
+        if (uploadRes.success && uploadRes.avatarUrl) {
+          setAvatarUrl(uploadRes.avatarUrl)
+          setAvatarFile(null)
+          showModalNotification("Profile Image Updated", "Profile image updated.")
+          if (typeof window !== "undefined") {
+            window.dispatchEvent(
+              new CustomEvent("seijun:profile-updated", {
+                detail: { avatarUrl: uploadRes.avatarUrl },
+              })
+            )
+          }
+        } else if (uploadRes.error) {
+          setErrorMessage(uploadRes.error)
+        }
+      } catch {
+        setErrorMessage("Failed to save profile image.")
+      }
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    setSuccessMessage(null)
     setErrorMessage(null)
 
     // 1. Client validation: Display Name
@@ -117,8 +213,22 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
     setIsPending(true)
 
     try {
+      let finalAvatar = avatarUrl
+      if (avatarFile) {
+        const uploadFd = new FormData()
+        uploadFd.set("file", avatarFile)
+        uploadFd.set("dataUrl", avatarUrl)
+        const uploadRes = await uploadAvatarAction(uploadFd)
+        if (uploadRes.success && uploadRes.avatarUrl) {
+          finalAvatar = uploadRes.avatarUrl
+          setAvatarUrl(uploadRes.avatarUrl)
+          setAvatarFile(null)
+        }
+      }
+
       const formData = new FormData()
       formData.set("displayName", trimmedName)
+      formData.set("avatarUrl", finalAvatar)
       formData.set("typicalCycleLength", String(cycleLengthNum))
       formData.set("lastPeriodStart", lastPeriodStart)
 
@@ -127,9 +237,16 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
       if (!result.success) {
         setErrorMessage(result.error ?? "Failed to save settings. Please try again.")
       } else {
-        setSuccessMessage(result.message ?? "Your settings have been saved.")
+        showModalNotification("Settings Saved", result.message ?? "Your settings have been saved.", 1000)
         // Keep updated display name formatted
         setDisplayName(trimmedName)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(
+            new CustomEvent("seijun:profile-updated", {
+              detail: { avatarUrl: finalAvatar, displayName: trimmedName },
+            })
+          )
+        }
       }
     } catch {
       setErrorMessage("An unexpected error occurred while saving your settings.")
@@ -154,15 +271,46 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
         </div>
       )}
 
-      {successMessage && (
+      {/* Pop-up Modal Notification (Disappears automatically after 0.5s) */}
+      {modalNotif && (
         <div
           role="status"
-          className="flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-800 dark:text-emerald-300 shadow-xs animate-in fade-in slide-in-from-top-1 duration-200"
+          aria-live="polite"
+          className={cn(
+            "fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none transition-all duration-150",
+            isModalExiting ? "opacity-0 scale-95" : "opacity-100 scale-100"
+          )}
         >
-          <CheckCircle2 className="size-5 shrink-0 mt-0.5 text-emerald-600 dark:text-emerald-400" />
-          <div className="space-y-1">
-            <p className="font-medium">Settings Updated</p>
-            <p className="leading-relaxed opacity-90">{successMessage}</p>
+          {/* Subtle backdrop */}
+          <div
+            className={cn(
+              "fixed inset-0 bg-black/20 dark:bg-black/50 backdrop-blur-[2px] transition-opacity duration-150 pointer-events-auto",
+              isModalExiting ? "opacity-0" : "opacity-100"
+            )}
+            onClick={() => {
+              setModalNotif(null)
+              setIsModalExiting(false)
+            }}
+          />
+
+          {/* Centered Modal Card */}
+          <div
+            className={cn(
+              "relative z-10 flex flex-col items-center justify-center gap-3 px-6 py-5 rounded-2xl bg-card border border-emerald-500/30 text-card-foreground shadow-2xl max-w-xs w-full text-center pointer-events-auto backdrop-blur-md transition-all duration-150",
+              isModalExiting ? "scale-95 opacity-0" : "scale-100 opacity-100"
+            )}
+          >
+            <div className="flex size-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-4 ring-emerald-500/20">
+              <CheckCircle2 className="size-6 stroke-[2.2]" />
+            </div>
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-semibold text-foreground tracking-tight">
+                {modalNotif.title}
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                {modalNotif.message}
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -182,7 +330,16 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* Avatar Picker Widget */}
+          <AvatarPicker
+            value={avatarUrl}
+            displayName={displayName || "User"}
+            onChange={handleAvatarChange}
+            disabled={isPending}
+            inputName="avatarUrl"
+          />
+
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label htmlFor="displayName" className="text-sm font-medium">

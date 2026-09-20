@@ -24,7 +24,7 @@ export default async function SettingsPage() {
   // Fetch user profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, typical_cycle_length, last_period_start, onboarding_completed, created_at")
+    .select("display_name, avatar_url, typical_cycle_length, last_period_start, onboarding_completed, created_at")
     .eq("user_id", user.id)
     .single()
 
@@ -33,8 +33,12 @@ export default async function SettingsPage() {
     redirect("/onboarding")
   }
 
+  const rawAvatar = profile?.avatar_url || user.user_metadata?.avatar_url || null
+  const avatarUrl = rawAvatar && !rawAvatar.startsWith("preset:") ? rawAvatar : null
+
   const initialData: ProfileSettingsData = {
     displayName: profile?.display_name || user.user_metadata?.display_name || "",
+    avatarUrl,
     typicalCycleLength: profile?.typical_cycle_length ?? 28,
     lastPeriodStart: profile?.last_period_start || "",
     email: user.email || "",

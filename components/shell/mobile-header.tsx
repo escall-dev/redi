@@ -13,10 +13,13 @@ import {
   PopoverContent,
 } from "@/components/ui/popover"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { Avatar } from "@/components/ui/avatar"
+import { useUserProfile } from "@/lib/hooks/use-user-profile"
 
 export function MobileHeader() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
   const router = useRouter()
+  const { avatarUrl, displayName } = useUserProfile()
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -145,13 +148,23 @@ export function MobileHeader() {
           </PopoverContent>
         </Popover>
 
-        {/* 2. Profile Icon */}
+        {/* 2. Profile Avatar Link */}
         <Link
           href="/settings"
           aria-label="Profile Settings"
-          className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs"
+          className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden"
         >
-          <User className="size-4.5 stroke-[2.2]" />
+          {avatarUrl ? (
+            <Avatar
+              src={avatarUrl}
+              alt={displayName || "Profile"}
+              fallbackInitials={displayName}
+              size="sm"
+              className="size-7 border-0 shadow-none bg-transparent"
+            />
+          ) : (
+            <User className="size-4.5 stroke-[2.2]" />
+          )}
         </Link>
 
         {/* 3. Logout Button */}

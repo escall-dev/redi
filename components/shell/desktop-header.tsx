@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 import { RediBrand } from "@/components/brand/redi-brand"
 import { NAV_ITEMS } from "@/components/shell/app-nav-items"
 import { useQuickLog } from "@/components/shell/quick-log-context"
-import { Plus, Bell, LogOut, Loader2 } from "lucide-react"
+import { Plus, Bell, LogOut, Loader2, User } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { logoutAction } from "@/app/actions/auth"
 import { createClient } from "@/lib/supabase/client"
@@ -17,12 +17,15 @@ import {
   PopoverContent,
 } from "@/components/ui/popover"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
+import { Avatar } from "@/components/ui/avatar"
+import { useUserProfile } from "@/lib/hooks/use-user-profile"
 
 export function DesktopHeader() {
   const pathname = usePathname()
   const router = useRouter()
   const { openQuickLog } = useQuickLog()
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+  const { avatarUrl, displayName } = useUserProfile()
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -125,6 +128,25 @@ export function DesktopHeader() {
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Profile Avatar Link */}
+          <Link
+            href="/settings"
+            aria-label="Profile Settings"
+            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden"
+          >
+            {avatarUrl ? (
+              <Avatar
+                src={avatarUrl}
+                alt={displayName || "Profile"}
+                fallbackInitials={displayName}
+                size="sm"
+                className="size-7 border-0 shadow-none bg-transparent"
+              />
+            ) : (
+              <User className="size-4 stroke-[2.2]" />
+            )}
+          </Link>
 
           {/* Logout Button */}
           <button

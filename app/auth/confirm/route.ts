@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
           {
             user_id: user.id,
             display_name: user.user_metadata?.display_name || null,
+            avatar_url: user.user_metadata?.avatar_url || null,
           },
           { onConflict: "user_id" }
         )
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
           {
             user_id: user.id,
             display_name: user.user_metadata?.display_name || null,
+            avatar_url: user.user_metadata?.avatar_url || null,
           },
           { onConflict: "user_id" }
         )

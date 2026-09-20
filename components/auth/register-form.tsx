@@ -209,7 +209,7 @@ export function RegisterForm() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <Shield className="size-3.5 text-primary" />
-          <span>Developed by Escall for Seijun.</span>
+          <span>Developed by Alex for Seijun.</span>
         </div>
       </div>
     </div>

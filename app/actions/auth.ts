@@ -108,6 +108,7 @@ export async function registerAction(
   formData: FormData
 ): Promise<AuthActionResult> {
   const displayName = (formData.get("displayName") as string)?.trim()
+  const avatarUrl: string | null = null
   const email = (formData.get("email") as string)?.trim().toLowerCase()
   const password = formData.get("password") as string
   const confirmPassword = formData.get("confirmPassword") as string
@@ -149,6 +150,7 @@ export async function registerAction(
         emailRedirectTo: `${siteUrl}/auth/confirm`,
         data: {
           display_name: displayName,
+          avatar_url: avatarUrl,
         },
       },
     })
@@ -174,6 +176,7 @@ export async function registerAction(
           {
             user_id: data.user.id,
             display_name: displayName,
+            avatar_url: avatarUrl,
           },
           { onConflict: "user_id" }
         )

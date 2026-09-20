@@ -40,6 +40,7 @@ export async function updateSettingsAction(
 
   const rawDisplayName = (formData.get("displayName") as string | null) ?? ""
   const displayName = rawDisplayName.trim()
+  const avatarUrl = (formData.get("avatarUrl") as string | null)?.trim() || null
   const cycleLengthStr = (formData.get("typicalCycleLength") as string | null)?.trim() ?? ""
   const lastPeriodStart = (formData.get("lastPeriodStart") as string | null)?.trim() ?? ""
 
@@ -114,14 +115,26 @@ export async function updateSettingsAction(
 
   // 4. Update Profile in Supabase (scoped strictly to auth.uid())
   try {
+    const updatePayload: {
+      display_name: string
+      typical_cycle_length: number
+      last_period_start: string
+      updated_at: string
+      avatar_url?: string | null
+    } = {
+      display_name: displayName,
+      typical_cycle_length: cycleLength,
+      last_period_start: lastPeriodStart,
+      updated_at: new Date().toISOString(),
+    }
+
+    if (avatarUrl !== undefined) {
+      updatePayload.avatar_url = avatarUrl
+    }
+
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({
-        display_name: displayName,
-        typical_cycle_length: cycleLength,
-        last_period_start: lastPeriodStart,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq("user_id", user.id)
 
     if (updateError) {
@@ -131,6 +144,14 @@ export async function updateSettingsAction(
         error: "Unable to save your settings. Please try again.",
       }
     }
+
+    // Also update auth user metadata for display_name and avatar_url
+    await supabase.auth.updateUser({
+      data: {
+        display_name: displayName,
+        avatar_url: avatarUrl,
+      },
+    })
 
     revalidatePath("/settings")
     revalidatePath("/dashboard")
@@ -147,4 +168,115 @@ export async function updateSettingsAction(
       error: "An unexpected error occurred while saving your settings.",
     }
   }
+}
+
+/**
+ * Server Action: Upload custom avatar image or save preset directly
+ */
+export async function uploadAvatarAction(
+  formData: FormData
+): Promise<{ success: boolean; avatarUrl?: string; error?: string }> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user) {
+    return { success: false, error: "Your session has expired. Please sign in again." }
+  }
+
+  const file = formData.get("file") as File | null
+  const dataUrl = (formData.get("dataUrl") as string | null)?.trim()
+  const presetId = (formData.get("presetId") as string | null)?.trim()
+  const isRemove = formData.get("remove") === "true" || (!file && !dataUrl && !presetId)
+
+  // 1. Remove custom photo and revert to initials
+  if (isRemove) {
+    await supabase.from("profiles").update({ avatar_url: null }).eq("user_id", user.id)
+    await supabase.auth.updateUser({ data: { avatar_url: null } })
+    revalidatePath("/settings")
+    revalidatePath("/dashboard")
+    return { success: true, avatarUrl: "" }
+  }
+
+  // 2. If preset provided (legacy fallback)
+  if (presetId) {
+    const avatarUrl = presetId.startsWith("preset:") ? presetId : `preset:${presetId}`
+    await supabase.from("profiles").update({ avatar_url: avatarUrl }).eq("user_id", user.id)
+    await supabase.auth.updateUser({ data: { avatar_url: avatarUrl } })
+    revalidatePath("/settings")
+    revalidatePath("/dashboard")
+    return { success: true, avatarUrl }
+  }
+
+  // 3. Custom file upload
+  if (!file && !dataUrl) {
+    return { success: false, error: "No image file provided." }
+  }
+
+  let finalAvatarUrl: string | null = null
+
+  if (file && file.size > 0) {
+    // Validate file size (10MB max)
+    const MAX_SIZE = 10 * 1024 * 1024
+    if (file.size > MAX_SIZE) {
+      return { success: false, error: "File exceeds maximum size of 10MB." }
+    }
+
+    // Validate type strictly
+    const type = file.type.toLowerCase()
+    const name = file.name.toLowerCase()
+    const isJpg = type === "image/jpeg" || type === "image/jpg" || name.endsWith(".jpg") || name.endsWith(".jpeg")
+    if (!isJpg) {
+      return { success: false, error: "Only JPEG/JPG formats are supported." }
+    }
+
+    try {
+      const fileName = `${user.id}/avatar-${Date.now()}.jpg`
+      const arrayBuffer = await file.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(fileName, buffer, {
+          contentType: "image/jpeg",
+          upsert: true,
+        })
+
+      if (!uploadError && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(uploadData.path)
+        finalAvatarUrl = publicUrlData.publicUrl
+      }
+    } catch (storageErr) {
+      console.warn("[uploadAvatarAction] Supabase storage upload failed, using fallback:", storageErr)
+    }
+  }
+
+  // 3. Fallback to client-optimized dataUrl if storage upload failed or dataUrl provided
+  if (!finalAvatarUrl && dataUrl) {
+    finalAvatarUrl = dataUrl
+  }
+
+  if (!finalAvatarUrl) {
+    return { success: false, error: "Failed to upload avatar image." }
+  }
+
+  // Save to profile
+  const { error: dbError } = await supabase
+    .from("profiles")
+    .update({ avatar_url: finalAvatarUrl })
+    .eq("user_id", user.id)
+
+  if (dbError) {
+    console.error("[uploadAvatarAction] DB update error:", dbError.message)
+    return { success: false, error: "Failed to update profile picture." }
+  }
+
+  await supabase.auth.updateUser({ data: { avatar_url: finalAvatarUrl } })
+  revalidatePath("/settings")
+  revalidatePath("/dashboard")
+
+  return { success: true, avatarUrl: finalAvatarUrl }
 }
