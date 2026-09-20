@@ -4,6 +4,7 @@ import path from "node:path"
 
 const ICONS_DIR = path.resolve(process.cwd(), "public/icons")
 const SOURCE_SVG = path.resolve(process.cwd(), "public/icon.svg")
+const APPLE_ICON = path.resolve(process.cwd(), "app/apple-icon.png")
 
 if (!fs.existsSync(ICONS_DIR)) {
   fs.mkdirSync(ICONS_DIR, { recursive: true })
@@ -27,8 +28,6 @@ async function generateIcons() {
   console.log("✓ Created public/icons/icon-512.png (512x512)")
 
   // 3. icon-maskable-512.png
-  // Android adaptive/maskable icons safe zone is an inner circle with diameter 80% (409.6px out of 512px).
-  // We size the circular emblem to 400x400 and center it on a 512x512 solid background canvas.
   const emblemBuffer = await sharp(SOURCE_SVG)
     .resize(400, 400)
     .toBuffer()
@@ -45,6 +44,13 @@ async function generateIcons() {
     .png()
     .toFile(path.join(ICONS_DIR, "icon-maskable-512.png"))
   console.log("✓ Created public/icons/icon-maskable-512.png (512x512 maskable)")
+
+  // 4. app/apple-icon.png (180x180)
+  await sharp(SOURCE_SVG)
+    .resize(180, 180)
+    .png()
+    .toFile(APPLE_ICON)
+  console.log("✓ Created app/apple-icon.png (180x180)")
 }
 
 generateIcons().catch((err) => {
