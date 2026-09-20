@@ -35,15 +35,23 @@ export async function updateSession(request: NextRequest) {
         return request.cookies.getAll()
       },
       setAll(cookiesToSet) {
+        const rememberMeCookie = request.cookies.get("sb-remember-me")?.value
+        const isPersistent = rememberMeCookie !== "false"
+
         cookiesToSet.forEach(({ name, value }) =>
           request.cookies.set(name, value)
         )
         supabaseResponse = NextResponse.next({
           request,
         })
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, options)
-        )
+        cookiesToSet.forEach(({ name, value, options }) => {
+          const cookieOpts = { ...options }
+          if (!isPersistent) {
+            delete cookieOpts.maxAge
+            delete cookieOpts.expires
+          }
+          supabaseResponse.cookies.set(name, value, cookieOpts)
+        })
       },
     },
   })

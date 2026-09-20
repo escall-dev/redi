@@ -17,17 +17,86 @@ export interface LoginFormProps {
   version?: string
 }
 
+function subscribeToLocalStorage(callback: () => void) {
+  window.addEventListener("storage", callback)
+  return () => window.removeEventListener("storage", callback)
+}
+
+function getRememberedEmailSnapshot(): string {
+  try {
+    return localStorage.getItem("seijun_remembered_email") || ""
+  } catch {
+    return ""
+  }
+}
+
+function getServerRememberedEmailSnapshot(): string {
+  return ""
+}
+
 export function LoginForm({ version }: LoginFormProps = {}) {
   const searchParams = useSearchParams()
   const redirectTarget = searchParams.get("redirect") || "/dashboard"
   const urlError = searchParams.get("error")
   const urlVerified = searchParams.get("verified") === "true"
   const [showPassword, setShowPassword] = React.useState(false)
+  const savedEmail = React.useSyncExternalStore(
+    subscribeToLocalStorage,
+    getRememberedEmailSnapshot,
+    getServerRememberedEmailSnapshot
+  )
+  const [customEmail, setCustomEmail] = React.useState<string | null>(null)
+  const email = customEmail ?? savedEmail
+  const [rememberMeChecked, setRememberMeChecked] = React.useState(true)
 
   const [state, formAction, isPending] = useActionState<AuthActionResult | null, FormData>(
     loginAction,
     null
   )
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const formData = new FormData(e.currentTarget)
+    const submittedEmail = formData.get("email")?.toString() || ""
+    const isRemembered = formData.get("rememberMe") !== null
+    const submittedPassword = formData.get("password")?.toString() || ""
+
+    if (isRemembered && submittedEmail) {
+      try {
+        localStorage.setItem("seijun_remembered_email", submittedEmail)
+      } catch {
+        // Ignore localStorage quota or restriction errors
+      }
+    }
+
+    // Trigger browser credential storage API if supported by the browser
+    if (
+      typeof window !== "undefined" &&
+      "PasswordCredential" in window &&
+      navigator.credentials?.store &&
+      submittedEmail &&
+      submittedPassword
+    ) {
+      try {
+        const CredentialConstructor = (
+          window as unknown as {
+            PasswordCredential: new (data: {
+              id: string
+              password: string
+              name?: string
+            }) => unknown
+          }
+        ).PasswordCredential
+        const cred = new CredentialConstructor({
+          id: submittedEmail,
+          password: submittedPassword,
+          name: submittedEmail,
+        })
+        navigator.credentials.store(cred as unknown as Credential).catch(() => {})
+      } catch {
+        // Fail silently if browser blocks or doesn't support credential creation
+      }
+    }
+  }
 
   const errorMessage =
     state?.error ||
@@ -81,7 +150,7 @@ export function LoginForm({ version }: LoginFormProps = {}) {
           )}
 
           {/* Form */}
-          <form action={formAction} className="space-y-4">
+          <form action={formAction} onSubmit={handleSubmit} className="space-y-4">
             <input type="hidden" name="redirect" value={redirectTarget} />
 
             {/* Email Field */}
@@ -93,8 +162,10 @@ export function LoginForm({ version }: LoginFormProps = {}) {
                 id="email"
                 name="email"
                 type="email"
+                value={email}
+                onChange={(e) => setCustomEmail(e.target.value)}
                 placeholder="you@example.com"
-                autoComplete="email"
+                autoComplete="username email"
                 required
                 disabled={isPending}
                 className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
@@ -144,7 +215,8 @@ export function LoginForm({ version }: LoginFormProps = {}) {
                   id="rememberMe"
                   name="rememberMe"
                   type="checkbox"
-                  defaultChecked
+                  checked={rememberMeChecked}
+                  onChange={(e) => setRememberMeChecked(e.target.checked)}
                   disabled={isPending}
                   className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
                 />

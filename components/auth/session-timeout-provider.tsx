@@ -127,7 +127,7 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
 
   // 4. Inactivity evaluation logic (based strictly on elapsed timestamp delta)
   const evaluateInactivity = React.useCallback(() => {
-    if (!isAuthenticated || isAuthRoute || isLoggingOutRef.current) {
+    if (!isAuthenticated || isAuthRoute || isLoggingOutRef.current || lastActivityRef.current === 0) {
       return
     }
 

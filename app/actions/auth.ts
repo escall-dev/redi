@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getSiteUrl } from "@/lib/config/site"
 import { redirect } from "next/navigation"
+import { cookies } from "next/headers"
 
 export interface AuthActionResult {
   success?: boolean
@@ -25,6 +26,7 @@ export async function loginAction(
   const email = (formData.get("email") as string)?.trim().toLowerCase()
   const password = formData.get("password") as string
   const redirectUrl = (formData.get("redirect") as string) || "/dashboard"
+  const rememberMe = formData.get("rememberMe") === "on" || formData.get("rememberMe") === "true"
 
   if (!email || !isValidEmail(email)) {
     return { success: false, error: "Please enter a valid email address." }
@@ -37,7 +39,7 @@ export async function loginAction(
   let targetRedirect: string | null = null
 
   try {
-    const supabase = await createClient()
+    const supabase = await createClient({ rememberMe })
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -57,6 +59,24 @@ export async function loginAction(
     }
 
     if (data.user) {
+      // Set remember-me flag cookie for middleware and subsequent token refreshes
+      const cookieStore = await cookies()
+      if (rememberMe) {
+        cookieStore.set("sb-remember-me", "true", {
+          path: "/",
+          sameSite: "lax",
+          httpOnly: false,
+          maxAge: 30 * 24 * 60 * 60, // 30 days
+        })
+      } else {
+        cookieStore.set("sb-remember-me", "false", {
+          path: "/",
+          sameSite: "lax",
+          httpOnly: false,
+          // no maxAge or expires -> Session cookie (discarded when browser exits)
+        })
+      }
+
       const displayName = data.user.user_metadata?.display_name || null
       const { data: profile } = await supabase
         .from("profiles")
@@ -215,6 +235,8 @@ export async function logoutAction(): Promise<void> {
   try {
     const supabase = await createClient()
     await supabase.auth.signOut()
+    const cookieStore = await cookies()
+    cookieStore.delete("sb-remember-me")
   } catch {
     // Ignore error and proceed with redirect
   }

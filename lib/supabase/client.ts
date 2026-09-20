@@ -8,7 +8,7 @@ import type { Database } from "./types"
  */
 export function createClient() {
   const { url, key } = assertSupabaseConfigured()
-  return createBrowserClient<Database>(url, key)
+  return createBrowserClient<Database>(url, key, { isSingleton: true })
 }
 
 /**
@@ -20,5 +20,5 @@ export function getOptionalClient() {
   if (!isConfigured || !url || !key) {
     return null
   }
-  return createBrowserClient<Database>(url, key)
+  return createBrowserClient<Database>(url, key, { isSingleton: true })
 }
