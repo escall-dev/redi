@@ -1,4 +1,4 @@
-import packageJson from "@/package.json"
+import packageJson from "../package.json" with { type: "json" }
 
 /**
  * Authoritative application version sourced directly from package.json.
