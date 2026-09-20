@@ -310,7 +310,7 @@ export function CalendarView({
                     isToday && !isSelected && "ring-1.5 ring-primary/60 font-semibold text-primary",
 
                     // Selected styling (clear priority, distinguishable from today)
-                    isSelected && isPeriod && "bg-primary text-primary-foreground font-semibold shadow-redi-sm ring-2 ring-primary ring-offset-1",
+                    isSelected && isPeriod && "bg-primary text-primary-foreground font-semibold shadow-redi-sm ring-2 ring-primary ring-offset-1 ring-offset-card",
                     isSelected && !isPeriod && "bg-secondary text-foreground font-semibold ring-2 ring-primary shadow-xs"
                   )}
                 >

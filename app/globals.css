@@ -2,7 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:where(.dark, :is(.dark *)));
 
 @theme inline {
   --color-background: var(--background);
@@ -38,6 +38,8 @@
   --color-destructive-soft: var(--destructive-soft);
 
   /* Surfaces & UI */
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -63,10 +65,16 @@
 }
 
 :root {
+  color-scheme: light;
+
   /* Subtle, calm lavender tinted page background (delicate light-purple atmosphere) */
   --background: oklch(0.968 0.016 295);
   /* Deep plum-slate text (approachable, high-contrast, non-glaring) */
   --foreground: oklch(0.24 0.025 295);
+
+  /* Semantic surface tokens */
+  --surface: oklch(1 0 0);
+  --surface-secondary: oklch(0.952 0.020 295);
 
   /* Pure crisp elevated card surface */
   --card: oklch(1 0 0);
@@ -121,9 +129,15 @@
 }
 
 .dark {
+  color-scheme: dark;
+
   /* Deep midnight plum background */
   --background: oklch(0.16 0.02 295);
   --foreground: oklch(0.96 0.01 295);
+
+  /* Semantic surface tokens */
+  --surface: oklch(0.21 0.025 295);
+  --surface-secondary: oklch(0.25 0.03 295);
 
   /* Elevated dark card surface */
   --card: oklch(0.21 0.025 295);
@@ -190,6 +204,9 @@
   .shadow-redi-md {
     box-shadow: 0 4px 16px -2px rgba(76, 45, 115, 0.06), 0 2px 6px -2px rgba(76, 45, 115, 0.04);
   }
+  .shadow-redi-lg {
+    box-shadow: 0 10px 30px -4px rgba(76, 45, 115, 0.12), 0 4px 12px -2px rgba(76, 45, 115, 0.06);
+  }
   /* Phase 13 Centralized Card Elevation: Soft Layered Atmosphere */
   .shadow-redi-card {
     box-shadow:
@@ -204,6 +221,15 @@
       0 2px 6px -1px rgba(0, 0, 0, 0.03);
   }
 
+  .dark .shadow-redi-sm {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.45);
+  }
+  .dark .shadow-redi-md {
+    box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.55);
+  }
+  .dark .shadow-redi-lg {
+    box-shadow: 0 14px 40px -4px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
   .dark .shadow-redi-card {
     box-shadow:
       0 1px 2px 0 rgba(0, 0, 0, 0.45),

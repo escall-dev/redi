@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { DatePicker } from "@/components/ui/date-picker"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { updateSettingsAction } from "@/app/actions/settings"
+import { ThemeSelector } from "@/components/settings/theme-selector"
 import {
   User,
   CalendarHeart,
@@ -20,6 +21,7 @@ import {
   Sparkles,
   Mail,
   Calendar,
+  SunMoon,
 } from "lucide-react"
 
 export interface ProfileSettingsData {
@@ -278,7 +280,27 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
         </CardContent>
       </Card>
 
-      {/* 3. Account & Security Section */}
+      {/* 3. Appearance & Theme Section */}
+      <Card className="overflow-hidden">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
+              <SunMoon className="size-5" />
+            </div>
+            <div>
+              <CardTitle>Appearance & Theme</CardTitle>
+              <CardDescription>
+                Personalize how Seijun looks on this device
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <ThemeSelector />
+        </CardContent>
+      </Card>
+
+      {/* 4. Account & Security Section */}
       <Card className="overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">

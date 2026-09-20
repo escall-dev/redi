@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 export function MobileHeader() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
@@ -94,8 +95,11 @@ export function MobileHeader() {
         </PopoverContent>
       </Popover>
 
-      {/* Top Right: 3 Action Buttons (Notification Bell, Profile, Logout) */}
-      <div className="flex items-center gap-2">
+      {/* Top Right: Theme Toggle, Notification Bell, Profile, Logout */}
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        {/* Quick Theme Toggle */}
+        <ThemeToggle />
+
         {/* 1. Notification Bell */}
         <Popover>
           <PopoverTrigger

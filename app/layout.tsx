@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AppShell } from "@/components/shell/app-shell"
+import { ThemeProvider } from "@/components/theme/theme-provider"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -15,7 +16,10 @@ const geistMono = Geist_Mono({
 })
 
 export const viewport: Viewport = {
-  themeColor: "#7152b5",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#7152b5" },
+    { media: "(prefers-color-scheme: dark)", color: "#160523" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -50,10 +54,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=localStorage.getItem('seijun-theme');var t=(s==='light'||s==='dark'||s==='system')?s:'system';var d=t==='dark'||(t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d){document.documentElement.classList.add('dark');document.documentElement.style.colorScheme='dark';}else{document.documentElement.classList.remove('dark');document.documentElement.style.colorScheme='light';}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary">
-        <AppShell>{children}</AppShell>
+        <ThemeProvider>
+          <AppShell>{children}</AppShell>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

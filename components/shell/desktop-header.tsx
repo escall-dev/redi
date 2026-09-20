@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
   PopoverContent,
 } from "@/components/ui/popover"
+import { ThemeToggle } from "@/components/theme/theme-toggle"
 
 export function DesktopHeader() {
   const pathname = usePathname()
@@ -103,8 +104,11 @@ export function DesktopHeader() {
           {renderLink(settingsItem)}
         </nav>
 
-        {/* Right Action: Notifications & Logout (Private badge removed) */}
+        {/* Right Action: Theme Toggle, Notifications & Logout */}
         <div className="flex items-center gap-2">
+          {/* Quick Theme Toggle */}
+          <ThemeToggle />
+
           {/* Notification Popover */}
           <Popover>
             <PopoverTrigger

@@ -103,7 +103,7 @@ export function CurrentCycleCard({
       </div>
 
       {/* 3. Top Meta Row (Layer 3 - z-30) */}
-      <div className="flex items-center justify-between gap-3 relative z-30 mb-2 sm:mb-4">
+      <div className="flex items-center justify-between gap-3 relative z-30 mb-4 sm:mb-6">
         {/* Left: Status Badges */}
         <div className="flex items-center gap-2 flex-wrap">
           <Badge
@@ -145,26 +145,26 @@ export function CurrentCycleCard({
       {/* 4. Hero Breakout Focal Area & Overlapping Layers (Layer 2 & Layer 1) */}
       <div className="relative flex flex-col items-center justify-center text-center">
         {/* Contextual Label */}
-        <div className="relative z-20 flex items-center gap-2 mb-1">
+        <div className="relative z-20 flex items-center gap-2 mb-1.5">
           <span className="text-xs sm:text-sm font-bold uppercase tracking-widest text-primary/80 dark:text-primary/90">
             Cycle Day
           </span>
         </div>
 
         {/* Large Dynamic Breakout Numeral */}
-        <div className="relative z-20 select-none -mb-3 sm:-mb-5 md:-mb-6">
+        <div className="relative z-20 select-none my-1">
           <span className="text-7xl sm:text-8xl md:text-9xl font-black tracking-tighter leading-none text-foreground block drop-shadow-xs">
             {currentDay}
           </span>
         </div>
 
         {/* Supporting Subtitle: Day X of ~Y days */}
-        <div className="relative z-20 text-xs sm:text-sm text-muted-foreground font-medium mb-1">
+        <div className="relative z-20 text-xs sm:text-sm text-muted-foreground font-medium mb-2.5">
           Day {currentDay} of ~{expectedCycleLength} days
         </div>
 
-        {/* Overlapping Progress Line passing directly behind / underneath the numeral */}
-        <div className="w-full relative z-10 pt-2 sm:pt-3">
+        {/* Progress Line */}
+        <div className="w-full relative z-10 pt-1">
           <CycleProgressVisualizer
             currentDay={currentDay}
             expectedTotalDays={expectedCycleLength}
