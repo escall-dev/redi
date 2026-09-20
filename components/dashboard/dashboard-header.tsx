@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Sparkles, CalendarDays } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -14,13 +16,22 @@ function getTimeOfDayGreeting(): string {
 }
 
 export function DashboardHeader({ displayName }: DashboardHeaderProps) {
-  const greeting = getTimeOfDayGreeting()
-  const todayFormatted = new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
+  const [mounted, setMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true)
+  }, [])
+
+  const greeting = mounted ? getTimeOfDayGreeting() : "Welcome"
+  const todayFormatted = mounted
+    ? new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : ""
 
   return (
     <div className="space-y-1.5">
@@ -29,10 +40,12 @@ export function DashboardHeader({ displayName }: DashboardHeaderProps) {
           <Sparkles className="size-3" />
           <span>Home</span>
         </Badge>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <CalendarDays className="size-3.5 text-muted-foreground/70" />
-          <span>{todayFormatted}</span>
-        </div>
+        {todayFormatted ? (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <CalendarDays className="size-3.5 text-muted-foreground/70" />
+            <span>{todayFormatted}</span>
+          </div>
+        ) : null}
       </div>
 
       <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
@@ -44,3 +57,4 @@ export function DashboardHeader({ displayName }: DashboardHeaderProps) {
     </div>
   )
 }
+
