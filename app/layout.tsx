@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AppShell } from "@/components/shell/app-shell"
 import { ThemeProvider } from "@/components/theme/theme-provider"
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -69,6 +70,7 @@ export default function RootLayout({
           <AppShell>{children}</AppShell>
         </ThemeProvider>
         <Analytics />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   )
