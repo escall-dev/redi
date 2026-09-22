@@ -12,6 +12,8 @@ import { updateSettingsAction, uploadAvatarAction } from "@/app/actions/settings
 import { ThemeSelector } from "@/components/settings/theme-selector"
 import { AvatarPicker } from "@/components/profile/avatar-picker"
 import { PushTestCard } from "@/components/settings/push-test-card"
+import { NotificationPreferencesCard } from "@/components/settings/notification-preferences"
+import type { NotificationPreferences } from "@/lib/notifications/types"
 import { cn } from "@/lib/utils"
 import {
   User,
@@ -41,6 +43,7 @@ export interface ProfileSettingsData {
 
 interface SettingsFormProps {
   initialData: ProfileSettingsData
+  initialPreferences?: NotificationPreferences
 }
 
 function formatDateDisplay(isoString: string): string {
@@ -58,7 +61,7 @@ function formatDateDisplay(isoString: string): string {
   }
 }
 
-export function SettingsForm({ initialData }: SettingsFormProps) {
+export function SettingsForm({ initialData, initialPreferences }: SettingsFormProps) {
   const [displayName, setDisplayName] = React.useState(initialData.displayName || "")
   const [avatarUrl, setAvatarUrl] = React.useState<string>(
     initialData.avatarUrl && !initialData.avatarUrl.startsWith("preset:") ? initialData.avatarUrl : ""
@@ -624,7 +627,10 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
         </CardFooter>
       </Card>
 
-      {/* 5. Push Notifications (Test A) */}
+      {/* 5. Notification Preferences (Phase 17.11) */}
+      <NotificationPreferencesCard initialPreferences={initialPreferences} usageRole={initialData.usageRole} />
+
+      {/* 6. Push Notifications (Test A) */}
       <PushTestCard />
 
       {/* 6. Danger Zone Section */}

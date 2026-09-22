@@ -218,6 +218,54 @@ export interface Database {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          user_id: string
+          personal_reminders: boolean
+          personal_updates: boolean
+          partner_daily_notes: boolean
+          partner_cycle_updates: boolean
+          partner_activity: boolean
+          partner_connection: boolean
+          shared_reminders: boolean
+          shared_updates: boolean
+          system_notifications: boolean
+          security_notifications: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          personal_reminders?: boolean
+          personal_updates?: boolean
+          partner_daily_notes?: boolean
+          partner_cycle_updates?: boolean
+          partner_activity?: boolean
+          partner_connection?: boolean
+          shared_reminders?: boolean
+          shared_updates?: boolean
+          system_notifications?: boolean
+          security_notifications?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          personal_reminders?: boolean
+          personal_updates?: boolean
+          partner_daily_notes?: boolean
+          partner_cycle_updates?: boolean
+          partner_activity?: boolean
+          partner_connection?: boolean
+          shared_reminders?: boolean
+          shared_updates?: boolean
+          system_notifications?: boolean
+          security_notifications?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

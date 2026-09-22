@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { SettingsForm, type ProfileSettingsData } from "@/components/settings/settings-form"
+import { getNotificationPreferences } from "@/lib/server/notification-preferences"
 import { Sliders } from "lucide-react"
 
 export const dynamic = "force-dynamic"
@@ -47,6 +48,8 @@ export default async function SettingsPage() {
     createdAt: profile?.created_at || user.created_at || "",
   }
 
+  const initialPreferences = await getNotificationPreferences(user.id)
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -66,7 +69,7 @@ export default async function SettingsPage() {
       </div>
 
       {/* Main Settings Form */}
-      <SettingsForm initialData={initialData} />
+      <SettingsForm initialData={initialData} initialPreferences={initialPreferences} />
     </div>
   )
 }
