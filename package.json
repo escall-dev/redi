@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -11,6 +11,9 @@
     "version:bump": "node scripts/bump-version.mjs",
     "test:version": "node scripts/test-version.mjs",
     "test:classification": "node scripts/test-account-classification.mjs",
+    "test:account": "node scripts/test-account-classification.mjs",
+    "test:push-subscription": "node scripts/test-push-subscription.mjs",
+    "test:push-persistence": "node scripts/test-push-persistence.mjs",
     "test:push-sending": "node scripts/test-push-sending.mjs",
     "test:push-e2e": "node scripts/test-push-e2e.mjs",
     "test:notification-click": "node scripts/test-notification-click.mjs",

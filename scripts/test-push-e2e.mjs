@@ -311,6 +311,16 @@ assert(
   adminMigrationContent.includes("SECURITY DEFINER"),
   "Admin functions execute with SECURITY DEFINER"
 )
+assert(
+  adminMigrationContent.includes("REVOKE ALL ON FUNCTION public.get_all_push_subscriptions_for_admin_test() FROM PUBLIC, anon") ||
+    adminMigrationContent.includes("REVOKE EXECUTE ON FUNCTION public.get_all_push_subscriptions_for_admin_test() FROM PUBLIC, anon"),
+  "Admin RPC execution privileges explicitly revoked from PUBLIC and anon"
+)
+assert(
+  adminMigrationContent.includes("REVOKE ALL ON FUNCTION public.delete_expired_push_subscription_admin") ||
+    adminMigrationContent.includes("REVOKE EXECUTE ON FUNCTION public.delete_expired_push_subscription_admin"),
+  "Expired delete RPC execution privileges explicitly revoked from PUBLIC and anon"
+)
 
 // ---------------------------------------------------------------------------
 // 9. CLIENT UI INTEGRATION & TEST BUTTON VERIFICATION

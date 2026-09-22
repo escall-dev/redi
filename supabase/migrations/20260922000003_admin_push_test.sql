@@ -42,3 +42,15 @@ BEGIN
   RETURN FOUND;
 END;
 $$;
+
+-- ==============================================================================
+-- 3. PERMISSIONS: Explicit Execution Restrictions
+-- ==============================================================================
+
+-- Revoke default PUBLIC and anon execution to prevent unauthenticated RPC invocation via PostgREST
+REVOKE ALL ON FUNCTION public.get_all_push_subscriptions_for_admin_test() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_all_push_subscriptions_for_admin_test() TO authenticated, service_role;
+
+REVOKE ALL ON FUNCTION public.delete_expired_push_subscription_admin(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.delete_expired_push_subscription_admin(UUID) TO authenticated, service_role;
+
