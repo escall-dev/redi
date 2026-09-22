@@ -25,6 +25,7 @@ export type PushFailureReason =
   | "missing_vapid_key"
   | "service_worker_unavailable"
   | "subscription_failed"
+  | "push_service_disabled"
 
 export interface SerializablePushSubscription {
   endpoint: string
@@ -154,4 +155,18 @@ export interface SendPushFailure {
 }
 
 export type SendPushResult = SendPushSuccess | SendPushFailure
+
+/**
+ * Structured summary of Web Push delivery across one or more subscriptions.
+ * Omits all sensitive credentials and full endpoint URLs.
+ */
+export interface PushDeliverySummary {
+  ok: boolean
+  attempted: number
+  delivered: number
+  expired: number
+  failed: number
+  reason?: string
+  error?: string
+}
 

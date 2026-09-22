@@ -223,7 +223,24 @@ export interface Database {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_all_push_subscriptions_for_admin_test: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          user_id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+          created_at: string
+          updated_at: string
+        }[]
+      }
+      delete_expired_push_subscription_admin: {
+        Args: {
+          target_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never

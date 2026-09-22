@@ -45,6 +45,27 @@ export function isWebPushSupported(): boolean {
 }
 
 /**
+ * Detects whether the current browser is Brave.
+ * Brave disables Google push messaging services by default, requiring a manual toggle.
+ */
+export async function isBraveBrowser(): Promise<boolean> {
+  if (typeof window === "undefined" || typeof navigator === "undefined") {
+    return false
+  }
+
+  const nav = navigator as unknown as { brave?: { isBrave?: () => Promise<boolean> } }
+  if (nav.brave && typeof nav.brave.isBrave === "function") {
+    try {
+      return await nav.brave.isBrave()
+    } catch {
+      return false
+    }
+  }
+
+  return false
+}
+
+/**
  * Returns detailed breakdown of Web Push prerequisites in the current environment.
  */
 export function getWebPushSupportDetails(): PushSupportStatus {
@@ -294,6 +315,33 @@ export async function subscribeToWebPush(
       serialized: serializePushSubscription(newSubscription),
     }
   } catch (subError) {
+    const errorMsg = subError instanceof Error ? subError.message : ""
+    const isPushServiceDisabled =
+      errorMsg.toLowerCase().includes("push service error") ||
+      errorMsg.toLowerCase().includes("registration failed")
+
+    const isBrave = await isBraveBrowser()
+
+    if (isPushServiceDisabled) {
+      if (isBrave) {
+        return {
+          ok: false,
+          reason: "push_service_disabled",
+          message:
+            "Brave disables Google Push Messaging by default. In Brave, go to Settings → Privacy and security, turn ON 'Use Google services for push messaging', relaunch Brave, and try again.",
+          error: subError,
+        }
+      }
+
+      return {
+        ok: false,
+        reason: "push_service_disabled",
+        message:
+          "Push service error: Browser push messaging is disabled or unreachable. Check your browser privacy settings.",
+        error: subError,
+      }
+    }
+
     return {
       ok: false,
       reason: "subscription_failed",

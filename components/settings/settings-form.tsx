@@ -11,6 +11,7 @@ import { LogoutButton } from "@/components/auth/logout-button"
 import { updateSettingsAction, uploadAvatarAction } from "@/app/actions/settings"
 import { ThemeSelector } from "@/components/settings/theme-selector"
 import { AvatarPicker } from "@/components/profile/avatar-picker"
+import { PushTestCard } from "@/components/settings/push-test-card"
 import { cn } from "@/lib/utils"
 import {
   User,
@@ -623,7 +624,10 @@ export function SettingsForm({ initialData }: SettingsFormProps) {
         </CardFooter>
       </Card>
 
-      {/* 4. Danger Zone Section */}
+      {/* 5. Push Notifications (Test A) */}
+      <PushTestCard />
+
+      {/* 6. Danger Zone Section */}
       <Card className="border-destructive/30 bg-destructive/[0.02] overflow-hidden">
         <CardHeader>
           <div className="flex items-center gap-3">
