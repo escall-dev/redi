@@ -16,12 +16,17 @@
 import { getVapidPublicKey } from "@/lib/config/vapid"
 import {
   PushPermissionState,
+  PushPersistenceResult,
   PushSubscriptionResult,
   PushSupportStatus,
   SerializablePushSubscription,
   SubscribeWebPushOptions,
 } from "./types"
 import { arrayBufferToBase64Url, urlBase64ToUint8Array } from "./vapid-utils"
+import {
+  savePushSubscriptionAction,
+  deletePushSubscriptionAction,
+} from "@/app/actions/push"
 
 /**
  * Returns a boolean indicating whether the current browser supports Web Push.
@@ -322,6 +327,95 @@ export async function unsubscribeFromWebPush(): Promise<boolean> {
   } catch (err) {
     if (process.env.NODE_ENV === "development") {
       console.warn("[PushManager] Error unsubscribing from Web Push:", err)
+    }
+    return false
+  }
+}
+
+/**
+ * High-level orchestration for user-initiated push notification enrollment.
+ *
+ * CRITICAL PERMISSION & INITIATION MODEL:
+ * This method MUST ONLY be called in response to an explicit user interaction (e.g. clicking
+ * an 'Enable Push Notifications' button).
+ *
+ * Flow:
+ * 1. Checks browser support and handles user permission prompt (if state is 'default').
+ * 2. Obtains or creates standard browser PushSubscription via VAPID key.
+ * 3. Serializes subscription payload.
+ * 4. Calls Server Action to verify authentication and persist subscription under auth.uid().
+ * 5. Returns typed result indicating success (created/existing) or structured error.
+ */
+export async function registerAndPersistWebPush(
+  options?: SubscribeWebPushOptions & { deviceName?: string }
+): Promise<PushPersistenceResult> {
+  // 1. Obtain browser PushSubscription (handles support and permissions)
+  const subResult = await subscribeToWebPush(options)
+
+  if (!subResult.ok) {
+    return {
+      ok: false,
+      reason: subResult.reason,
+      message: subResult.message,
+      error: subResult.error,
+    }
+  }
+
+  // 2. Persist to Supabase via authenticated Server Action
+  const persistResponse = await savePushSubscriptionAction({
+    endpoint: subResult.serialized.endpoint,
+    p256dh: subResult.serialized.p256dh,
+    auth: subResult.serialized.auth,
+    deviceName: options?.deviceName,
+  })
+
+  if (!persistResponse.ok) {
+    return {
+      ok: false,
+      reason:
+        persistResponse.reason === "unauthenticated"
+          ? "unauthenticated"
+          : persistResponse.reason === "endpoint_conflict"
+            ? "endpoint_conflict"
+            : "persistence_failed",
+      message: persistResponse.error,
+    }
+  }
+
+  return {
+    ok: true,
+    status: subResult.status,
+    subscription: subResult.subscription,
+    persistence: persistResponse,
+  }
+}
+
+/**
+ * High-level orchestration to unsubscribe both the browser device and remove
+ * the record from Supabase.
+ */
+export async function unsubscribeAndRemoveWebPush(): Promise<boolean> {
+  if (!isWebPushSupported()) {
+    return false
+  }
+
+  try {
+    const registration = await navigator.serviceWorker.ready
+    const subscription = await registration?.pushManager?.getSubscription()
+
+    if (subscription) {
+      const endpoint = subscription.endpoint
+      await subscription.unsubscribe()
+
+      if (endpoint) {
+        await deletePushSubscriptionAction(endpoint)
+      }
+    }
+
+    return true
+  } catch (err) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[PushManager] Error in unsubscribeAndRemoveWebPush:", err)
     }
     return false
   }

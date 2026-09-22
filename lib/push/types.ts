@@ -58,3 +58,56 @@ export interface SubscribeWebPushOptions {
    */
   vapidPublicKey?: string
 }
+
+/**
+ * Payload sent to the server-side persistence action.
+ * NOTE: user_id is deliberately omitted because identity must be derived
+ * exclusively from the verified Supabase Auth session on the server.
+ */
+export interface PushSubscriptionPayload {
+  endpoint: string
+  p256dh: string
+  auth: string
+  userAgent?: string | null
+  deviceName?: string | null
+}
+
+export interface PushActionSuccess {
+  ok: true
+  action: "created" | "updated" | "deleted"
+  id?: string
+}
+
+export interface PushActionFailure {
+  ok: false
+  reason:
+    | "unauthenticated"
+    | "invalid_payload"
+    | "endpoint_conflict"
+    | "database_error"
+  error: string
+}
+
+export type PushActionResponse = PushActionSuccess | PushActionFailure
+
+export interface PushPersistenceSuccess {
+  ok: true
+  status: "existing" | "created"
+  subscription: PushSubscription
+  persistence: PushActionSuccess
+}
+
+export interface PushPersistenceFailure {
+  ok: false
+  reason:
+    | PushFailureReason
+    | "unauthenticated"
+    | "persistence_failed"
+    | "endpoint_conflict"
+  message: string
+  error?: unknown
+}
+
+export type PushPersistenceResult =
+  | PushPersistenceSuccess
+  | PushPersistenceFailure
