@@ -111,3 +111,47 @@ export interface PushPersistenceFailure {
 export type PushPersistenceResult =
   | PushPersistenceSuccess
   | PushPersistenceFailure
+
+/**
+ * Payload contract for outgoing Web Push notifications.
+ * Must be serializable to JSON.
+ */
+export interface PushNotificationPayload {
+  title: string
+  body: string
+  url?: string
+  icon?: string
+  badge?: string
+  tag?: string
+  data?: Record<string, unknown>
+}
+
+/**
+ * Standard categorized failure reasons for Web Push delivery.
+ */
+export type SendPushResultReason =
+  | "invalid_subscription"
+  | "invalid_payload"
+  | "missing_vapid_config"
+  | "auth_signing_failed"
+  | "expired_subscription"
+  | "remote_rejection"
+  | "unexpected_error"
+
+export interface SendPushSuccess {
+  ok: true
+  statusCode: number
+  endpoint: string
+}
+
+export interface SendPushFailure {
+  ok: false
+  reason: SendPushResultReason
+  error: string
+  statusCode?: number
+  endpoint?: string
+  isExpired?: boolean
+}
+
+export type SendPushResult = SendPushSuccess | SendPushFailure
+

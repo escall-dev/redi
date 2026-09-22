@@ -51,7 +51,7 @@ self.addEventListener("push", (event) => {
     icon: data.icon || "/icons/icon-192.png",
     badge: data.badge || "/icons/icon-192.png",
     tag: data.tag || "seijun-notification",
-    data: data.data || { url: "/dashboard" },
+    data: data.data || { url: data.url || "/dashboard" },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
