@@ -1,7 +1,8 @@
 import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
-import { SettingsForm, type ProfileSettingsData } from "@/components/settings/settings-form"
+import { SettingsMenu } from "@/components/settings/settings-menu"
+import type { ProfileSettingsData } from "@/components/settings/settings-form"
 import { getNotificationPreferences } from "@/lib/server/notification-preferences"
 import { Sliders } from "lucide-react"
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Settings",
-  description: "Manage your profile, cycle preferences, and private data.",
+  description: "Manage your profile, cycle preferences, notifications, and account settings.",
 }
 
 export default async function SettingsPage() {
@@ -41,7 +42,7 @@ export default async function SettingsPage() {
   const rawAvatar = profile?.avatar_url || user.user_metadata?.avatar_url || null
   const avatarUrl = rawAvatar && !rawAvatar.startsWith("preset:") ? rawAvatar : null
 
-  const initialData: ProfileSettingsData = {
+  const profileData: ProfileSettingsData = {
     displayName: profile?.display_name || user.user_metadata?.display_name || "",
     avatarUrl,
     sex: profile?.sex || (user.user_metadata?.sex as "male" | "female" | "prefer_not_to_say") || null,
@@ -55,23 +56,24 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div className="space-y-1 max-w-2xl mx-auto">
+      <div className="space-y-1 max-w-2xl mx-auto px-1">
         <div className="flex items-center gap-2">
           <Badge variant="lavender" className="gap-1.5 font-normal text-xs px-2.5 py-0.5">
             <Sliders className="size-3 text-primary" />
-            Preferences & Account
+            Preferences & Architecture
           </Badge>
         </div>
         <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
           Settings
         </h1>
         <p className="text-sm text-muted-foreground leading-relaxed">
-          Manage your personal profile, baseline cycle calculations, and account details.
+          Manage your account profile, cycle calculations, reminders, appearance, and privacy.
         </p>
       </div>
 
-      {/* Main Settings Form */}
-      <SettingsForm initialData={initialData} initialPreferences={initialPreferences} />
+      {/* Categorized Settings with Sectioned List Navigation */}
+      <SettingsMenu profileData={profileData} preferences={initialPreferences} />
     </div>
   )
 }
+
