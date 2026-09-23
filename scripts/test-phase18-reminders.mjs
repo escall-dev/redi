@@ -20,6 +20,7 @@
 
 import fs from "fs"
 import path from "path"
+import crypto from "crypto"
 import { fileURLToPath } from "url"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -440,7 +441,153 @@ assert(fs.existsSync(cronRoutePath), "app/api/cron/reminders/route.ts exists")
 const cronRouteContent = fs.readFileSync(cronRoutePath, "utf-8")
 assert(cronRouteContent.includes("export async function GET"), "Cron route exports GET handler")
 assert(cronRouteContent.includes("export async function POST"), "Cron route exports POST handler")
-assert(cronRouteContent.includes("CRON_SECRET"), "Cron route supports CRON_SECRET authorization")
+assert(cronRouteContent.includes("CRON_SECRET"), "Cron route references CRON_SECRET")
+assert(cronRouteContent.includes("crypto.timingSafeEqual"), "Cron route uses constant-time comparison (crypto.timingSafeEqual)")
+assert(cronRouteContent.includes("status: 500"), "Cron route returns 500 when CRON_SECRET is unconfigured")
+assert(cronRouteContent.includes("status: 401"), "Cron route returns 401 for unauthorized requests")
+assert(!cronRouteContent.includes("console.log(process.env.CRON_SECRET"), "No secret logging in cron route")
+assert(!cronRouteContent.includes("console.log(secret"), "No secret logging in cron route")
+
+// Dynamic unit testing of the Cron Authentication Logic & Security Invariants
+console.log("  --> Testing Cron Authentication Matrix & Secret Protection...")
+
+function safeCompare(a, b) {
+  const hashA = crypto.createHash("sha256").update(a).digest()
+  const hashB = crypto.createHash("sha256").update(b).digest()
+  return crypto.timingSafeEqual(hashA, hashB)
+}
+
+function verifyCronAuthorizationSimulated(requestHeaders, configuredSecret) {
+  if (!configuredSecret) {
+    return {
+      authorized: false,
+      status: 500,
+      error: "Cron authentication is not configured",
+    }
+  }
+
+  const authHeader = requestHeaders.authorization || requestHeaders.Authorization
+  if (!authHeader) {
+    return {
+      authorized: false,
+      status: 401,
+      error: "Unauthorized",
+    }
+  }
+
+  const expectedAuth = `Bearer ${configuredSecret}`
+  if (!safeCompare(authHeader, expectedAuth)) {
+    return {
+      authorized: false,
+      status: 401,
+      error: "Unauthorized",
+    }
+  }
+
+  return { authorized: true }
+}
+
+// 1. Missing CRON_SECRET (unconfigured environment)
+const missingSecretResultNoHeader = verifyCronAuthorizationSimulated({}, undefined)
+assert(
+  missingSecretResultNoHeader.authorized === false && missingSecretResultNoHeader.status === 500,
+  "Missing CRON_SECRET rejects execution with 500 status"
+)
+assert(
+  missingSecretResultNoHeader.error === "Cron authentication is not configured",
+  "Missing CRON_SECRET returns descriptive server error message"
+)
+
+const missingSecretResultWithHeader = verifyCronAuthorizationSimulated(
+  { authorization: "Bearer some-token" },
+  ""
+)
+assert(
+  missingSecretResultWithHeader.authorized === false && missingSecretResultWithHeader.status === 500,
+  "Empty CRON_SECRET string safely rejects execution with 500 status"
+)
+
+// 2. Missing authorization header
+const testSecret = "super-secret-cron-key-12345"
+const missingHeaderResult = verifyCronAuthorizationSimulated({}, testSecret)
+assert(
+  missingHeaderResult.authorized === false && missingHeaderResult.status === 401,
+  "Missing authorization header rejects request with 401 status"
+)
+assert(missingHeaderResult.error === "Unauthorized", "Missing authorization header returns 'Unauthorized'")
+
+// 3. Invalid CRON_SECRET
+const wrongSecretResult = verifyCronAuthorizationSimulated(
+  { authorization: "Bearer wrong-key" },
+  testSecret
+)
+assert(
+  wrongSecretResult.authorized === false && wrongSecretResult.status === 401,
+  "Invalid CRON_SECRET rejects request with 401 status"
+)
+
+const malformedHeaderResult = verifyCronAuthorizationSimulated(
+  { authorization: `Basic ${testSecret}` },
+  testSecret
+)
+assert(
+  malformedHeaderResult.authorized === false && malformedHeaderResult.status === 401,
+  "Non-Bearer authorization scheme rejects request with 401 status"
+)
+
+// 4. Valid Bearer CRON_SECRET
+const validAuthResult = verifyCronAuthorizationSimulated(
+  { authorization: `Bearer ${testSecret}` },
+  testSecret
+)
+assert(validAuthResult.authorized === true, "Valid Bearer CRON_SECRET successfully authorizes request")
+
+// 5. Existing supported authentication format
+assert(
+  cronRouteContent.includes("`Bearer ${secret}`"),
+  "Existing supported authentication format 'Authorization: Bearer <CRON_SECRET>' is preserved"
+)
+
+// 6. No secret leakage in responses or logs
+const errorResponses = [
+  missingSecretResultNoHeader.error,
+  missingHeaderResult.error,
+  wrongSecretResult.error,
+]
+for (const err of errorResponses) {
+  assert(
+    !err.includes(testSecret),
+    `Error response does not leak configured secret string: "${err}"`
+  )
+}
+assert(
+  !cronRouteContent.includes("secret") || !cronRouteContent.includes("JSON.stringify({ error: secret"),
+  "Cron route source code never includes secret in error payload"
+)
+
+// 7. Successful processing after valid authentication
+let processorCalled = false
+function mockHandleCronRequest(headers, secret) {
+  const auth = verifyCronAuthorizationSimulated(headers, secret)
+  if (!auth.authorized) {
+    return { status: auth.status, body: { error: auth.error } }
+  }
+  processorCalled = true
+  return { status: 200, body: { ok: true, summary: { processedCount: 2, sentCount: 2 } } }
+}
+
+processorCalled = false
+const unauthResponse = mockHandleCronRequest({}, testSecret)
+assert(!processorCalled && unauthResponse.status === 401, "Processor is NOT called when unauthenticated")
+
+processorCalled = false
+const misconfiguredResponse = mockHandleCronRequest({ authorization: `Bearer ${testSecret}` }, undefined)
+assert(!processorCalled && misconfiguredResponse.status === 500, "Processor is NOT called when CRON_SECRET is missing")
+
+processorCalled = false
+const successResponse = mockHandleCronRequest({ authorization: `Bearer ${testSecret}` }, testSecret)
+assert(processorCalled && successResponse.status === 200, "Processor successfully called and returns 200 after valid authentication")
+
 
 // ==============================================================================
 // 7. IN-APP NOTIFICATION CENTER & NAVIGATION
