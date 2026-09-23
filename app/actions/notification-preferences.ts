@@ -5,7 +5,10 @@ import {
   type NotificationCategory,
   type NotificationPreferences,
   type NotificationPreferenceActionResponse,
+  type ReminderTimingOption,
+  type ReminderTimingActionResponse,
   isValidNotificationCategory,
+  isValidReminderTimingOption,
   DEFAULT_NOTIFICATION_PREFERENCES,
 } from "@/lib/notifications/types"
 import {
@@ -19,7 +22,7 @@ type PreferenceInsert = Database["public"]["Tables"]["notification_preferences"]
 
 /**
  * Server Action: Fetches the authenticated user's notification preferences.
- * If no preference row exists, returns standard defaults (all true).
+ * If no preference row exists, returns standard defaults.
  */
 export async function getNotificationPreferencesAction(): Promise<{
   ok: boolean
@@ -107,6 +110,8 @@ export async function updateNotificationPreferenceAction(
       }
     }
 
+    let finalPreferences: NotificationPreferences
+
     if (existing) {
       // Atomic UPDATE on only the specified column
       const updatePayload: PreferenceUpdate = { [category]: enabled }
@@ -124,15 +129,10 @@ export async function updateNotificationPreferenceAction(
         }
       }
 
-      return {
-        ok: true,
-        category,
-        enabled,
-        preferences: mapRowToPreferences(updatedRow),
-      }
+      finalPreferences = mapRowToPreferences(updatedRow as unknown as Partial<NotificationPreferences>)
     } else {
       // Initial INSERT: only specified category is explicitly provided;
-      // database DEFAULT TRUE applies to all other categories.
+      // database DEFAULT applies to all other categories.
       const insertPayload: PreferenceInsert = {
         user_id: user.id,
         [category]: enabled,
@@ -161,31 +161,128 @@ export async function updateNotificationPreferenceAction(
             }
           }
 
+          finalPreferences = mapRowToPreferences(retryRow as unknown as Partial<NotificationPreferences>)
+        } else {
           return {
-            ok: true,
-            category,
-            enabled,
-            preferences: mapRowToPreferences(retryRow),
+            ok: false,
+            error: "Failed to initialize notification preferences.",
           }
         }
-
-        return {
-          ok: false,
-          error: "Failed to initialize notification preferences.",
-        }
+      } else {
+        finalPreferences = mapRowToPreferences(insertedRow as unknown as Partial<NotificationPreferences>)
       }
+    }
 
-      return {
-        ok: true,
-        category,
-        enabled,
-        preferences: mapRowToPreferences(insertedRow),
-      }
+    // Trigger cycle reminder recalculation in the background
+    try {
+      const { syncUserReminders } = await import("@/lib/reminders/sync")
+      void syncUserReminders(user.id, supabase)
+    } catch {
+      // Background recalculation failure does not fail preference update
+    }
+
+    return {
+      ok: true,
+      category,
+      enabled,
+      preferences: finalPreferences,
     }
   } catch {
     return {
       ok: false,
       error: "An unexpected error occurred while saving notification preferences.",
+    }
+  }
+}
+
+/**
+ * Server Action: Updates the user's cycle reminder timing preference (3 days before, 1 day before, or 0 days).
+ */
+export async function updateReminderTimingAction(
+  reminderDaysBefore: ReminderTimingOption
+): Promise<ReminderTimingActionResponse> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (!user || authError) {
+    return {
+      ok: false,
+      error: "Authentication required to update reminder timing.",
+    }
+  }
+
+  if (!isValidReminderTimingOption(reminderDaysBefore)) {
+    return {
+      ok: false,
+      error: "Invalid reminder timing option. Must be 0, 1, or 3 days.",
+    }
+  }
+
+  try {
+    const { data: existing } = await supabase
+      .from("notification_preferences")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    let finalPreferences: NotificationPreferences
+
+    if (existing) {
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("notification_preferences")
+        .update({ reminder_days_before: reminderDaysBefore })
+        .eq("user_id", user.id)
+        .select()
+        .single()
+
+      if (updateError || !updatedRow) {
+        return {
+          ok: false,
+          error: "Failed to update reminder timing.",
+        }
+      }
+
+      finalPreferences = mapRowToPreferences(updatedRow as unknown as Partial<NotificationPreferences>)
+    } else {
+      const { data: insertedRow, error: insertError } = await supabase
+        .from("notification_preferences")
+        .insert({
+          user_id: user.id,
+          reminder_days_before: reminderDaysBefore,
+        })
+        .select()
+        .single()
+
+      if (insertError || !insertedRow) {
+        return {
+          ok: false,
+          error: "Failed to save reminder timing.",
+        }
+      }
+
+      finalPreferences = mapRowToPreferences(insertedRow as unknown as Partial<NotificationPreferences>)
+    }
+
+    // Trigger cycle reminder recalculation in the background
+    try {
+      const { syncUserReminders } = await import("@/lib/reminders/sync")
+      void syncUserReminders(user.id, supabase)
+    } catch {
+      // Ignored
+    }
+
+    return {
+      ok: true,
+      reminderDaysBefore,
+      preferences: finalPreferences,
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "An unexpected error occurred while updating reminder timing.",
     }
   }
 }

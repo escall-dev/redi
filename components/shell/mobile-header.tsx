@@ -15,6 +15,7 @@ import {
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Avatar } from "@/components/ui/avatar"
 import { useUserProfile } from "@/lib/hooks/use-user-profile"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 export function MobileHeader() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
@@ -103,50 +104,8 @@ export function MobileHeader() {
         {/* Quick Theme Toggle */}
         <ThemeToggle />
 
-        {/* 1. Notification Bell */}
-        <Popover>
-          <PopoverTrigger
-            aria-label="Notifications"
-            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs focus:outline-none"
-          >
-            <Bell className="size-4.5 stroke-[2.2]" />
-          </PopoverTrigger>
-          <PopoverContent align="end" side="bottom" className="w-80 p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between border-b border-border/50 pb-2">
-              <div className="flex items-center gap-1.5">
-                <Bell className="size-4 text-primary" />
-                <span className="font-semibold text-xs text-foreground">Reminders & Alerts</span>
-              </div>
-              <span className="text-[10px] bg-primary/10 text-primary font-medium px-1.5 py-0.5 rounded-md">
-                2 new
-              </span>
-            </div>
-
-            <div className="space-y-2 text-left">
-              {/* Reminder 1 */}
-              <div className="p-2.5 rounded-xl bg-secondary/50 border border-border/40 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground">Daily Check-in</span>
-                  <span className="text-[10px] text-muted-foreground">Today</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Log your symptoms, flow, or notes today to keep predictions accurate.
-                </p>
-              </div>
-
-              {/* Reminder 2 */}
-              <div className="p-2.5 rounded-xl bg-secondary/50 border border-border/40 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-foreground">Cycle Forecast</span>
-                  <span className="text-[10px] text-muted-foreground">Forecast active</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Your cycle insights are up to date. Tap Period Insights for details.
-                </p>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
+        {/* 1. Dynamic In-App Notification Center */}
+        <NotificationBell />
 
         {/* 2. Profile Avatar Link */}
         <Link

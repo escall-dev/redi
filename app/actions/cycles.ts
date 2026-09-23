@@ -111,6 +111,14 @@ async function syncCycleLengthsForUser(
   } catch (err) {
     console.error("Error syncing cycle lengths:", err)
   }
+
+  // Recalculate smart cycle reminders (Phase 18)
+  try {
+    const { syncUserReminders } = await import("@/lib/reminders/sync")
+    await syncUserReminders(userId, supabase)
+  } catch (remErr) {
+    console.error("Error syncing cycle reminders:", remErr)
+  }
 }
 
 /**

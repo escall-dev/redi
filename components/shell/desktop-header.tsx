@@ -19,6 +19,7 @@ import {
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Avatar } from "@/components/ui/avatar"
 import { useUserProfile } from "@/lib/hooks/use-user-profile"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 export function DesktopHeader() {
   const pathname = usePathname()
@@ -112,22 +113,8 @@ export function DesktopHeader() {
           {/* Quick Theme Toggle */}
           <ThemeToggle />
 
-          {/* Notification Popover */}
-          <Popover>
-            <PopoverTrigger
-              aria-label="Notifications"
-              className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs focus:outline-none"
-            >
-              <Bell className="size-4 stroke-[2.2]" />
-            </PopoverTrigger>
-            <PopoverContent align="end" side="bottom" className="w-64 p-3 text-center">
-              <div className="flex flex-col items-center gap-1.5 py-2">
-                <Bell className="size-6 text-primary stroke-[1.8]" />
-                <span className="font-semibold text-xs">Notifications</span>
-                <p className="text-[11px] text-muted-foreground">All caught up! No new notifications.</p>
-              </div>
-            </PopoverContent>
-          </Popover>
+          {/* Dynamic In-App Notification Center */}
+          <NotificationBell />
 
           {/* Profile Avatar Link */}
           <Link

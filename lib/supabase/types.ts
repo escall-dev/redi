@@ -8,6 +8,14 @@ export type Json =
 
 export type ProfileSex = "male" | "female" | "prefer_not_to_say"
 export type ProfileUsageRole = "cycle_tracker" | "supporter" | "both"
+export type NotificationEventStatus = "pending" | "sent" | "failed" | "cancelled"
+export type CycleReminderType =
+  | "period_upcoming"
+  | "period_expected"
+  | "fertile_window"
+  | "ovulation"
+  | "cycle_transition"
+  | "missed_period"
 
 export interface Database {
   public: {
@@ -231,6 +239,12 @@ export interface Database {
           shared_updates: boolean
           system_notifications: boolean
           security_notifications: boolean
+          period_reminders: boolean
+          fertile_window_reminders: boolean
+          ovulation_reminders: boolean
+          cycle_transition_reminders: boolean
+          missed_period_reminders: boolean
+          reminder_days_before: number
           created_at: string
           updated_at: string
         }
@@ -246,6 +260,12 @@ export interface Database {
           shared_updates?: boolean
           system_notifications?: boolean
           security_notifications?: boolean
+          period_reminders?: boolean
+          fertile_window_reminders?: boolean
+          ovulation_reminders?: boolean
+          cycle_transition_reminders?: boolean
+          missed_period_reminders?: boolean
+          reminder_days_before?: number
           created_at?: string
           updated_at?: string
         }
@@ -261,10 +281,75 @@ export interface Database {
           shared_updates?: boolean
           system_notifications?: boolean
           security_notifications?: boolean
+          period_reminders?: boolean
+          fertile_window_reminders?: boolean
+          ovulation_reminders?: boolean
+          cycle_transition_reminders?: boolean
+          missed_period_reminders?: boolean
+          reminder_days_before?: number
           created_at?: string
           updated_at?: string
         }
         Relationships: []
+      }
+      notification_events: {
+        Row: {
+          id: string
+          user_id: string
+          cycle_id: string | null
+          type: CycleReminderType
+          scheduled_for: string
+          sent_at: string | null
+          status: NotificationEventStatus
+          title: string
+          body: string
+          url: string
+          metadata: Json
+          read_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          cycle_id?: string | null
+          type: CycleReminderType
+          scheduled_for: string
+          sent_at?: string | null
+          status?: NotificationEventStatus
+          title: string
+          body: string
+          url?: string
+          metadata?: Json
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          cycle_id?: string | null
+          type?: CycleReminderType
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: NotificationEventStatus
+          title?: string
+          body?: string
+          url?: string
+          metadata?: Json
+          read_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_events_cycle_id_fkey"
+            columns: ["cycle_id"]
+            isOneToOne: false
+            referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

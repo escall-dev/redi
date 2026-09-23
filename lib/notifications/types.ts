@@ -17,8 +17,15 @@ export type NotificationCategory =
   | "shared_updates"
   | "system_notifications"
   | "security_notifications"
+  | "period_reminders"
+  | "fertile_window_reminders"
+  | "ovulation_reminders"
+  | "cycle_transition_reminders"
+  | "missed_period_reminders"
 
 export type NotificationGroup = "personal" | "partner" | "shared" | "system"
+
+export type ReminderTimingOption = 0 | 1 | 3
 
 export interface NotificationCategoryConfig {
   key: NotificationCategory
@@ -28,7 +35,9 @@ export interface NotificationCategoryConfig {
   defaultEnabled: boolean
 }
 
-export type NotificationPreferences = Record<NotificationCategory, boolean>
+export type NotificationPreferences = Record<NotificationCategory, boolean> & {
+  reminder_days_before: ReminderTimingOption
+}
 
 export const ALL_NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
   "personal_reminders",
@@ -41,14 +50,54 @@ export const ALL_NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
   "shared_updates",
   "system_notifications",
   "security_notifications",
+  "period_reminders",
+  "fertile_window_reminders",
+  "ovulation_reminders",
+  "cycle_transition_reminders",
+  "missed_period_reminders",
 ] as const
 
 export const NOTIFICATION_CATEGORIES: Record<NotificationCategory, NotificationCategoryConfig> = {
+  period_reminders: {
+    key: "period_reminders",
+    group: "personal",
+    label: "Period Reminders",
+    description: "Advance notices before estimated period start and on expected day.",
+    defaultEnabled: true,
+  },
+  fertile_window_reminders: {
+    key: "fertile_window_reminders",
+    group: "personal",
+    label: "Fertile Window",
+    description: "Notifications as your estimated fertile window approaches.",
+    defaultEnabled: true,
+  },
+  ovulation_reminders: {
+    key: "ovulation_reminders",
+    group: "personal",
+    label: "Ovulation Day",
+    description: "Alert on your estimated peak ovulation day.",
+    defaultEnabled: true,
+  },
+  cycle_transition_reminders: {
+    key: "cycle_transition_reminders",
+    group: "personal",
+    label: "Cycle Transitions",
+    description: "Notices for transitions between cycle phases (follicular, luteal).",
+    defaultEnabled: true,
+  },
+  missed_period_reminders: {
+    key: "missed_period_reminders",
+    group: "personal",
+    label: "Late Period Check-in",
+    description: "Gentle reminder if your period has not arrived by the expected date.",
+    defaultEnabled: true,
+  },
   personal_reminders: {
     key: "personal_reminders",
     group: "personal",
     label: "Personal Reminders",
-    description: "Period onset predictions, fertile window alerts, and cycle phase notifications.",
+    description: "General cycle onset predictions, fertile alerts, and wellness notifications.",
     defaultEnabled: true,
   },
   personal_updates: {
@@ -127,6 +176,12 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Readonly<NotificationPreferences>
   shared_updates: true,
   system_notifications: true,
   security_notifications: true,
+  period_reminders: true,
+  fertile_window_reminders: true,
+  ovulation_reminders: true,
+  cycle_transition_reminders: true,
+  missed_period_reminders: true,
+  reminder_days_before: 3,
 }
 
 export const NOTIFICATION_GROUPS: {
@@ -137,9 +192,16 @@ export const NOTIFICATION_GROUPS: {
 }[] = [
   {
     id: "personal",
-    title: "Personal",
+    title: "Cycle & Personal",
     description: "Alerts and reminders calculated specifically for your cycle and wellness.",
-    categories: ["personal_reminders", "personal_updates"],
+    categories: [
+      "period_reminders",
+      "fertile_window_reminders",
+      "ovulation_reminders",
+      "cycle_transition_reminders",
+      "personal_reminders",
+      "personal_updates",
+    ],
   },
   {
     id: "partner",
@@ -173,10 +235,24 @@ export function isValidNotificationCategory(val: unknown): val is NotificationCa
   return typeof val === "string" && ALL_NOTIFICATION_CATEGORIES.includes(val as NotificationCategory)
 }
 
+/**
+ * Type guard to validate whether an unknown value is a valid ReminderTimingOption.
+ */
+export function isValidReminderTimingOption(val: unknown): val is ReminderTimingOption {
+  return typeof val === "number" && (val === 0 || val === 1 || val === 3)
+}
+
 export interface NotificationPreferenceActionResponse {
   ok: boolean
   category?: NotificationCategory
   enabled?: boolean
+  error?: string
+  preferences?: NotificationPreferences
+}
+
+export interface ReminderTimingActionResponse {
+  ok: boolean
+  reminderDaysBefore?: ReminderTimingOption
   error?: string
   preferences?: NotificationPreferences
 }

@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Bell,
   BellRing,
@@ -19,10 +20,13 @@ import {
   Activity,
   UserCheck,
   Info,
+  Clock,
+  Laptop,
 } from "lucide-react"
 import {
   type NotificationCategory,
   type NotificationPreferences,
+  type ReminderTimingOption,
   DEFAULT_NOTIFICATION_PREFERENCES,
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_GROUPS,
@@ -30,8 +34,13 @@ import {
 import {
   getNotificationPreferencesAction,
   updateNotificationPreferenceAction,
+  updateReminderTimingAction,
 } from "@/app/actions/notification-preferences"
-import { isWebPushSupported, getNotificationPermission } from "@/lib/push/subscription-manager"
+import {
+  isWebPushSupported,
+  getNotificationPermission,
+  registerAndPersistWebPush,
+} from "@/lib/push/subscription-manager"
 import type { ProfileUsageRole } from "@/lib/supabase/types"
 
 interface NotificationPreferencesProps {
@@ -40,13 +49,18 @@ interface NotificationPreferencesProps {
 }
 
 const GROUP_ICONS = {
-  personal: User,
+  personal: CalendarHeart,
   partner: HeartHandshake,
   shared: Users,
   system: ShieldCheck,
 }
 
 const CATEGORY_ICONS: Record<NotificationCategory, React.ElementType> = {
+  period_reminders: CalendarHeart,
+  fertile_window_reminders: Sparkles,
+  ovulation_reminders: CalendarHeart,
+  cycle_transition_reminders: Clock,
+  missed_period_reminders: AlertCircle,
   personal_reminders: CalendarHeart,
   personal_updates: Sparkles,
   partner_daily_notes: FileText,
@@ -59,6 +73,12 @@ const CATEGORY_ICONS: Record<NotificationCategory, React.ElementType> = {
   security_notifications: ShieldCheck,
 }
 
+const TIMING_OPTIONS: { days: ReminderTimingOption; label: string; description: string }[] = [
+  { days: 3, label: "3 days before", description: "Advance heads-up 3 days prior" },
+  { days: 1, label: "1 day before", description: "Reminder the day before estimated start" },
+  { days: 0, label: "On expected day", description: "Day-of reminder when period is estimated to arrive" },
+]
+
 export function NotificationPreferencesCard({
   initialPreferences,
   usageRole,
@@ -68,19 +88,21 @@ export function NotificationPreferencesCard({
   )
   const [loading, setLoading] = React.useState<boolean>(!initialPreferences)
   const [pendingCategory, setPendingCategory] = React.useState<NotificationCategory | null>(null)
+  const [pendingTiming, setPendingTiming] = React.useState<boolean>(false)
   const [bannerMessage, setBannerMessage] = React.useState<{
     type: "success" | "error" | "info"
     text: string
   } | null>(null)
 
-  // Device push status telemetry (telemetry-only indicator, strictly decoupled from preferences)
+  // Device push status telemetry
   const [devicePushActive, setDevicePushActive] = React.useState<boolean | null>(null)
+  const [permissionState, setPermissionState] = React.useState<string>("default")
+  const [enablingPush, setEnablingPush] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     let isMounted = true
 
     async function loadData() {
-      // If initialPreferences was not passed from server, fetch from server action
       if (!initialPreferences) {
         try {
           const res = await getNotificationPreferencesAction()
@@ -99,9 +121,11 @@ export function NotificationPreferencesCard({
         }
       }
 
-      // Check device push capability for user awareness
+      // Check device push capability and permission
       if (typeof window !== "undefined" && isWebPushSupported()) {
         const perm = getNotificationPermission()
+        if (isMounted) setPermissionState(perm)
+
         if (perm === "granted" && "serviceWorker" in navigator) {
           try {
             const reg = await navigator.serviceWorker.ready
@@ -118,7 +142,7 @@ export function NotificationPreferencesCard({
       }
     }
 
-    loadData()
+    void loadData()
 
     return () => {
       isMounted = false
@@ -134,12 +158,11 @@ export function NotificationPreferencesCard({
 
   // Optimistic preference toggle handler
   const handleToggle = async (category: NotificationCategory) => {
-    if (pendingCategory) return // prevent concurrent toggles
+    if (pendingCategory) return
 
     const previousValue = preferences[category]
     const nextValue = !previousValue
 
-    // Optimistically update local UI state
     setPreferences((prev) => ({
       ...prev,
       [category]: nextValue,
@@ -151,7 +174,6 @@ export function NotificationPreferencesCard({
       const result = await updateNotificationPreferenceAction(category, nextValue)
 
       if (!result.ok) {
-        // Rollback to previous value on failure
         setPreferences((prev) => ({
           ...prev,
           [category]: previousValue,
@@ -161,17 +183,15 @@ export function NotificationPreferencesCard({
           text: result.error || "Failed to update notification preference.",
         })
       } else {
-        // Sync state if server returned updated preferences
         if (result.preferences) {
           setPreferences(result.preferences)
         }
         setBannerMessage({
           type: "success",
-          text: `Updated ${NOTIFICATION_CATEGORIES[category].label} preference.`,
+          text: `Updated ${NOTIFICATION_CATEGORIES[category]?.label || category} preference.`,
         })
       }
     } catch {
-      // Rollback on network exception
       setPreferences((prev) => ({
         ...prev,
         [category]: previousValue,
@@ -182,6 +202,67 @@ export function NotificationPreferencesCard({
       })
     } finally {
       setPendingCategory(null)
+    }
+  }
+
+  // Reminder timing option handler
+  const handleTimingChange = async (days: ReminderTimingOption) => {
+    if (pendingTiming || preferences.reminder_days_before === days) return
+
+    const previousDays = preferences.reminder_days_before
+    setPreferences((prev) => ({ ...prev, reminder_days_before: days }))
+    setPendingTiming(true)
+    setBannerMessage(null)
+
+    try {
+      const result = await updateReminderTimingAction(days)
+      if (!result.ok) {
+        setPreferences((prev) => ({ ...prev, reminder_days_before: previousDays }))
+        setBannerMessage({
+          type: "error",
+          text: result.error || "Failed to update reminder timing.",
+        })
+      } else {
+        if (result.preferences) {
+          setPreferences(result.preferences)
+        }
+        setBannerMessage({
+          type: "success",
+          text: `Reminder timing updated to ${days === 0 ? "on expected day" : `${days} day${days > 1 ? "s" : ""} before`}.`,
+        })
+      }
+    } catch {
+      setPreferences((prev) => ({ ...prev, reminder_days_before: previousDays }))
+      setBannerMessage({
+        type: "error",
+        text: "Failed to update timing preference.",
+      })
+    } finally {
+      setPendingTiming(false)
+    }
+  }
+
+  // Handle explicit permission prompt
+  const handleEnableDevicePush = async () => {
+    setEnablingPush(true)
+    try {
+      const res = await registerAndPersistWebPush({
+        deviceName: typeof navigator !== "undefined" ? navigator.userAgent.slice(0, 80) : undefined,
+      })
+      if (res.ok) {
+        setDevicePushActive(true)
+        setPermissionState("granted")
+        setBannerMessage({
+          type: "success",
+          text: "Browser notifications successfully enabled on this device!",
+        })
+      } else {
+        setPermissionState(getNotificationPermission())
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setEnablingPush(false)
     }
   }
 
@@ -197,30 +278,13 @@ export function NotificationPreferencesCard({
               <div className="flex items-center gap-2">
                 <CardTitle>Notification Preferences</CardTitle>
                 <Badge variant="outline" className="text-[10px] px-2 py-0 font-normal">
-                  Category Controls
+                  Cycle & Alerts
                 </Badge>
               </div>
               <CardDescription>
-                Choose which alert categories you want to receive across connected channels.
+                Customize cycle reminders, timing alerts, and browser delivery settings.
               </CardDescription>
             </div>
-          </div>
-        </div>
-
-        {/* Informative banner distinguishing preferences from device subscriptions */}
-        <div className="mt-3 flex items-start gap-2.5 rounded-xl border border-border/60 bg-secondary/30 p-3 text-xs text-muted-foreground">
-          <Info className="size-4 shrink-0 text-primary mt-0.5" />
-          <div className="space-y-1">
-            <p>
-              Preferences determine which alerts are generated for your account. They do not alter your
-              partner sharing permissions or underlying health records.
-            </p>
-            {devicePushActive === false && (
-              <p className="text-amber-700 dark:text-amber-400 font-medium">
-                Note: Web Push is not currently subscribed on this device. You can activate device
-                delivery in the Push Notifications section below.
-              </p>
-            )}
           </div>
         </div>
 
@@ -248,6 +312,105 @@ export function NotificationPreferencesCard({
       </CardHeader>
 
       <CardContent className="space-y-6 pt-0">
+        {/* A. Browser Notifications Status Bar */}
+        <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <Laptop className="size-4 text-primary shrink-0" />
+              <div>
+                <h4 className="text-xs font-semibold text-foreground">Browser Push Delivery</h4>
+                <p className="text-[11px] text-muted-foreground">
+                  Status on this browser:{" "}
+                  <span className="font-medium text-foreground capitalize">
+                    {permissionState === "granted"
+                      ? "Granted"
+                      : permissionState === "denied"
+                      ? "Blocked in browser"
+                      : "Not requested yet"}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <Badge
+                variant={devicePushActive ? "default" : "outline"}
+                className={`text-[10px] px-2 py-0.5 ${
+                  devicePushActive
+                    ? "bg-emerald-600 hover:bg-emerald-600 text-white"
+                    : "text-muted-foreground border-border/70"
+                }`}
+              >
+                {devicePushActive ? "Active on this device" : "Device inactive"}
+              </Badge>
+
+              {permissionState === "default" && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEnableDevicePush}
+                  disabled={enablingPush}
+                  className="h-7 text-xs px-2.5 gap-1.5 shadow-2xs"
+                >
+                  {enablingPush ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-3 text-primary" />
+                  )}
+                  <span>Enable Push</span>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* B. Reminder Timing Options */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-2">
+            <Clock className="size-4 text-primary shrink-0" />
+            <h3 className="text-sm font-semibold tracking-tight text-foreground">
+              Reminder Timing
+            </h3>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              — When to receive period notifications
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {TIMING_OPTIONS.map((opt) => {
+              const isSelected = preferences.reminder_days_before === opt.days
+
+              return (
+                <button
+                  key={opt.days}
+                  type="button"
+                  disabled={pendingTiming}
+                  onClick={() => handleTimingChange(opt.days)}
+                  className={`flex flex-col items-start gap-1 p-3 rounded-xl border text-left transition-all select-none cursor-pointer ${
+                    isSelected
+                      ? "bg-lavender/40 border-primary text-foreground shadow-xs ring-1 ring-primary/40"
+                      : "bg-secondary/40 border-border/60 hover:bg-secondary/70 text-muted-foreground"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-semibold text-foreground">
+                      {opt.label}
+                    </span>
+                    {isSelected && (
+                      <span className="size-2 rounded-full bg-primary" />
+                    )}
+                  </div>
+                  <span className="text-[11px] leading-tight text-muted-foreground">
+                    {opt.description}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* C. Notification Categories by Group */}
         {loading ? (
           <div className="flex items-center justify-center py-8 text-muted-foreground gap-2 text-sm">
             <Loader2 className="size-4 animate-spin" />
@@ -274,11 +437,11 @@ export function NotificationPreferencesCard({
                 <div className="grid gap-2.5">
                   {group.categories.map((categoryKey) => {
                     const config = NOTIFICATION_CATEGORIES[categoryKey]
+                    if (!config) return null
                     const isEnabled = preferences[categoryKey] ?? true
                     const isPending = pendingCategory === categoryKey
                     const CategoryIcon = CATEGORY_ICONS[categoryKey] || Bell
 
-                    // Role context indicator (non-mutating, informational only)
                     const showSupporterContext =
                       usageRole === "supporter" && group.id === "personal"
 

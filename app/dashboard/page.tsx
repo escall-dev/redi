@@ -21,6 +21,7 @@ import { DashboardQuickActions } from "@/components/dashboard/dashboard-quick-ac
 import { RecentCyclesSection } from "@/components/dashboard/recent-cycles-section"
 import { TodaySymptomsCard } from "@/components/dashboard/today-symptoms-card"
 import { TodayNoteCard } from "@/components/dashboard/today-note-card"
+import { NotificationPermissionPrompt } from "@/components/notifications/notification-permission-prompt"
 
 export const dynamic = "force-dynamic"
 
@@ -81,10 +82,21 @@ export default async function DashboardPage() {
     referenceDateStr: todayStr,
   })
 
+  // Opportunistic evaluation of pending due reminders in the background
+  try {
+    const { processPendingNotificationEvents } = await import("@/lib/reminders/processor")
+    void processPendingNotificationEvents({ userId: user.id })
+  } catch {
+    // Non-blocking
+  }
+
   return (
     <div className="space-y-6 pb-8 max-w-4xl mx-auto">
       {/* A. Personalized Greeting Header */}
       <DashboardHeader displayName={displayName} />
+
+      {/* Explanatory Notification Permission Prompt */}
+      <NotificationPermissionPrompt usageRole={profile?.usage_role} />
 
       {/* Supporter Informational Notice */}
       {isSupporter && <SupporterBanner />}

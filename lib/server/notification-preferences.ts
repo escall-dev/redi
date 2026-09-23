@@ -1,22 +1,24 @@
 /**
  * Seijun Server-Side Notification Preference Utilities
  *
- * Provides a clean, authoritative query interface for future notification dispatch systems
+ * Provides a clean, authoritative query interface for notification dispatch systems
  * (Phase 18 Smart Cycle Reminders, Phase 19 Partner Connection, Phase 20 Shared Reminders).
  *
  * DESIGN INVARIANTS:
  * 1. Server-Only: Throws immediately if loaded or executed in browser runtime.
- * 2. Safe Fallbacks: Missing preference rows or query failures always resolve to DEFAULT_NOTIFICATION_PREFERENCES (all true).
+ * 2. Safe Fallbacks: Missing preference rows or query failures always resolve to DEFAULT_NOTIFICATION_PREFERENCES.
  * 3. Encapsulated: Callers receive clean boolean values or typed NotificationPreferences records without database leakage.
- * 4. Business Agnostic: Contains zero domain event logic or push sending code.
+ * 4. Business Agnostic: Contains zero push-sending code.
  */
 
 import { createClient } from "@/lib/supabase/server"
 import {
   type NotificationCategory,
   type NotificationPreferences,
+  type ReminderTimingOption,
   DEFAULT_NOTIFICATION_PREFERENCES,
   isValidNotificationCategory,
+  isValidReminderTimingOption,
 } from "@/lib/notifications/types"
 
 // Enforce server-only execution guard
@@ -46,6 +48,11 @@ export function mapRowToPreferences(
   if (!row || typeof row !== "object") {
     return { ...DEFAULT_NOTIFICATION_PREFERENCES }
   }
+
+  const rawReminderDays = (row as Record<string, unknown>).reminder_days_before
+  const reminder_days_before: ReminderTimingOption = isValidReminderTimingOption(rawReminderDays)
+    ? (rawReminderDays as ReminderTimingOption)
+    : DEFAULT_NOTIFICATION_PREFERENCES.reminder_days_before
 
   return {
     personal_reminders:
@@ -88,12 +95,33 @@ export function mapRowToPreferences(
       typeof row.security_notifications === "boolean"
         ? row.security_notifications
         : DEFAULT_NOTIFICATION_PREFERENCES.security_notifications,
+    period_reminders:
+      typeof row.period_reminders === "boolean"
+        ? row.period_reminders
+        : DEFAULT_NOTIFICATION_PREFERENCES.period_reminders,
+    fertile_window_reminders:
+      typeof row.fertile_window_reminders === "boolean"
+        ? row.fertile_window_reminders
+        : DEFAULT_NOTIFICATION_PREFERENCES.fertile_window_reminders,
+    ovulation_reminders:
+      typeof row.ovulation_reminders === "boolean"
+        ? row.ovulation_reminders
+        : DEFAULT_NOTIFICATION_PREFERENCES.ovulation_reminders,
+    cycle_transition_reminders:
+      typeof row.cycle_transition_reminders === "boolean"
+        ? row.cycle_transition_reminders
+        : DEFAULT_NOTIFICATION_PREFERENCES.cycle_transition_reminders,
+    missed_period_reminders:
+      typeof row.missed_period_reminders === "boolean"
+        ? row.missed_period_reminders
+        : DEFAULT_NOTIFICATION_PREFERENCES.missed_period_reminders,
+    reminder_days_before,
   }
 }
 
 /**
  * Retrieves all notification preferences for a specific recipient user.
- * If no row exists yet or if the database query fails, returns safe default preferences (all true).
+ * If no row exists yet or if the database query fails, returns safe default preferences.
  *
  * @param userId - Supabase auth user UUID
  * @returns Complete NotificationPreferences object
@@ -110,7 +138,7 @@ export async function getNotificationPreferences(
     const { data, error } = await supabase
       .from("notification_preferences")
       .select(
-        "personal_reminders, personal_updates, partner_daily_notes, partner_cycle_updates, partner_activity, partner_connection, shared_reminders, shared_updates, system_notifications, security_notifications"
+        "personal_reminders, personal_updates, partner_daily_notes, partner_cycle_updates, partner_activity, partner_connection, shared_reminders, shared_updates, system_notifications, security_notifications, period_reminders, fertile_window_reminders, ovulation_reminders, cycle_transition_reminders, missed_period_reminders, reminder_days_before"
       )
       .eq("user_id", userId)
       .maybeSingle()
@@ -119,7 +147,7 @@ export async function getNotificationPreferences(
       return { ...DEFAULT_NOTIFICATION_PREFERENCES }
     }
 
-    return mapRowToPreferences(data)
+    return mapRowToPreferences(data as unknown as Partial<NotificationPreferences>)
   } catch {
     return { ...DEFAULT_NOTIFICATION_PREFERENCES }
   }
@@ -127,9 +155,6 @@ export async function getNotificationPreferences(
 
 /**
  * Checks whether a specific notification category is enabled for a recipient user.
- * This is the primary contract used by notification event pipelines:
- *
- * "is this notification category enabled for this recipient?"
  *
  * @param userId - Supabase auth user UUID
  * @param category - Typed notification category
