@@ -65,7 +65,10 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary">
+      <body
+        suppressHydrationWarning
+        className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary"
+      >
         <ThemeProvider>
           <AppShell>{children}</AppShell>
         </ThemeProvider>
