@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getCyclesAction } from "@/app/actions/cycles"
-import { getSymptomsAction } from "@/app/actions/symptoms"
-import { getDailyNotesAction } from "@/app/actions/notes"
+import { getCyclesForUser } from "@/app/actions/cycles"
+import { getSymptomsForUser } from "@/app/actions/symptoms"
+import { getDailyNotesForUser } from "@/app/actions/notes"
 import { CalendarView } from "@/components/calendar/calendar-view"
 import { Badge } from "@/components/ui/badge"
 import { CalendarDays } from "lucide-react"
@@ -15,34 +15,31 @@ export const metadata = {
 }
 
 export default async function CalendarPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  // Verify onboarding status
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("user_id", user.id)
-    .single()
+  const supabase = await createClient()
+
+  // Concurrently execute independent calendar dataset queries
+  const [profileRes, cycles, symptoms, notes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getCyclesForUser(user.id, supabase),
+    getSymptomsForUser(user.id, supabase),
+    getDailyNotesForUser(user.id, supabase),
+  ])
+
+  const profile = profileRes.data
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")
   }
-
-  // Fetch verified user cycles with period days and consecutive cycle lengths
-  const cycles = await getCyclesAction()
-
-  // Fetch all symptoms for calendar indicator dots and selected-date context
-  const symptoms = await getSymptomsAction()
-
-  // Fetch all daily notes for calendar indicators and selected-date context
-  const notes = await getDailyNotesAction()
 
   return (
     <div className="space-y-6 pb-8">

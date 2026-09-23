@@ -1,5 +1,7 @@
+import { cache } from "react"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import type { User } from "@supabase/supabase-js"
 import { assertSupabaseConfigured, getSupabaseEnv } from "./config"
 import type { Database } from "./types"
 
@@ -82,3 +84,29 @@ export async function getOptionalClient() {
     },
   })
 }
+
+/**
+ * Request-scoped memoized authenticated user getter.
+ * Uses React.cache() to deduplicate calls within a single Next.js request lifecycle.
+ * Securely calls supabase.auth.getUser() on the initial call and caches the resolved
+ * User object for any subsequent callers in the same render/action lifecycle.
+ */
+export const getAuthenticatedUser = cache(async (): Promise<User | null> => {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser()
+
+    if (error || !user) {
+      return null
+    }
+
+    return user
+  } catch (err) {
+    console.error("[getAuthenticatedUser] Error authenticating user:", err)
+    return null
+  }
+})
+

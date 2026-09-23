@@ -1,6 +1,6 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getDailyNotesAction } from "@/app/actions/notes"
+import { getDailyNotesForUser } from "@/app/actions/notes"
 import { NotesHistory } from "@/components/notes/notes-history"
 import { Badge } from "@/components/ui/badge"
 import { BookOpen } from "lucide-react"
@@ -13,26 +13,28 @@ export const metadata = {
 }
 
 export default async function NotesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed")
-    .eq("user_id", user.id)
-    .single()
+  const supabase = await createClient()
+
+  const [profileRes, notes] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getDailyNotesForUser(user.id, supabase),
+  ])
+
+  const profile = profileRes.data
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")
   }
-
-  const notes = await getDailyNotesAction()
 
   return (
     <div className="space-y-6 pb-8">

@@ -1,8 +1,8 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getCyclesAction } from "@/app/actions/cycles"
-import { getSymptomsByDateAction } from "@/app/actions/symptoms"
-import { getDailyNoteByDateAction } from "@/app/actions/notes"
+import { getCyclesForUser } from "@/app/actions/cycles"
+import { getSymptomsByDateForUser } from "@/app/actions/symptoms"
+import { getDailyNoteByDateForUser } from "@/app/actions/notes"
 import {
   getCurrentCycle,
   getCurrentCycleStatus,
@@ -30,21 +30,28 @@ export const metadata = {
 }
 
 export default async function DashboardPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  // Fetch profile information
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
-    .eq("user_id", user.id)
-    .single()
+  const supabase = await createClient()
+  const todayStr = getTodayDateString()
+
+  // Concurrently execute independent server queries
+  const [profileResult, cycles, todaySymptoms, todayNote] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getCyclesForUser(user.id, supabase),
+    getSymptomsByDateForUser(user.id, todayStr, supabase),
+    getDailyNoteByDateForUser(user.id, todayStr, supabase),
+  ])
+
+  const profile = profileResult.data
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")
@@ -55,17 +62,7 @@ export default async function DashboardPage() {
   const onboardingStartDate = profile?.last_period_start ?? null
   const isSupporter = profile?.usage_role === "supporter"
 
-  // Fetch all user cycles with period days and computed consecutive cycle lengths
-  const cycles = await getCyclesAction()
-
-  // Fetch today's symptoms for dashboard summary
-  const todaySymptoms = await getSymptomsByDateAction(getTodayDateString())
-
-  // Fetch today's daily note for dashboard summary
-  const todayNote = await getDailyNoteByDateAction(getTodayDateString())
-
   // 1. Current Cycle & Status
-  const todayStr = getTodayDateString()
   const currentCycle = getCurrentCycle(cycles, todayStr)
   const statusInfo = getCurrentCycleStatus(currentCycle, todayStr)
 

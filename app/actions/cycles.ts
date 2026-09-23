@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -115,19 +115,24 @@ async function syncCycleLengthsForUser(
 
 /**
  * 1. Ensure initial cycle from onboarding information if not already present.
- * Creates initial cycle with start_date = profiles.last_period_start and end_date = null.
- * Does NOT fabricate any period_days records.
+ * Uses fast-path count check so existing users bypass profile queries.
  */
 export async function ensureInitialCycleAction(): Promise<void> {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
+    const user = await getAuthenticatedUser()
     if (!user) return
+    const supabase = await createClient()
 
-    // Check profile
+    // Fast-path guard: check if any cycle already exists for this user
+    const { count } = await supabase
+      .from("cycles")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    // Existing users with cycles return immediately
+    if (count !== null && count > 0) return
+
+    // Check profile for onboarding initial start date
     const { data: profile } = await supabase
       .from("profiles")
       .select("last_period_start, onboarding_completed")
@@ -136,44 +141,32 @@ export async function ensureInitialCycleAction(): Promise<void> {
 
     if (!profile?.last_period_start) return
 
-    // Check if any cycle already exists for this user
-    const { count } = await supabase
-      .from("cycles")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-
-    // Only create initial cycle if the user has 0 cycles logged
-    if (count === 0) {
-      await supabase.from("cycles").insert({
-        user_id: user.id,
-        start_date: profile.last_period_start,
-        end_date: null,
-        period_duration: null,
-        cycle_length: null,
-        notes: "Initial cycle from Seijun onboarding.",
-      })
-    }
+    await supabase.from("cycles").insert({
+      user_id: user.id,
+      start_date: profile.last_period_start,
+      end_date: null,
+      period_duration: null,
+      cycle_length: null,
+      notes: "Initial cycle from Seijun onboarding.",
+    })
   } catch {
     // Ignore error in initial sync
   }
 }
 
 /**
- * 2. Get all cycles for authenticated user with computed cycle lengths and period day counts.
+ * Internal: Fetch all cycles for a specific authenticated user.
+ * Bypasses initialization queries if cycles exist.
+ * If user has 0 cycles, checks and initializes from onboarding data on demand.
  */
-export async function getCyclesAction(): Promise<CycleRecord[]> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return []
-
-  // Ensure initial cycle if needed
-  await ensureInitialCycleAction()
+export async function getCyclesForUser(
+  userId: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<CycleRecord[]> {
+  const supabase = customClient || (await createClient())
 
   // Fetch cycles sorted by start_date ASC to compute consecutive cycle lengths
-  const { data: cycles, error } = await supabase
+  const initialCyclesRes = await supabase
     .from("cycles")
     .select(`
       id,
@@ -186,16 +179,62 @@ export async function getCyclesAction(): Promise<CycleRecord[]> {
       created_at,
       updated_at
     `)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("start_date", { ascending: true })
 
-  if (error || !cycles) return []
+  if (initialCyclesRes.error) return []
+
+  let cycles = initialCyclesRes.data || []
+
+  // If user has zero cycles, run initial onboarding check
+  if (!cycles || cycles.length === 0) {
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("last_period_start, onboarding_completed")
+        .eq("user_id", userId)
+        .single()
+
+      if (profile?.last_period_start) {
+        await supabase.from("cycles").insert({
+          user_id: userId,
+          start_date: profile.last_period_start,
+          end_date: null,
+          period_duration: null,
+          cycle_length: null,
+          notes: "Initial cycle from Seijun onboarding.",
+        })
+
+        const refreshed = await supabase
+          .from("cycles")
+          .select(`
+            id,
+            user_id,
+            start_date,
+            end_date,
+            cycle_length,
+            period_duration,
+            notes,
+            created_at,
+            updated_at
+          `)
+          .eq("user_id", userId)
+          .order("start_date", { ascending: true })
+
+        cycles = refreshed.data || []
+      }
+    } catch {
+      // Invariant: allow empty list on profile check error
+    }
+  }
+
+  if (!cycles || cycles.length === 0) return []
 
   // Fetch period days for all cycles belonging to user
   const { data: periodDays } = await supabase
     .from("period_days")
     .select("id, cycle_id, user_id, date, flow, created_at")
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .order("date", { ascending: true })
 
   const daysByCycle = new Map<string, PeriodDayRecord[]>()
@@ -234,49 +273,56 @@ export async function getCyclesAction(): Promise<CycleRecord[]> {
 }
 
 /**
- * 3. Get single cycle detail by ID with associated period days and computed cycle length.
+ * 2. Public Server Action: Get all cycles for authenticated user with computed cycle lengths.
  */
-export async function getCycleByIdAction(
-  cycleId: string
-): Promise<CycleRecord | null> {
+export async function getCyclesAction(): Promise<CycleRecord[]> {
+  const user = await getAuthenticatedUser()
+  if (!user) return []
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  return getCyclesForUser(user.id, supabase)
+}
 
-  if (!user) return null
+/**
+ * Internal: Fetch single cycle detail by ID with associated period days and computed cycle length.
+ */
+export async function getCycleByIdForUser(
+  cycleId: string,
+  userId: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<CycleRecord | null> {
+  const supabase = customClient || (await createClient())
 
-  // Fetch target cycle
+  // Fetch target cycle verifying user ownership
   const { data: cycle, error } = await supabase
     .from("cycles")
     .select("*")
     .eq("id", cycleId)
-    .eq("user_id", user.id)
+    .eq("user_id", userId)
     .single()
 
   if (error || !cycle) return null
 
-  // Fetch period days for this cycle
-  const { data: periodDays } = await supabase
-    .from("period_days")
-    .select("*")
-    .eq("cycle_id", cycleId)
-    .eq("user_id", user.id)
-    .order("date", { ascending: true })
+  // Fetch period days and previous cycle in parallel
+  const [periodDaysRes, prevCycleRes] = await Promise.all([
+    supabase
+      .from("period_days")
+      .select("*")
+      .eq("cycle_id", cycleId)
+      .eq("user_id", userId)
+      .order("date", { ascending: true }),
+    supabase
+      .from("cycles")
+      .select("start_date")
+      .eq("user_id", userId)
+      .lt("start_date", cycle.start_date)
+      .order("start_date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ])
 
-  // Find previous cycle chronologically to calculate cycle_length
   let computedCycleLength = cycle.cycle_length
-  const { data: prevCycle } = await supabase
-    .from("cycles")
-    .select("start_date")
-    .eq("user_id", user.id)
-    .lt("start_date", cycle.start_date)
-    .order("start_date", { ascending: false })
-    .limit(1)
-    .single()
-
-  if (prevCycle?.start_date) {
-    const days = calculateDaysBetween(prevCycle.start_date, cycle.start_date)
+  if (prevCycleRes.data?.start_date) {
+    const days = calculateDaysBetween(prevCycleRes.data.start_date, cycle.start_date)
     if (days > 0) {
       computedCycleLength = days
     }
@@ -285,9 +331,21 @@ export async function getCycleByIdAction(
   return {
     ...cycle,
     cycle_length: computedCycleLength,
-    period_days: (periodDays as PeriodDayRecord[]) || [],
-    period_days_count: periodDays?.length || 0,
+    period_days: (periodDaysRes.data as PeriodDayRecord[]) || [],
+    period_days_count: periodDaysRes.data?.length || 0,
   }
+}
+
+/**
+ * 3. Public Server Action: Get single cycle detail by ID with associated period days.
+ */
+export async function getCycleByIdAction(
+  cycleId: string
+): Promise<CycleRecord | null> {
+  const user = await getAuthenticatedUser()
+  if (!user) return null
+  const supabase = await createClient()
+  return getCycleByIdForUser(cycleId, user.id, supabase)
 }
 
 /**

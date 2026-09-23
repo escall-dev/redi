@@ -9,7 +9,17 @@ export interface UserProfileState {
   isLoading: boolean
 }
 
-export function useUserProfile(): UserProfileState {
+const UserProfileContext = React.createContext<UserProfileState | null>(null)
+
+export interface UserProfileProviderProps {
+  children: React.ReactNode
+}
+
+/**
+ * Shell-level provider that resolves user profile once and shares state across
+ * DesktopHeader, MobileHeader, MobileBottomNav, and child page components.
+ */
+export function UserProfileProvider({ children }: UserProfileProviderProps) {
   const [state, setState] = React.useState<UserProfileState>({
     displayName: null,
     avatarUrl: null,
@@ -102,5 +112,24 @@ export function useUserProfile(): UserProfileState {
     }
   }, [])
 
-  return state
+  return React.createElement(UserProfileContext.Provider, { value: state }, children)
 }
+
+/**
+ * Consumes the shell-level unified user profile state.
+ * If invoked outside of UserProfileProvider, safely falls back to a standalone state.
+ */
+export function useUserProfile(): UserProfileState {
+  const context = React.useContext(UserProfileContext)
+  if (context) {
+    return context
+  }
+
+  // Fallback for standalone usage outside of shell
+  return {
+    displayName: null,
+    avatarUrl: null,
+    isLoading: false,
+  }
+}
+

@@ -1,11 +1,13 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect, notFound } from "next/navigation"
-import { getCycleByIdAction } from "@/app/actions/cycles"
+import { getCycleByIdForUser } from "@/app/actions/cycles"
 import { CycleDetailView } from "@/components/cycles/cycle-detail-view"
 
 interface CycleDetailPageProps {
   params: Promise<{ id: string }>
 }
+
+export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Cycle Details",
@@ -15,16 +17,14 @@ export const metadata = {
 export default async function CycleDetailPage({ params }: CycleDetailPageProps) {
   const { id } = await params
 
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  const cycle = await getCycleByIdAction(id)
+  const supabase = await createClient()
+  const cycle = await getCycleByIdForUser(id, user.id, supabase)
 
   if (!cycle) {
     notFound()

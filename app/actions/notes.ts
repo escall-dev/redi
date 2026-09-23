@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import {
   NOTE_MAX_LENGTH,
@@ -11,24 +11,22 @@ import {
 export type { DailyNoteRecord, DailyNoteActionResult }
 
 /**
- * Fetch all daily notes for the authenticated user, newest first.
+ * Internal: Fetch all daily notes for a specific authenticated user, newest first.
  */
-export async function getDailyNotesAction(): Promise<DailyNoteRecord[]> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return []
-
+export async function getDailyNotesForUser(
+  userId: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<DailyNoteRecord[]> {
+  const supabase = customClient || (await createClient())
   const { data, error } = await supabase
     .from("daily_notes")
     .select("*")
+    .eq("user_id", userId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("[getDailyNotesAction]", error.message)
+    console.error("[getDailyNotesForUser]", error.message)
     return []
   }
 
@@ -36,30 +34,49 @@ export async function getDailyNotesAction(): Promise<DailyNoteRecord[]> {
 }
 
 /**
- * Fetch a single daily note for a specific date.
+ * Internal: Fetch a single daily note for a specific date and user.
  */
-export async function getDailyNoteByDateAction(
-  date: string
+export async function getDailyNoteByDateForUser(
+  userId: string,
+  date: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
 ): Promise<DailyNoteRecord | null> {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return null
-
+  const supabase = customClient || (await createClient())
   const { data, error } = await supabase
     .from("daily_notes")
     .select("*")
+    .eq("user_id", userId)
     .eq("date", date)
     .maybeSingle()
 
   if (error) {
-    console.error("[getDailyNoteByDateAction]", error.message)
+    console.error("[getDailyNoteByDateForUser]", error.message)
     return null
   }
 
   return data as DailyNoteRecord | null
+}
+
+/**
+ * Public Server Action: Fetch all daily notes for the authenticated user, newest first.
+ */
+export async function getDailyNotesAction(): Promise<DailyNoteRecord[]> {
+  const user = await getAuthenticatedUser()
+  if (!user) return []
+  const supabase = await createClient()
+  return getDailyNotesForUser(user.id, supabase)
+}
+
+/**
+ * Public Server Action: Fetch a single daily note for a specific date.
+ */
+export async function getDailyNoteByDateAction(
+  date: string
+): Promise<DailyNoteRecord | null> {
+  const user = await getAuthenticatedUser()
+  if (!user) return null
+  const supabase = await createClient()
+  return getDailyNoteByDateForUser(user.id, date, supabase)
 }
 
 /**

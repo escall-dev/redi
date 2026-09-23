@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { SettingsForm, type ProfileSettingsData } from "@/components/settings/settings-form"
@@ -13,21 +13,25 @@ export const metadata = {
 }
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  // Fetch user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
-    .eq("user_id", user.id)
-    .single()
+  const supabase = await createClient()
+
+  // Concurrently fetch profile settings and notification preferences
+  const [profileRes, initialPreferences] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("display_name, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    getNotificationPreferences(user.id),
+  ])
+
+  const profile = profileRes.data
 
   // Onboarding guard: incomplete users must complete onboarding first
   if (profile && profile.onboarding_completed === false) {
@@ -47,8 +51,6 @@ export default async function SettingsPage() {
     email: user.email || "",
     createdAt: profile?.created_at || user.created_at || "",
   }
-
-  const initialPreferences = await getNotificationPreferences(user.id)
 
   return (
     <div className="space-y-6">

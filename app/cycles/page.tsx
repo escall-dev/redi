@@ -1,7 +1,9 @@
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
-import { getCyclesAction } from "@/app/actions/cycles"
+import { getCyclesForUser } from "@/app/actions/cycles"
 import { CycleList } from "@/components/cycles/cycle-list"
+
+export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Cycles",
@@ -9,16 +11,14 @@ export const metadata = {
 }
 
 export default async function CyclesPage() {
-  const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     redirect("/login")
   }
 
-  const cycles = await getCyclesAction()
+  const supabase = await createClient()
+  const cycles = await getCyclesForUser(user.id, supabase)
 
   return <CycleList cycles={cycles} />
 }

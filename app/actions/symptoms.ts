@@ -1,6 +1,6 @@
-﻿"use server"
+"use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import {
   SYMPTOM_OPTIONS,
@@ -21,30 +21,67 @@ export interface SymptomActionResult {
 
 const NOTES_MAX_LENGTH = 500
 
-export async function getSymptomsAction(): Promise<SymptomRecord[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+/**
+ * Internal: Fetch all symptoms for a specific authenticated user.
+ */
+export async function getSymptomsForUser(
+  userId: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<SymptomRecord[]> {
+  const supabase = customClient || (await createClient())
   const { data, error } = await supabase
     .from("symptoms")
     .select("*")
+    .eq("user_id", userId)
     .order("date", { ascending: false })
     .order("created_at", { ascending: false })
-  if (error) { console.error("[getSymptomsAction]", error.message); return [] }
+  if (error) {
+    console.error("[getSymptomsForUser]", error.message)
+    return []
+  }
   return (data ?? []) as SymptomRecord[]
 }
 
-export async function getSymptomsByDateAction(date: string): Promise<SymptomRecord[]> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return []
+/**
+ * Internal: Fetch symptoms for a specific date for a specific user.
+ */
+export async function getSymptomsByDateForUser(
+  userId: string,
+  date: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<SymptomRecord[]> {
+  const supabase = customClient || (await createClient())
   const { data, error } = await supabase
     .from("symptoms")
     .select("*")
+    .eq("user_id", userId)
     .eq("date", date)
     .order("created_at", { ascending: true })
-  if (error) { console.error("[getSymptomsByDateAction]", error.message); return [] }
+  if (error) {
+    console.error("[getSymptomsByDateForUser]", error.message)
+    return []
+  }
   return (data ?? []) as SymptomRecord[]
+}
+
+/**
+ * Public Server Action: Fetch all symptoms for authenticated user.
+ */
+export async function getSymptomsAction(): Promise<SymptomRecord[]> {
+  const user = await getAuthenticatedUser()
+  if (!user) return []
+  const supabase = await createClient()
+  return getSymptomsForUser(user.id, supabase)
+}
+
+/**
+ * Public Server Action: Fetch symptoms for a specific date.
+ */
+export async function getSymptomsByDateAction(date: string): Promise<SymptomRecord[]> {
+  const user = await getAuthenticatedUser()
+  if (!user) return []
+  const supabase = await createClient()
+  return getSymptomsByDateForUser(user.id, date, supabase)
 }
 
 export async function createSymptomAction(
