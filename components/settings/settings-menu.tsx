@@ -12,6 +12,7 @@ import { PrivacySettingsView } from "@/components/settings/privacy-settings-view
 import { AboutSettingsView } from "@/components/settings/about-settings-view"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { Badge } from "@/components/ui/badge"
+import { Avatar } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useTheme } from "@/components/theme/theme-provider"
 import { cn } from "@/lib/utils"
@@ -271,7 +272,7 @@ export function SettingsMenu({
   }
 
   // ============================================================================
-  // MAIN SETTINGS MENU (Showing 7 Categories with Hidden Sub-items until clicked)
+  // MAIN SETTINGS MENU (Uncontainerized Style Matching Reference Image)
   // ============================================================================
   const categories: {
     id: CategoryId
@@ -582,61 +583,77 @@ export function SettingsMenu({
     },
   ]
 
+  const userDisplayName = profileData.displayName || "User"
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-16">
-      {/* Grouped Category List: Sub-items are hidden until category is clicked */}
-      <div className="rounded-2xl border border-border/70 bg-card overflow-hidden divide-y divide-border/40 shadow-xs">
+      {/* Top Profile Banner (matching reference image style) */}
+      <div className="flex items-center gap-4 py-3 px-2">
+        <Avatar
+          src={profileData.avatarUrl}
+          alt={userDisplayName}
+          fallbackInitials={userDisplayName}
+          size="lg"
+          className="size-14 rounded-full border-2 border-primary/20 shadow-xs"
+        />
+        <div className="min-w-0 flex-1">
+          <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate uppercase">
+            Hi, {userDisplayName}
+          </h2>
+          {profileData.email && (
+            <p className="text-xs sm:text-sm text-muted-foreground truncate leading-normal">
+              {profileData.email}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Uncontainerized Flat List (matching reference image) */}
+      <div className="divide-y divide-border/25">
         {categories.map((category) => {
           const Icon = category.icon
           const isExpanded = expandedCategory === category.id
 
           return (
             <div key={category.id} className="transition-colors">
-              {/* Main Category Header Row */}
+              {/* Uncontainerized Category Header Row */}
               <button
                 type="button"
                 onClick={() => toggleCategory(category.id)}
                 aria-expanded={isExpanded}
                 aria-controls={`sub-items-${category.id}`}
                 className={cn(
-                  "w-full flex items-center justify-between gap-3 px-4 py-3.75 sm:px-4.5 sm:py-4 text-left transition-colors select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
-                  isExpanded
-                    ? "bg-secondary/40 dark:bg-secondary/20"
-                    : "hover:bg-secondary/30 active:bg-secondary/50"
+                  "w-full flex items-center justify-between gap-4 py-4 px-2 text-left transition-colors select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl",
+                  "hover:bg-secondary/30 active:bg-secondary/50"
                 )}
               >
                 {/* Leading Icon & Label */}
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lavender/60 text-primary border border-lavender-border/50">
-                    <Icon className="size-5 stroke-[2.2]" />
-                  </div>
-                  <div className="space-y-0.5 min-w-0 flex-1">
-                    <h2 className="text-sm sm:text-base font-semibold text-foreground tracking-tight truncate">
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <Icon className="size-5.5 text-foreground/85 shrink-0 stroke-[2]" />
+                  <div className="min-w-0 flex-1">
+                    <span className="text-base font-medium text-foreground tracking-tight block truncate">
                       {category.title}
-                    </h2>
-                    <p className="text-xs text-muted-foreground truncate leading-relaxed">
-                      {category.description}
-                    </p>
+                    </span>
                   </div>
                 </div>
 
-                {/* Trailing Controls & Chevron */}
-                <div className="flex items-center gap-2 shrink-0">
+                {/* Trailing Controls & Sharp Primary Chevron */}
+                <div className="flex items-center gap-2.5 shrink-0">
                   {category.summaryBadge}
                   <ChevronRight
                     className={cn(
-                      "size-4.5 text-muted-foreground transition-transform duration-200",
-                      isExpanded && "rotate-90 text-primary"
+                      "size-5 text-primary stroke-[2.5] transition-transform duration-200",
+                      isExpanded && "rotate-90"
                     )}
                   />
                 </div>
               </button>
 
-              {/* Sub-items: HIDDEN unless this category is clicked */}
+              {/* Sub-items: Uncontainerized & revealed when clicked */}
               {isExpanded && (
                 <div
                   id={`sub-items-${category.id}`}
-                  className="bg-secondary/15 dark:bg-card/40 border-t border-border/40 divide-y divide-border/30 pl-2 sm:pl-3 animate-in fade-in slide-in-from-top-1 duration-200"
+                  className="pl-6 sm:pl-8 py-1 divide-y divide-border/15 animate-in fade-in slide-in-from-top-1 duration-200"
                 >
                   {category.items}
                 </div>
@@ -644,18 +661,10 @@ export function SettingsMenu({
             </div>
           )
         })}
-      </div>
 
-      {/* Standalone Destructive Logout Action at Bottom */}
-      <div className="pt-2">
-        <div className="rounded-2xl border border-destructive/20 bg-destructive/[0.03] dark:bg-destructive/[0.06] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="space-y-0.5">
-            <h3 className="text-sm font-semibold text-foreground">Sign Out</h3>
-            <p className="text-xs text-muted-foreground">
-              Sign out of your Seijun account on this device.
-            </p>
-          </div>
-          <LogoutButton />
+        {/* Uncontainerized Logout Item at Bottom (matching reference image) */}
+        <div className="transition-colors">
+          <LogoutButton variant="listItem" />
         </div>
       </div>
 

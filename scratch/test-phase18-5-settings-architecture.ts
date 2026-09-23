@@ -122,9 +122,9 @@ for (const endpoint of requiredEndpoints) {
 
 // 5. Destructive Logout Separation
 console.log("\n[Test 5] Verifying Logout is Separate Destructive Item at Bottom...")
-assert(menuContent.includes("<LogoutButton />"), "LogoutButton embedded in SettingsMenu")
+assert(menuContent.includes("<LogoutButton"), "LogoutButton embedded in SettingsMenu")
 assert(
-  menuContent.indexOf("<LogoutButton />") > menuContent.indexOf('title="Support & About"'),
+  menuContent.indexOf("<LogoutButton") > menuContent.indexOf('"support"'),
   "LogoutButton positioned at the bottom after all categories"
 )
 
