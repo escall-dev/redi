@@ -186,25 +186,20 @@ export function PushTestCard() {
   return (
     <Card className="overflow-hidden border-primary/20 bg-card">
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-lavender text-primary border border-lavender-border/60">
               <Bell className="size-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <CardTitle>Push Notifications</CardTitle>
-                <Badge variant="outline" className="border-primary/40 text-primary text-[10px] px-1.5 py-0 font-normal">
-                  Phase 17.9 Test
-                </Badge>
-              </div>
+            <div className="min-w-0">
+              <CardTitle>Push Notifications</CardTitle>
               <CardDescription>
                 Device push subscription status and end-to-end delivery test
               </CardDescription>
             </div>
           </div>
 
-          <div>
+          <div className="shrink-0 self-start sm:self-center">
             {isSupported === false ? (
               <Badge variant="secondary" className="text-xs">Unsupported</Badge>
             ) : isSubscribed ? (
