@@ -118,9 +118,14 @@ export function DesktopHeader() {
 
           {/* Profile Avatar Link */}
           <Link
-            href="/settings"
-            aria-label="Profile Settings"
-            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden"
+            href="/settings/profile"
+            aria-label="User Profile Details"
+            className={cn(
+              "size-9 rounded-2xl border flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden",
+              pathname === "/settings/profile"
+                ? "bg-lavender text-lavender-foreground border-lavender-border ring-2 ring-primary/40 shadow-xs"
+                : "bg-secondary/70 hover:bg-secondary border-border/50"
+            )}
           >
             {avatarUrl ? (
               <Avatar

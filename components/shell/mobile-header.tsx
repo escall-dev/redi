@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { Flame, Bell, User, LogOut, Loader2 } from "lucide-react"
 import { logoutAction } from "@/app/actions/auth"
 import { createClient } from "@/lib/supabase/client"
@@ -20,6 +20,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell"
 export function MobileHeader() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
   const router = useRouter()
+  const pathname = usePathname()
   const { avatarUrl, displayName } = useUserProfile()
 
   const handleLogout = async () => {
@@ -109,9 +110,14 @@ export function MobileHeader() {
 
         {/* 2. Profile Avatar Link */}
         <Link
-          href="/settings"
-          aria-label="Profile Settings"
-          className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden"
+          href="/settings/profile"
+          aria-label="User Profile Details"
+          className={cn(
+            "size-9 rounded-2xl border flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden",
+            pathname === "/settings/profile"
+              ? "bg-lavender text-lavender-foreground border-lavender-border ring-2 ring-primary/40 shadow-xs"
+              : "bg-secondary/70 hover:bg-secondary border-border/50"
+          )}
         >
           {avatarUrl ? (
             <Avatar

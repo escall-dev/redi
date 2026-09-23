@@ -587,26 +587,40 @@ export function SettingsMenu({
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-16">
-      {/* Top Profile Banner (matching reference image style) */}
-      <div className="flex items-center gap-4 py-3 px-2">
-        <Avatar
-          src={profileData.avatarUrl}
-          alt={userDisplayName}
-          fallbackInitials={userDisplayName}
-          size="lg"
-          className="size-14 rounded-full border-2 border-primary/20 shadow-xs"
-        />
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate uppercase">
-            Hi, {userDisplayName}
-          </h2>
-          {profileData.email && (
-            <p className="text-xs sm:text-sm text-muted-foreground truncate leading-normal">
-              {profileData.email}
-            </p>
-          )}
+      {/* Top Profile Banner (clickable to profile details) */}
+      <button
+        type="button"
+        onClick={() => navigateToView("profile")}
+        aria-label="Manage Profile & Avatar Details"
+        className="w-full flex items-center justify-between gap-4 py-3 px-2 text-left transition-all duration-150 select-none cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-2xl hover:bg-secondary/40 active:scale-[0.99] group"
+      >
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <Avatar
+            src={profileData.avatarUrl}
+            alt={userDisplayName}
+            fallbackInitials={userDisplayName}
+            size="lg"
+            className="size-14 rounded-full border-2 border-primary/20 shadow-xs group-hover:border-primary/50 transition-colors shrink-0"
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate uppercase">
+              Hi, {userDisplayName}
+            </h2>
+            {profileData.email && (
+              <p className="text-xs sm:text-sm text-muted-foreground truncate leading-normal">
+                {profileData.email}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 pr-1">
+          <span className="text-xs text-muted-foreground group-hover:text-foreground font-medium transition-colors hidden xs:inline-block">
+            View profile
+          </span>
+          <ChevronRight className="size-5 text-primary stroke-[2.5] transition-transform duration-200 group-hover:translate-x-0.5" />
+        </div>
+      </button>
 
       {/* Uncontainerized Flat List (matching reference image) */}
       <div className="divide-y divide-border/25">
