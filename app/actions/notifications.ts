@@ -45,7 +45,7 @@ export async function getUserNotificationsAction(options?: {
       query = query.is("read_at", null)
     }
 
-    const [eventsRes, unreadRes] = await Promise.all([
+    const [eventsRes, unreadRes, pendingInvitesRes] = await Promise.all([
       query,
       supabase
         .from("notification_events")
@@ -53,16 +53,82 @@ export async function getUserNotificationsAction(options?: {
         .eq("user_id", user.id)
         .eq("status", "sent")
         .is("read_at", null),
+      supabase
+        .from("partner_invitations")
+        .select("id, inviter_user_id, status, created_at, expires_at")
+        .eq("invitee_user_id", user.id)
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false }),
     ])
 
     if (eventsRes.error) {
       return { ok: false, notifications: [], unreadCount: 0, error: eventsRes.error.message }
     }
 
+    const existingEvents = eventsRes.data || []
+    const pendingInvites = pendingInvitesRes.data || []
+
+    // Map any pending partner invitations that are not already in notification_events
+    const syntheticInviteEvents: NotificationEventRow[] = []
+    for (const invite of pendingInvites) {
+      const alreadyHasEvent = existingEvents.some(
+        (e) => e.type === "partner_invitation" && (e.url.includes(invite.id) || !e.read_at)
+      )
+
+      if (!alreadyHasEvent) {
+        let inviterUsername = "partner"
+        let inviterDisplayName = "Partner"
+
+        const { data: invProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", invite.inviter_user_id)
+          .maybeSingle()
+
+        if (invProfile) {
+          inviterUsername = invProfile.username || "partner"
+          inviterDisplayName = invProfile.display_name || inviterUsername
+        }
+
+        syntheticInviteEvents.push({
+          id: `partner-invite-${invite.id}`,
+          user_id: user.id,
+          cycle_id: null,
+          type: "partner_invitation",
+          scheduled_for: invite.created_at,
+          sent_at: invite.created_at,
+          status: "sent",
+          title: "Partner Invitation",
+          body:
+            inviterDisplayName !== inviterUsername
+              ? `${inviterDisplayName} (@${inviterUsername}) sent you a partner invitation.`
+              : `@${inviterUsername} sent you a partner invitation.`,
+          url: "/settings/partner",
+          metadata: { invitationId: invite.id, inviterUsername },
+          read_at: null,
+          created_at: invite.created_at,
+          updated_at: invite.created_at,
+        })
+      }
+    }
+
+    // Merge and sort all notifications by created_at descending
+    const allNotifications = [...syntheticInviteEvents, ...existingEvents].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
+    const finalNotifications = options?.unreadOnly
+      ? allNotifications.filter((n) => !n.read_at)
+      : allNotifications.slice(0, limit)
+
+    const finalUnreadCount =
+      (unreadRes.count ?? 0) + syntheticInviteEvents.filter((e) => !e.read_at).length
+
     return {
       ok: true,
-      notifications: eventsRes.data || [],
-      unreadCount: unreadRes.count ?? 0,
+      notifications: finalNotifications,
+      unreadCount: finalUnreadCount,
     }
   } catch (err: unknown) {
     return {
@@ -86,14 +152,22 @@ export async function getUnreadNotificationCountAction(): Promise<number> {
 
     if (!user) return 0
 
-    const { count } = await supabase
-      .from("notification_events")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .eq("status", "sent")
-      .is("read_at", null)
+    const [unreadRes, pendingInvitesRes] = await Promise.all([
+      supabase
+        .from("notification_events")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("status", "sent")
+        .is("read_at", null),
+      supabase
+        .from("partner_invitations")
+        .select("id", { count: "exact", head: true })
+        .eq("invitee_user_id", user.id)
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString()),
+    ])
 
-    return count ?? 0
+    return (unreadRes.count ?? 0) + (pendingInvitesRes.count ?? 0)
   } catch {
     return 0
   }
@@ -108,6 +182,10 @@ export async function markNotificationAsReadAction(
   if (!eventId) return { ok: false, error: "Missing eventId." }
 
   try {
+    if (eventId.startsWith("partner-invite-")) {
+      return { ok: true }
+    }
+
     const supabase = await createClient()
     const {
       data: { user },
@@ -176,6 +254,10 @@ export async function deleteNotificationAction(
   if (!eventId) return { ok: false, error: "Missing eventId." }
 
   try {
+    if (eventId.startsWith("partner-invite-")) {
+      return { ok: true }
+    }
+
     const supabase = await createClient()
     const {
       data: { user },

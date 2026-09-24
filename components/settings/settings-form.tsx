@@ -32,6 +32,7 @@ import {
 
 export interface ProfileSettingsData {
   displayName: string
+  username?: string | null
   avatarUrl?: string | null
   sex?: "male" | "female" | "prefer_not_to_say" | null
   usageRole?: "cycle_tracker" | "supporter" | "both" | null

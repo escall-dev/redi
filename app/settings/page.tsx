@@ -26,7 +26,7 @@ export default async function SettingsPage() {
   const [profileRes, initialPreferences] = await Promise.all([
     supabase
       .from("profiles")
-      .select("display_name, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
+      .select("display_name, username, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
       .eq("user_id", user.id)
       .maybeSingle(),
     getNotificationPreferences(user.id),
@@ -44,6 +44,7 @@ export default async function SettingsPage() {
 
   const profileData: ProfileSettingsData = {
     displayName: profile?.display_name || user.user_metadata?.display_name || "",
+    username: profile?.username || null,
     avatarUrl,
     sex: profile?.sex || (user.user_metadata?.sex as "male" | "female" | "prefer_not_to_say") || null,
     usageRole: profile?.usage_role || null,

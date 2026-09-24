@@ -19,6 +19,7 @@ import {
 
 export interface ProfileFormData {
   displayName: string
+  username?: string | null
   avatarUrl?: string | null
   sex?: "male" | "female" | "prefer_not_to_say" | null
   usageRole?: "cycle_tracker" | "supporter" | "both" | null
@@ -33,6 +34,7 @@ interface ProfileSettingsFormProps {
 
 export function ProfileSettingsForm({ initialData }: ProfileSettingsFormProps) {
   const [displayName, setDisplayName] = React.useState(initialData.displayName || "")
+  const [username, setUsername] = React.useState(initialData.username || "")
   const [avatarUrl, setAvatarUrl] = React.useState<string>(
     initialData.avatarUrl && !initialData.avatarUrl.startsWith("preset:") ? initialData.avatarUrl : ""
   )
@@ -170,17 +172,20 @@ export function ProfileSettingsForm({ initialData }: ProfileSettingsFormProps) {
         }
       }
 
+      const trimmedUsername = username.trim().replace(/^@+/, "").toLowerCase()
+      if (trimmedUsername) {
+        if (!/^[a-z0-9_]{3,30}$/.test(trimmedUsername)) {
+          setErrorMessage("Username must be 3 to 30 characters long (letters, numbers, and underscores only).")
+          setIsPending(false)
+          return
+        }
+      }
+
       const formData = new FormData()
       formData.set("displayName", trimmedName)
+      formData.set("username", trimmedUsername)
       formData.set("avatarUrl", finalAvatar)
       formData.set("sex", sex)
-      // Keep existing cycle values intact
-      if (initialData.typicalCycleLength) {
-        formData.set("typicalCycleLength", String(initialData.typicalCycleLength))
-      }
-      if (initialData.lastPeriodStart) {
-        formData.set("lastPeriodStart", initialData.lastPeriodStart)
-      }
 
       const result = await updateSettingsAction(null, formData)
 
@@ -189,10 +194,11 @@ export function ProfileSettingsForm({ initialData }: ProfileSettingsFormProps) {
       } else {
         showModalNotification("Profile Saved", "Your profile details have been saved.", 1000)
         setDisplayName(trimmedName)
+        setUsername(trimmedUsername)
         if (typeof window !== "undefined") {
           window.dispatchEvent(
             new CustomEvent("seijun:profile-updated", {
-              detail: { avatarUrl: finalAvatar, displayName: trimmedName },
+              detail: { avatarUrl: finalAvatar, displayName: trimmedName, username: trimmedUsername },
             })
           )
         }
@@ -307,6 +313,39 @@ export function ProfileSettingsForm({ initialData }: ProfileSettingsFormProps) {
             />
             <p className="text-xs text-muted-foreground leading-relaxed">
               Used for your greeting on the dashboard and journal entries.
+            </p>
+          </div>
+
+          {/* Username Handle */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="username" className="text-sm font-medium">
+                Username <span className="text-xs text-muted-foreground font-normal">(for partner discovery)</span>
+              </Label>
+              {username && (
+                <span className="text-xs text-muted-foreground font-mono">
+                  @{username.replace(/^@/, "").toLowerCase()}
+                </span>
+              )}
+            </div>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium select-none pointer-events-none">
+                @
+              </span>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                value={username.replace(/^@/, "")}
+                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                placeholder="your_handle"
+                maxLength={30}
+                disabled={isPending}
+                className="h-11 pl-8 rounded-xl font-mono text-sm"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Unique handle used by your partner to connect with you. Letters, numbers, and underscores only.
             </p>
           </div>
 

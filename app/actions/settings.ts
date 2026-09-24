@@ -40,6 +40,7 @@ export async function updateSettingsAction(
 
   const rawDisplayName = (formData.get("displayName") as string | null) ?? ""
   const displayName = rawDisplayName.trim()
+  const rawUsername = formData.get("username") as string | null
   const avatarUrl = (formData.get("avatarUrl") as string | null)?.trim() || null
   const sex = (formData.get("sex") as string | null)?.trim() || null
   const cycleLengthStr = (formData.get("typicalCycleLength") as string | null)?.trim() ?? ""
@@ -74,6 +75,36 @@ export async function updateSettingsAction(
     }
   }
 
+  // 1.1 Validate Username (if provided)
+  let normalizedUsername: string | null = null
+  if (rawUsername !== null && rawUsername !== undefined) {
+    const cleaned = rawUsername.trim().replace(/^@+/, "").toLowerCase()
+    if (cleaned) {
+      if (!/^[a-z0-9_]{3,30}$/.test(cleaned)) {
+        return {
+          success: false,
+          error: "Username must be 3 to 30 characters and contain only lowercase letters, numbers, and underscores.",
+        }
+      }
+
+      // Check uniqueness against other users
+      const { data: existingUser } = await supabase
+        .from("profiles")
+        .select("user_id")
+        .ilike("username", cleaned)
+        .neq("user_id", user.id)
+        .maybeSingle()
+
+      if (existingUser) {
+        return {
+          success: false,
+          error: "This username is already taken. Please choose another.",
+        }
+      }
+      normalizedUsername = cleaned
+    }
+  }
+
   // 2. Validate Sex (if provided)
   if (sex && !["male", "female", "prefer_not_to_say"].includes(sex)) {
     return {
@@ -94,7 +125,10 @@ export async function updateSettingsAction(
   // 3. Conditionally Validate Cycle Details
   let cycleLength: number | null = null
 
-  if (!isSupporter || lastPeriodStart || cycleLengthStr) {
+  // Only validate cycle details if the form explicitly submitted cycle fields
+  const submitsCycleFields = formData.has("typicalCycleLength") || formData.has("lastPeriodStart")
+
+  if (submitsCycleFields) {
     if (!cycleLengthStr && !isSupporter) {
       return {
         success: false,
@@ -149,6 +183,7 @@ export async function updateSettingsAction(
     const updatePayload: {
       display_name: string
       updated_at: string
+      username?: string | null
       sex?: "male" | "female" | "prefer_not_to_say" | null
       typical_cycle_length?: number | null
       last_period_start?: string | null
@@ -156,6 +191,10 @@ export async function updateSettingsAction(
     } = {
       display_name: displayName,
       updated_at: new Date().toISOString(),
+    }
+
+    if (normalizedUsername !== null) {
+      updatePayload.username = normalizedUsername
     }
 
     if (sex !== null) {
@@ -180,33 +219,45 @@ export async function updateSettingsAction(
       .eq("user_id", user.id)
 
     if (updateError) {
-      // If sex column migration is pending, retry without sex
       if (
         updateError.message.toLowerCase().includes("column") ||
         updateError.message.toLowerCase().includes("does not exist")
       ) {
         const fallbackPayload = { ...updatePayload }
         delete fallbackPayload.sex
-        await supabase.from("profiles").update(fallbackPayload).eq("user_id", user.id)
+        const { error: fallbackError } = await supabase.from("profiles").update(fallbackPayload).eq("user_id", user.id)
+        if (fallbackError) {
+          console.error("[updateSettingsAction fallback]", fallbackError.message)
+          return {
+            success: false,
+            error: fallbackError.message.includes("unique") || fallbackError.message.includes("username")
+              ? "This username is already taken. Please choose another."
+              : fallbackError.message || "Failed to update profile settings.",
+          }
+        }
       } else {
         console.error("[updateSettingsAction]", updateError.message)
         return {
           success: false,
-          error: "Unable to save your settings. Please try again.",
+          error: updateError.message.includes("unique") || updateError.message.includes("username")
+            ? "This username is already taken. Please choose another."
+            : updateError.message || "Unable to save your settings. Please try again.",
         }
       }
     }
 
-    // Also update auth user metadata for display_name, avatar_url, and sex
+    // Also update auth user metadata for display_name, avatar_url, sex, and username
     await supabase.auth.updateUser({
       data: {
         display_name: displayName,
         avatar_url: avatarUrl,
         ...(sex ? { sex } : {}),
+        ...(normalizedUsername ? { username: normalizedUsername } : {}),
       },
     })
 
     revalidatePath("/settings")
+    revalidatePath("/settings/profile")
     revalidatePath("/dashboard")
     revalidatePath("/calendar")
 

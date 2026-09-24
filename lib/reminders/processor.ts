@@ -50,6 +50,7 @@ const TYPE_TO_CATEGORY: Record<CycleReminderType, NotificationCategory> = {
   ovulation: "ovulation_reminders",
   cycle_transition: "cycle_transition_reminders",
   missed_period: "missed_period_reminders",
+  partner_invitation: "partner_connection",
 }
 
 /**

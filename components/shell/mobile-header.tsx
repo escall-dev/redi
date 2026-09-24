@@ -3,9 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter, usePathname } from "next/navigation"
-import { Flame, Bell, User, LogOut, Loader2 } from "lucide-react"
-import { logoutAction } from "@/app/actions/auth"
-import { createClient } from "@/lib/supabase/client"
+import { Flame, User, UserPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   Popover,
@@ -16,31 +14,13 @@ import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Avatar } from "@/components/ui/avatar"
 import { useUserProfile } from "@/lib/hooks/use-user-profile"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { AddPartnerModal } from "@/components/partner/add-partner-modal"
 
 export function MobileHeader() {
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+  const [addPartnerOpen, setAddPartnerOpen] = React.useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const { avatarUrl, displayName } = useUserProfile()
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
-    try {
-      await logoutAction()
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
-        return
-      }
-      try {
-        const supabase = createClient()
-        await supabase.auth.signOut()
-      } catch {
-        // Ignore client error
-      }
-      router.push("/login")
-      router.refresh()
-    }
-  }
 
   return (
     <header className="sticky top-0 z-40 flex h-[calc(3.5rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] w-full items-center justify-between bg-background/90 px-4 backdrop-blur-md sm:hidden">
@@ -100,7 +80,7 @@ export function MobileHeader() {
         </PopoverContent>
       </Popover>
 
-      {/* Top Right: Theme Toggle, Notification Bell, Profile, Logout */}
+      {/* Top Right: Theme Toggle, Notification Bell, Profile, Quick Add Partner */}
       <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Quick Theme Toggle */}
         <ThemeToggle />
@@ -112,6 +92,7 @@ export function MobileHeader() {
         <Link
           href="/settings/profile"
           aria-label="User Profile Details"
+          title="User Profile"
           className={cn(
             "size-9 rounded-2xl border flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden",
             pathname === "/settings/profile"
@@ -132,21 +113,24 @@ export function MobileHeader() {
           )}
         </Link>
 
-        {/* 3. Logout Button */}
+        {/* 3. Quick Add Partner / Friend Button */}
         <button
           type="button"
-          onClick={handleLogout}
-          disabled={isLoggingOut}
-          aria-label="Log Out"
-          className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs disabled:opacity-50"
+          onClick={() => setAddPartnerOpen(true)}
+          aria-label="Add Partner or Friend"
+          title="Add Partner or Friend"
+          className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs"
         >
-          {isLoggingOut ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <LogOut className="size-4.5 stroke-[2.2]" />
-          )}
+          <UserPlus className="size-4.5 stroke-[2.2]" />
         </button>
       </div>
+
+      {/* Quick Add Partner Dialog */}
+      <AddPartnerModal
+        open={addPartnerOpen}
+        onOpenChange={setAddPartnerOpen}
+        onInvitationSent={() => router.refresh()}
+      />
     </header>
   )
 }

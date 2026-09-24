@@ -15,6 +15,7 @@ import {
   Sliders,
   ExternalLink,
   Inbox,
+  UserPlus,
 } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
@@ -33,6 +34,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   ovulation: Sparkles,
   cycle_transition: Clock,
   missed_period: CalendarHeart,
+  partner_invitation: UserPlus,
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -42,6 +44,7 @@ const TYPE_LABELS: Record<string, string> = {
   ovulation: "Ovulation Day",
   cycle_transition: "Cycle Transition",
   missed_period: "Late Period Check-in",
+  partner_invitation: "Partner Request",
 }
 
 function formatDate(isoStr: string): string {

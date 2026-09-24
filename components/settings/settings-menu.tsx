@@ -10,6 +10,7 @@ import { PushTestCard } from "@/components/settings/push-test-card"
 import { AppearanceSettingsView } from "@/components/settings/appearance-settings-view"
 import { PrivacySettingsView } from "@/components/settings/privacy-settings-view"
 import { AboutSettingsView } from "@/components/settings/about-settings-view"
+import { PartnerSettingsView } from "@/components/partner/partner-settings-view"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar } from "@/components/ui/avatar"
@@ -63,6 +64,7 @@ type SubViewId =
   | "avatar"
   | "cycle"
   | "tracking"
+  | "partner"
   | "notifications"
   | "appearance"
   | "privacy"
@@ -81,12 +83,19 @@ export function SettingsMenu({
   // Listen to profile updates dispatched from ProfileSettingsForm
   React.useEffect(() => {
     const handleProfileUpdate = (e: Event) => {
-      const customEvent = e as CustomEvent<{ displayName?: string; avatarUrl?: string | null }>
+      const customEvent = e as CustomEvent<{
+        displayName?: string
+        username?: string | null
+        avatarUrl?: string | null
+      }>
       if (customEvent.detail) {
         setProfileData((prev) => ({
           ...prev,
           ...(customEvent.detail.displayName !== undefined
             ? { displayName: customEvent.detail.displayName }
+            : {}),
+          ...(customEvent.detail.username !== undefined
+            ? { username: customEvent.detail.username }
             : {}),
           ...(customEvent.detail.avatarUrl !== undefined
             ? { avatarUrl: customEvent.detail.avatarUrl }
@@ -205,6 +214,10 @@ export function SettingsMenu({
         <CycleSettingsForm initialData={profileData} />
       </div>
     )
+  }
+
+  if (activeView === "partner") {
+    return <PartnerSettingsView onBack={handleBack} />
   }
 
   if (activeView === "notifications") {
@@ -386,12 +399,8 @@ export function SettingsMenu({
             title="Partner Connection"
             description="1:1 synchronization with partner account"
             icon={HeartHandshake}
-            badge={
-              <Badge variant="lavender" className="text-[10px] px-1.5 py-0 font-normal">
-                Phase 20
-              </Badge>
-            }
-            onClick={() => setPartnerModalOpen(true)}
+            href="/settings/partner"
+            onClick={() => navigateToView("partner")}
           />
           <SettingsItem
             id="item-sharing-preferences"

@@ -7,45 +7,20 @@ import { cn } from "@/lib/utils"
 import { RediBrand } from "@/components/brand/redi-brand"
 import { NAV_ITEMS } from "@/components/shell/app-nav-items"
 import { useQuickLog } from "@/components/shell/quick-log-context"
-import { Plus, Bell, LogOut, Loader2, User } from "lucide-react"
+import { Plus, User, UserPlus } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { logoutAction } from "@/app/actions/auth"
-import { createClient } from "@/lib/supabase/client"
-import {
-  Popover,
-  PopoverTrigger,
-  PopoverContent,
-} from "@/components/ui/popover"
 import { ThemeToggle } from "@/components/theme/theme-toggle"
 import { Avatar } from "@/components/ui/avatar"
 import { useUserProfile } from "@/lib/hooks/use-user-profile"
 import { NotificationBell } from "@/components/notifications/notification-bell"
+import { AddPartnerModal } from "@/components/partner/add-partner-modal"
 
 export function DesktopHeader() {
   const pathname = usePathname()
   const router = useRouter()
   const { openQuickLog } = useQuickLog()
-  const [isLoggingOut, setIsLoggingOut] = React.useState(false)
+  const [addPartnerOpen, setAddPartnerOpen] = React.useState(false)
   const { avatarUrl, displayName } = useUserProfile()
-
-  const handleLogout = async () => {
-    setIsLoggingOut(true)
-    try {
-      await logoutAction()
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
-        return
-      }
-      try {
-        const supabase = createClient()
-        await supabase.auth.signOut()
-      } catch {
-        // Ignore client error
-      }
-      router.push("/login")
-      router.refresh()
-    }
-  }
 
   const homeItem = NAV_ITEMS[0] // Home
   const calendarItem = NAV_ITEMS[1] // Calendar
@@ -108,7 +83,7 @@ export function DesktopHeader() {
           {renderLink(settingsItem)}
         </nav>
 
-        {/* Right Action: Theme Toggle, Notifications & Logout */}
+        {/* Right Action: Theme Toggle, Notifications, Profile & Quick Add Partner */}
         <div className="flex items-center gap-2">
           {/* Quick Theme Toggle */}
           <ThemeToggle />
@@ -120,6 +95,7 @@ export function DesktopHeader() {
           <Link
             href="/settings/profile"
             aria-label="User Profile Details"
+            title="User Profile"
             className={cn(
               "size-9 rounded-2xl border flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs overflow-hidden",
               pathname === "/settings/profile"
@@ -140,22 +116,25 @@ export function DesktopHeader() {
             )}
           </Link>
 
-          {/* Logout Button */}
+          {/* Quick Add Partner / Friend Button */}
           <button
             type="button"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            aria-label="Sign Out"
-            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs disabled:opacity-50"
+            onClick={() => setAddPartnerOpen(true)}
+            aria-label="Add Partner or Friend"
+            title="Add Partner or Friend"
+            className="size-9 rounded-2xl bg-secondary/70 hover:bg-secondary border border-border/50 flex items-center justify-center text-primary transition-all active:scale-95 shadow-xs"
           >
-            {isLoggingOut ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <LogOut className="size-4 stroke-[2.2]" />
-            )}
+            <UserPlus className="size-4 stroke-[2.2]" />
           </button>
         </div>
       </div>
+
+      {/* Quick Add Partner Dialog */}
+      <AddPartnerModal
+        open={addPartnerOpen}
+        onOpenChange={setAddPartnerOpen}
+        onInvitationSent={() => router.refresh()}
+      />
     </header>
   )
 }

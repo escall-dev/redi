@@ -2,12 +2,15 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 import {
   type PartnerRelationship,
+  type PartnerRelationshipStatus,
   type PartnerSharingPreferences,
   type PartnerSharingPreferencesInput,
   type PartnerInvitation,
   type CreateInvitationResult,
   type VerifyInvitationResult,
   type PartnerActionResult,
+  type PartnerSearchResult,
+  type PartnerConnectionState,
   DEFAULT_PARTNER_SHARING_PREFERENCES,
 } from "./types"
 import {
@@ -16,6 +19,88 @@ import {
   calculateInvitationExpiry,
   isInvitationExpired,
 } from "./token"
+import { sendPartnerInvitationNotification } from "./notification"
+
+/**
+ * Normalizes username input: strips leading '@', trims whitespace, lowercases.
+ */
+export function normalizeUsername(input: string): string {
+  if (!input || typeof input !== "string") return ""
+  return input.trim().replace(/^@+/, "").toLowerCase()
+}
+
+/**
+ * Validates username format: 3 to 30 characters, lowercase letters, digits, and underscores only.
+ */
+export function isValidUsernameFormat(username: string): boolean {
+  return /^[a-z0-9_]{3,30}$/.test(username)
+}
+
+/**
+ * Service: Searches for an eligible partner by username.
+ *
+ * Privacy Guarantees:
+ * - Requires authenticated user (rejects unauthenticated discovery).
+ * - Excludes current user from search results.
+ * - Returns ONLY minimal public identification: { username, displayName }.
+ * - Strictly NEVER returns auth user ID, internal UUID, email, cycles, or notes.
+ */
+export async function searchPartnerByUsername(
+  supabase: SupabaseClient<Database>,
+  currentUserId: string,
+  query: string
+): Promise<PartnerActionResult<PartnerSearchResult[]>> {
+  try {
+    if (!currentUserId) {
+      return { ok: false, error: "Authentication required to search partner accounts." }
+    }
+
+    const normalized = normalizeUsername(query)
+    if (!normalized || normalized.length < 2) {
+      return { ok: true, data: [] }
+    }
+
+    // Query profiles for public identification only (RPC or direct with fallback)
+    let results: PartnerSearchResult[] = []
+
+    const { data: rpcRows, error: rpcErr } = await supabase.rpc("search_partner_by_username", {
+      p_query: normalized,
+      p_current_user_id: currentUserId,
+      p_limit: 5,
+    })
+
+    if (!rpcErr && Array.isArray(rpcRows) && rpcRows.length > 0) {
+      results = rpcRows.map((r) => ({
+        username: r.username,
+        displayName: r.display_name || r.username,
+      }))
+    } else {
+      const { data: directRows, error: directErr } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .neq("user_id", currentUserId)
+        .ilike("username", `${normalized}%`)
+        .not("username", "is", null)
+        .limit(5)
+
+      if (directErr && !rpcRows) {
+        return { ok: false, error: "Database error searching for user." }
+      }
+
+      results = (directRows || [])
+        .filter((r): r is { username: string; display_name: string | null } => !!r.username)
+        .map((r) => ({
+          username: r.username,
+          displayName: r.display_name || r.username,
+        }))
+    }
+
+    return { ok: true, data: results }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error searching for user."
+    return { ok: false, error: message }
+  }
+}
 
 /**
  * Service: Creates a new 1:1 partner invitation for an owner.
@@ -23,12 +108,16 @@ import {
  * Enforces:
  * 1. Inviter cannot have an existing active relationship (1:1 rule).
  * 2. Inviter cannot have an existing non-expired pending invitation.
- * 3. Atomic creation of pending relationship and single-use invitation record.
- * 4. Raw token is generated and returned, but ONLY the SHA-256 hash is persisted.
+ * 3. Resolves and binds intended target recipient server-side if targetUsername is provided.
+ * 4. Target recipient cannot be inviter themselves.
+ * 5. Target recipient cannot already have an active or conflicting pending relationship.
+ * 6. Atomic creation of pending relationship and single-use invitation record.
+ * 7. Raw token is generated and returned, but ONLY the SHA-256 hash is persisted.
  */
 export async function createPartnerInvitation(
   supabase: SupabaseClient<Database>,
-  inviterUserId: string
+  inviterUserId: string,
+  targetUsername?: string
 ): Promise<PartnerActionResult<CreateInvitationResult>> {
   try {
     // 1. Check if inviter already has an active relationship as owner or supporter
@@ -83,7 +172,94 @@ export async function createPartnerInvitation(
       }
     }
 
-    // 3. Create relationship record in 'pending' state
+    // 3. Resolve and validate target recipient if username was provided
+    let targetUserId: string | null = null
+    let targetInfo: { username: string; displayName: string } | undefined = undefined
+
+    if (targetUsername) {
+      const normalizedTarget = normalizeUsername(targetUsername)
+      if (!normalizedTarget || !isValidUsernameFormat(normalizedTarget)) {
+        return { ok: false, error: "Invalid username format. Must be 3-30 characters (letters, numbers, underscores)." }
+      }
+
+      let resolvedTarget: { user_id: string; username: string | null; display_name: string | null } | null = null
+
+      const { data: rpcTarget, error: rpcTargetErr } = await supabase.rpc("resolve_partner_by_username", {
+        p_username: normalizedTarget,
+      })
+
+      if (!rpcTargetErr && Array.isArray(rpcTarget) && rpcTarget.length > 0) {
+        resolvedTarget = rpcTarget[0]
+      } else {
+        const { data: directTarget, error: targetProfileErr } = await supabase
+          .from("profiles")
+          .select("user_id, username, display_name")
+          .ilike("username", normalizedTarget)
+          .maybeSingle()
+
+        if (!targetProfileErr && directTarget) {
+          resolvedTarget = directTarget
+        }
+      }
+
+      if (!resolvedTarget) {
+        return { ok: false, error: `User @${normalizedTarget} not found.` }
+      }
+
+      const targetProfile = resolvedTarget
+
+      if (targetProfile.user_id === inviterUserId) {
+        return { ok: false, error: "You cannot invite yourself as a partner." }
+      }
+
+      // Check if target already has an active relationship
+      const { data: targetActive, error: targetActiveErr } = await supabase
+        .from("partner_relationships")
+        .select("id")
+        .or(`owner_user_id.eq.${targetProfile.user_id},supporter_user_id.eq.${targetProfile.user_id}`)
+        .eq("status", "active")
+        .maybeSingle()
+
+      if (targetActiveErr) {
+        return { ok: false, error: "Database error checking target user relationship status." }
+      }
+
+      if (targetActive) {
+        return {
+          ok: false,
+          error: "This user already has an active partner connection. 1:1 model allows only one active connection.",
+        }
+      }
+
+      // Check if target already has a pending outgoing or incoming invitation
+      const { data: targetPending, error: targetPendingErr } = await supabase
+        .from("partner_invitations")
+        .select("id, status, expires_at")
+        .or(`inviter_user_id.eq.${targetProfile.user_id},invitee_user_id.eq.${targetProfile.user_id}`)
+        .eq("status", "pending")
+        .maybeSingle()
+
+      if (targetPendingErr) {
+        return { ok: false, error: "Database error checking target user pending status." }
+      }
+
+      if (targetPending) {
+        if (!isInvitationExpired(targetPending.expires_at)) {
+          return {
+            ok: false,
+            error: "This user already has a pending partner invitation.",
+          }
+        }
+      }
+
+      targetUserId = targetProfile.user_id
+      targetInfo = {
+        username: targetProfile.username || normalizedTarget,
+        displayName: targetProfile.display_name || targetProfile.username || normalizedTarget,
+      }
+    }
+
+    // 4. Create relationship record in 'pending' state
     const { data: relationship, error: relError } = await supabase
       .from("partner_relationships")
       .insert({
@@ -98,17 +274,18 @@ export async function createPartnerInvitation(
       return { ok: false, error: "Failed to create partner relationship record." }
     }
 
-    // 4. Generate cryptographically secure token & hash
+    // 5. Generate cryptographically secure token & hash
     const rawToken = generateInvitationToken()
     const tokenHash = hashInvitationToken(rawToken)
     const expiresAt = calculateInvitationExpiry().toISOString()
 
-    // 5. Insert invitation record with token_hash (NEVER rawToken)
+    // 6. Insert invitation record with token_hash (NEVER rawToken) and bound recipient
     const { data: invitation, error: invError } = await supabase
       .from("partner_invitations")
       .insert({
         relationship_id: relationship.id,
         inviter_user_id: inviterUserId,
+        invitee_user_id: targetUserId,
         token_hash: tokenHash,
         expires_at: expiresAt,
         status: "pending",
@@ -122,12 +299,35 @@ export async function createPartnerInvitation(
       return { ok: false, error: "Failed to create partner invitation record." }
     }
 
+    // 7. Dispatch in-app and web push notification to invitee if target user is bound
+    if (targetUserId) {
+      const { data: inviterProfile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("user_id", inviterUserId)
+        .maybeSingle()
+
+      const inviterUsername = inviterProfile?.username || "partner"
+      const inviterDisplayName = inviterProfile?.display_name || inviterUsername
+
+      void sendPartnerInvitationNotification({
+        supabase,
+        inviteeUserId: targetUserId,
+        inviterUserId,
+        inviterUsername,
+        inviterDisplayName,
+      }).catch((notifErr) => {
+        console.error("[createPartnerInvitation] Notification delivery background error:", notifErr)
+      })
+    }
+
     return {
       ok: true,
       data: {
         rawToken,
         invitation: invitation as PartnerInvitation,
         relationship: relationship as PartnerRelationship,
+        invitee: targetInfo,
       },
     }
   } catch (err) {
@@ -142,7 +342,8 @@ export async function createPartnerInvitation(
  */
 export async function verifyInvitation(
   supabase: SupabaseClient<Database>,
-  rawToken: string
+  rawToken: string,
+  currentUserId?: string
 ): Promise<VerifyInvitationResult> {
   try {
     if (!rawToken || typeof rawToken !== "string" || rawToken.trim().length === 0) {
@@ -153,7 +354,7 @@ export async function verifyInvitation(
 
     const { data: invitation, error: invError } = await supabase
       .from("partner_invitations")
-      .select("id, relationship_id, inviter_user_id, expires_at, status, created_at")
+      .select("id, relationship_id, inviter_user_id, invitee_user_id, expires_at, status, created_at")
       .eq("token_hash", tokenHash)
       .maybeSingle()
 
@@ -191,12 +392,29 @@ export async function verifyInvitation(
       return { valid: false, error: "This invitation has expired (valid for 7 days)." }
     }
 
-    // Retrieve inviter display name for safe preview (never expose email or private data)
-    const { data: profile } = await supabase
+    // Retrieve inviter display name and username for safe preview (never expose email or private data)
+    const { data: inviterProfile } = await supabase
       .from("profiles")
-      .select("display_name")
+      .select("display_name, username")
       .eq("user_id", invitation.inviter_user_id)
       .maybeSingle()
+
+    // Retrieve invitee username if bound
+    let inviteeUsername: string | null = null
+    if (invitation.invitee_user_id) {
+      const { data: inviteeProfile } = await supabase
+        .from("profiles")
+        .select("username")
+        .eq("user_id", invitation.invitee_user_id)
+        .maybeSingle()
+      inviteeUsername = inviteeProfile?.username || null
+    }
+
+    const isCurrentUserInviter = currentUserId ? invitation.inviter_user_id === currentUserId : false
+    const isTargetRecipient =
+      currentUserId && invitation.invitee_user_id
+        ? invitation.invitee_user_id === currentUserId
+        : true
 
     return {
       valid: true,
@@ -208,8 +426,14 @@ export async function verifyInvitation(
         created_at: invitation.created_at,
       },
       inviter: {
-        displayName: profile?.display_name || "Seijun User",
+        displayName: inviterProfile?.display_name || "Seijun User",
+        username: inviterProfile?.username || null,
       },
+      invitee: {
+        username: inviteeUsername,
+      },
+      isCurrentUserInviter,
+      isTargetRecipient,
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unexpected error verifying invitation."
@@ -224,8 +448,9 @@ export async function verifyInvitation(
  * 1. Single-use: Fails if already accepted or not pending.
  * 2. Expiration: Fails if expired.
  * 3. Self-acceptance prevention: Inviter cannot accept their own invitation.
- * 4. 1:1 rule: Accepter cannot already have an active relationship.
- * 5. Atomic state transition to active and single-use invalidation.
+ * 4. Recipient binding: If bound to specific recipient, only they can accept.
+ * 5. 1:1 rule: Accepter cannot already have an active relationship.
+ * 6. Atomic state transition to active and single-use invalidation.
  */
 export async function acceptInvitation(
   supabase: SupabaseClient<Database>,
@@ -239,9 +464,30 @@ export async function acceptInvitation(
 
     const tokenHash = hashInvitationToken(rawToken.trim())
 
+    // 1. Try atomic PostgreSQL RPC if available
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("accept_partner_invitation", {
+        p_token_hash: tokenHash,
+        p_accepting_user_id: acceptingUserId,
+      })
+
+      if (!rpcError && rpcData && typeof rpcData === "object") {
+        const result = rpcData as { ok?: boolean; error?: string; relationship_id?: string }
+        if (result.ok && result.relationship_id) {
+          return { ok: true, data: { relationshipId: result.relationship_id } }
+        }
+        if (result.error) {
+          return { ok: false, error: result.error }
+        }
+      }
+    } catch {
+      // Fall through to service-level execution if RPC function is not installed in current environment
+    }
+
+    // 2. Service-level atomic validation fallback
     const { data: invitation, error: invError } = await supabase
       .from("partner_invitations")
-      .select("id, relationship_id, inviter_user_id, expires_at, status")
+      .select("id, relationship_id, inviter_user_id, invitee_user_id, expires_at, status")
       .eq("token_hash", tokenHash)
       .maybeSingle()
 
@@ -276,6 +522,11 @@ export async function acceptInvitation(
     // Prevent accepting own invitation
     if (invitation.inviter_user_id === acceptingUserId) {
       return { ok: false, error: "You cannot accept your own invitation." }
+    }
+
+    // Recipient binding check: cannot accept someone else's invitation
+    if (invitation.invitee_user_id && invitation.invitee_user_id !== acceptingUserId) {
+      return { ok: false, error: "This invitation was sent to a different account." }
     }
 
     // Check if accepting user already has an active relationship
@@ -356,6 +607,7 @@ export async function acceptInvitation(
     return { ok: false, error: message }
   }
 }
+
 
 /**
  * Service: Declines a pending invitation.
@@ -663,3 +915,271 @@ export async function updateSharingPreferences(
     return { ok: false, error: message }
   }
 }
+
+/**
+ * Service: Retrieves complete partner connection state for UI rendering.
+ * Handled states:
+ * - none: No active relationship, no pending invitation.
+ * - outgoing_pending: Current user created an invitation waiting for partner acceptance.
+ * - incoming_pending: Another user sent an invitation to current user.
+ * - active: Connected 1:1 partner relationship.
+ */
+export async function getPartnerConnectionState(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<PartnerActionResult<PartnerConnectionState>> {
+  try {
+    if (!userId) {
+      return { ok: false, error: "Authentication required to retrieve partner connection state." }
+    }
+
+    // 1. Check for active relationship
+    const { data: activeRel, error: activeErr } = await supabase
+      .from("partner_relationships")
+      .select("id, status, owner_user_id, supporter_user_id, created_at, accepted_at")
+      .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
+      .eq("status", "active")
+      .maybeSingle()
+
+    if (activeErr) {
+      return { ok: false, error: "Error checking active relationship." }
+    }
+
+    if (activeRel) {
+      const isOwner = activeRel.owner_user_id === userId
+      const partnerUserId = isOwner ? activeRel.supporter_user_id : activeRel.owner_user_id
+
+      let partnerInfo = { username: "partner", displayName: "Partner" }
+      if (partnerUserId) {
+        const { data: pProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", partnerUserId)
+          .maybeSingle()
+
+        if (pProfile) {
+          partnerInfo = {
+            username: pProfile.username || "partner",
+            displayName: pProfile.display_name || pProfile.username || "Partner",
+          }
+        }
+      }
+
+      return {
+        ok: true,
+        data: {
+          status: "active",
+          partner: partnerInfo,
+          relationship: {
+            id: activeRel.id,
+            status: activeRel.status as PartnerRelationshipStatus,
+            role: isOwner ? "owner" : "supporter",
+            createdAt: activeRel.created_at,
+            acceptedAt: activeRel.accepted_at,
+          },
+        },
+      }
+    }
+
+    // 2. Check for outgoing pending invitation
+    const { data: outgoing, error: outErr } = await supabase
+      .from("partner_invitations")
+      .select("id, relationship_id, invitee_user_id, expires_at, status, created_at")
+      .eq("inviter_user_id", userId)
+      .eq("status", "pending")
+      .maybeSingle()
+
+    if (!outErr && outgoing) {
+      if (isInvitationExpired(outgoing.expires_at)) {
+        await supabase.from("partner_invitations").update({ status: "expired" }).eq("id", outgoing.id)
+        await supabase.from("partner_relationships").update({ status: "expired" }).eq("id", outgoing.relationship_id)
+      } else {
+        let inviteeUsername = ""
+        let inviteeDisplayName = ""
+        if (outgoing.invitee_user_id) {
+          const { data: targetProfile } = await supabase
+            .from("profiles")
+            .select("username, display_name")
+            .eq("user_id", outgoing.invitee_user_id)
+            .maybeSingle()
+          if (targetProfile) {
+            inviteeUsername = targetProfile.username || ""
+            inviteeDisplayName = targetProfile.display_name || targetProfile.username || ""
+          }
+        }
+
+        return {
+          ok: true,
+          data: {
+            status: "outgoing_pending",
+            outgoingInvitation: {
+              id: outgoing.id,
+              expiresAt: outgoing.expires_at,
+              createdAt: outgoing.created_at,
+              inviteeUsername,
+              inviteeDisplayName,
+            },
+          },
+        }
+      }
+    }
+
+    // 3. Check for incoming pending invitation
+    const { data: incoming, error: inErr } = await supabase
+      .from("partner_invitations")
+      .select("id, relationship_id, inviter_user_id, expires_at, token_hash, status, created_at")
+      .eq("invitee_user_id", userId)
+      .eq("status", "pending")
+      .maybeSingle()
+
+    if (!inErr && incoming) {
+      if (isInvitationExpired(incoming.expires_at)) {
+        await supabase.from("partner_invitations").update({ status: "expired" }).eq("id", incoming.id)
+        await supabase.from("partner_relationships").update({ status: "expired" }).eq("id", incoming.relationship_id)
+      } else {
+        let inviterUsername = ""
+        let inviterDisplayName = ""
+        const { data: senderProfile } = await supabase
+          .from("profiles")
+          .select("username, display_name")
+          .eq("user_id", incoming.inviter_user_id)
+          .maybeSingle()
+
+        if (senderProfile) {
+          inviterUsername = senderProfile.username || ""
+          inviterDisplayName = senderProfile.display_name || senderProfile.username || ""
+        }
+
+        return {
+          ok: true,
+          data: {
+            status: "incoming_pending",
+            incomingInvitation: {
+              id: incoming.id,
+              expiresAt: incoming.expires_at,
+              createdAt: incoming.created_at,
+              inviterUsername,
+              inviterDisplayName,
+              tokenHash: incoming.token_hash,
+            },
+          },
+        }
+      }
+    }
+
+    return {
+      ok: true,
+      data: {
+        status: "none",
+      },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error retrieving partner connection state."
+    return { ok: false, error: message }
+  }
+}
+
+/**
+ * Service: Accepts an invitation directly by ID (for authenticated recipient in in-app UI).
+ */
+export async function acceptInvitationById(
+  supabase: SupabaseClient<Database>,
+  invitationId: string,
+  acceptingUserId: string
+): Promise<PartnerActionResult<{ relationshipId: string }>> {
+  try {
+    if (!invitationId || !acceptingUserId) {
+      return { ok: false, error: "Invalid invitation parameters." }
+    }
+
+    const { data: invitation, error: invError } = await supabase
+      .from("partner_invitations")
+      .select("id, relationship_id, inviter_user_id, invitee_user_id, expires_at, status")
+      .eq("id", invitationId)
+      .maybeSingle()
+
+    if (invError || !invitation) {
+      return { ok: false, error: "Invitation not found." }
+    }
+
+    if (invitation.status !== "pending") {
+      return { ok: false, error: `Invitation is ${invitation.status} and cannot be accepted.` }
+    }
+
+    if (isInvitationExpired(invitation.expires_at)) {
+      await supabase.from("partner_invitations").update({ status: "expired" }).eq("id", invitation.id)
+      await supabase.from("partner_relationships").update({ status: "expired" }).eq("id", invitation.relationship_id)
+      return { ok: false, error: "This invitation has expired." }
+    }
+
+    if (invitation.inviter_user_id === acceptingUserId) {
+      return { ok: false, error: "You cannot accept your own invitation." }
+    }
+
+    if (invitation.invitee_user_id && invitation.invitee_user_id !== acceptingUserId) {
+      return { ok: false, error: "This invitation was sent to a different account." }
+    }
+
+    // 1:1 check for accepter
+    const { data: accepterActive } = await supabase
+      .from("partner_relationships")
+      .select("id")
+      .or(`owner_user_id.eq.${acceptingUserId},supporter_user_id.eq.${acceptingUserId}`)
+      .eq("status", "active")
+      .maybeSingle()
+
+    if (accepterActive) {
+      return { ok: false, error: "You already have an active partner connection. 1:1 model allows only one active connection." }
+    }
+
+    // 1:1 check for inviter
+    const { data: inviterActive } = await supabase
+      .from("partner_relationships")
+      .select("id")
+      .or(`owner_user_id.eq.${invitation.inviter_user_id},supporter_user_id.eq.${invitation.inviter_user_id}`)
+      .eq("status", "active")
+      .maybeSingle()
+
+    if (inviterActive) {
+      return { ok: false, error: "The invitation sender already has an active partner connection." }
+    }
+
+    const now = new Date().toISOString()
+
+    const { error: relError } = await supabase
+      .from("partner_relationships")
+      .update({
+        supporter_user_id: acceptingUserId,
+        status: "active",
+        accepted_at: now,
+      })
+      .eq("id", invitation.relationship_id)
+      .eq("status", "pending")
+
+    if (relError) {
+      return { ok: false, error: "Failed to activate partner relationship." }
+    }
+
+    const { error: invUpdateError } = await supabase
+      .from("partner_invitations")
+      .update({
+        status: "accepted",
+        accepted_at: now,
+      })
+      .eq("id", invitation.id)
+      .eq("status", "pending")
+
+    if (invUpdateError) {
+      return { ok: false, error: "Failed to update invitation status to accepted." }
+    }
+
+    return {
+      ok: true,
+      data: { relationshipId: invitation.relationship_id },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error accepting invitation."
+    return { ok: false, error: message }
+  }
+}
+

@@ -12,6 +12,7 @@ import {
   Loader2,
   Clock,
   ExternalLink,
+  UserPlus,
 } from "lucide-react"
 import {
   Popover,
@@ -33,6 +34,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   ovulation: Sparkles,
   cycle_transition: Clock,
   missed_period: CalendarHeart,
+  partner_invitation: UserPlus,
 }
 
 function formatNotificationTime(isoStr: string): string {

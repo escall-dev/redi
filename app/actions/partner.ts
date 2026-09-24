@@ -5,12 +5,15 @@ import {
   createPartnerInvitation,
   verifyInvitation,
   acceptInvitation,
+  acceptInvitationById,
   declineInvitation,
   cancelInvitation,
   revokeRelationship,
   getPartnerRelationship,
   getSharingPreferences,
   updateSharingPreferences,
+  searchPartnerByUsername,
+  getPartnerConnectionState,
 } from "@/lib/partner/service"
 import type {
   CreateInvitationResult,
@@ -19,15 +22,38 @@ import type {
   PartnerSharingPreferences,
   PartnerSharingPreferencesInput,
   PartnerActionResult,
+  PartnerSearchResult,
+  PartnerConnectionState,
 } from "@/lib/partner/types"
+
+/**
+ * Server Action: Searches for an eligible partner by username.
+ * Requires authenticated session. Excludes current user. Returns minimal public data.
+ */
+export async function searchPartnerByUsernameAction(
+  query: string
+): Promise<PartnerActionResult<PartnerSearchResult[]>> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required to search partner accounts." }
+  }
+
+  return searchPartnerByUsername(supabase, user.id, query)
+}
 
 /**
  * Server Action: Creates a new partner invitation.
  * Derives inviter user ID strictly from the authenticated Supabase session.
+ * Optionally binds the invitation to an intended target username.
  */
-export async function createPartnerInvitationAction(): Promise<
-  PartnerActionResult<CreateInvitationResult>
-> {
+export async function createPartnerInvitationAction(
+  targetUsername?: string
+): Promise<PartnerActionResult<CreateInvitationResult>> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -38,7 +64,7 @@ export async function createPartnerInvitationAction(): Promise<
     return { ok: false, error: "Authentication required to create partner invitation." }
   }
 
-  return createPartnerInvitation(supabase, user.id)
+  return createPartnerInvitation(supabase, user.id, targetUsername)
 }
 
 /**
@@ -48,8 +74,13 @@ export async function verifyPartnerInvitationAction(
   rawToken: string
 ): Promise<VerifyInvitationResult> {
   const supabase = await createClient()
-  return verifyInvitation(supabase, rawToken)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  return verifyInvitation(supabase, rawToken, user?.id)
 }
+
 
 /**
  * Server Action: Accepts a partner invitation.
@@ -189,3 +220,42 @@ export async function updatePartnerSharingPreferencesAction(
 
   return updateSharingPreferences(supabase, user.id, relationshipId, updates)
 }
+
+/**
+ * Server Action: Accepts a partner invitation directly by invitation ID (for in-app UI).
+ */
+export async function acceptPartnerInvitationByIdAction(
+  invitationId: string
+): Promise<PartnerActionResult<{ relationshipId: string }>> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required to accept partner invitation." }
+  }
+
+  return acceptInvitationById(supabase, invitationId, user.id)
+}
+
+/**
+ * Server Action: Gets the consolidated partner connection state for UI rendering.
+ */
+export async function getPartnerConnectionStateAction(): Promise<
+  PartnerActionResult<PartnerConnectionState>
+> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required." }
+  }
+
+  return getPartnerConnectionState(supabase, user.id)
+}
+

@@ -53,6 +53,7 @@ export interface PartnerInvitation {
   id: string
   relationship_id: string
   inviter_user_id: string
+  invitee_user_id?: string | null
   token_hash: string
   expires_at: string
   status: PartnerInvitationStatus
@@ -81,10 +82,19 @@ export const DEFAULT_PARTNER_SHARING_PREFERENCES: Readonly<PartnerSharingPrefere
 export const INVITATION_EXPIRATION_DAYS = 7
 export const INVITATION_EXPIRATION_MS = INVITATION_EXPIRATION_DAYS * 24 * 60 * 60 * 1000
 
+export interface PartnerSearchResult {
+  username: string
+  displayName: string
+}
+
 export interface CreateInvitationResult {
   rawToken: string
   invitation: PartnerInvitation
   relationship: PartnerRelationship
+  invitee?: {
+    username: string
+    displayName: string
+  }
 }
 
 export interface VerifyInvitationResult {
@@ -98,8 +108,51 @@ export interface VerifyInvitationResult {
   }
   inviter?: {
     displayName: string | null
+    username: string | null
   }
+  invitee?: {
+    username: string | null
+  }
+  isTargetRecipient?: boolean
+  isCurrentUserInviter?: boolean
   error?: string
+}
+
+export type PartnerConnectionUIStatus =
+  | "none"
+  | "outgoing_pending"
+  | "incoming_pending"
+  | "active"
+
+export interface PartnerConnectionState {
+  status: PartnerConnectionUIStatus
+  partner?: {
+    username: string
+    displayName: string
+  }
+  relationship?: {
+    id: string
+    status: PartnerRelationshipStatus
+    role: "owner" | "supporter"
+    createdAt: string
+    acceptedAt: string | null
+  }
+  outgoingInvitation?: {
+    id: string
+    expiresAt: string
+    createdAt: string
+    rawToken?: string
+    inviteeUsername?: string
+    inviteeDisplayName?: string
+  }
+  incomingInvitation?: {
+    id: string
+    expiresAt: string
+    createdAt: string
+    inviterUsername: string
+    inviterDisplayName: string
+    tokenHash: string
+  }
 }
 
 export interface PartnerActionResult<T = undefined> {
@@ -107,3 +160,4 @@ export interface PartnerActionResult<T = undefined> {
   data?: T
   error?: string
 }
+

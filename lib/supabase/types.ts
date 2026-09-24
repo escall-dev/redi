@@ -16,6 +16,7 @@ export type CycleReminderType =
   | "ovulation"
   | "cycle_transition"
   | "missed_period"
+  | "partner_invitation"
 export type PartnerRelationshipStatus = "pending" | "active" | "revoked" | "declined" | "expired"
 export type PartnerInvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled"
 
@@ -27,6 +28,7 @@ export interface Database {
           id: string
           user_id: string
           display_name: string | null
+          username: string | null
           avatar_url: string | null
           sex: ProfileSex | null
           usage_role: ProfileUsageRole | null
@@ -40,6 +42,7 @@ export interface Database {
           id?: string
           user_id: string
           display_name?: string | null
+          username?: string | null
           avatar_url?: string | null
           sex?: ProfileSex | null
           usage_role?: ProfileUsageRole | null
@@ -53,6 +56,7 @@ export interface Database {
           id?: string
           user_id?: string
           display_name?: string | null
+          username?: string | null
           avatar_url?: string | null
           sex?: ProfileSex | null
           usage_role?: ProfileUsageRole | null
@@ -435,6 +439,7 @@ export interface Database {
           id: string
           relationship_id: string
           inviter_user_id: string
+          invitee_user_id: string | null
           token_hash: string
           expires_at: string
           status: PartnerInvitationStatus
@@ -448,6 +453,7 @@ export interface Database {
           id?: string
           relationship_id: string
           inviter_user_id: string
+          invitee_user_id?: string | null
           token_hash: string
           expires_at: string
           status?: PartnerInvitationStatus
@@ -461,6 +467,7 @@ export interface Database {
           id?: string
           relationship_id?: string
           inviter_user_id?: string
+          invitee_user_id?: string | null
           token_hash?: string
           expires_at?: string
           status?: PartnerInvitationStatus
@@ -502,6 +509,54 @@ export interface Database {
           target_id: string
         }
         Returns: boolean
+      }
+      accept_partner_invitation: {
+        Args: {
+          p_token_hash: string
+          p_accepting_user_id: string
+        }
+        Returns: Json
+      }
+      search_partner_by_username: {
+        Args: {
+          p_query: string
+          p_current_user_id: string
+          p_limit?: number
+        }
+        Returns: {
+          username: string
+          display_name: string
+        }[]
+      }
+      resolve_partner_by_username: {
+        Args: {
+          p_username: string
+        }
+        Returns: {
+          user_id: string
+          username: string
+          display_name: string
+        }[]
+      }
+      notify_partner_invitation: {
+        Args: {
+          p_invitee_user_id: string
+          p_inviter_user_id: string
+          p_inviter_username: string
+          p_inviter_display_name?: string
+        }
+        Returns: string
+      }
+      get_partner_push_subscriptions: {
+        Args: {
+          p_target_user_id: string
+        }
+        Returns: {
+          id: string
+          endpoint: string
+          p256dh: string
+          auth: string
+        }[]
       }
     }
     Enums: {
