@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.14",
+  "version": "2.0.15",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -20,6 +20,7 @@
     "test:notification-preferences": "node scripts/test-notification-preferences.mjs",
     "test:partner": "node scripts/test-partner-foundation.mjs",
     "test:partner:connection": "node scripts/test-partner-connection-flow.mjs",
+    "test:partner:shared-data": "node scripts/test-partner-shared-data.mjs",
     "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs"
   },
   "dependencies": {

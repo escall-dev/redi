@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -33,6 +34,7 @@ import {
   Check,
   Shield,
   UserCheck,
+  Eye,
 } from "lucide-react"
 
 interface PartnerConnectionCardProps {
@@ -44,6 +46,7 @@ export function PartnerConnectionCard({
   initialState,
   onStateChange,
 }: PartnerConnectionCardProps) {
+  const router = useAppRouter()
   const [state, setState] = React.useState<PartnerConnectionState | null>(initialState || null)
   const [loading, setLoading] = React.useState(!initialState)
   const [actionPending, setActionPending] = React.useState(false)
@@ -375,6 +378,19 @@ export function PartnerConnectionCard({
                   Your cycle insights, journal entries, and private logs remain confidential by default.
                 </p>
               </div>
+
+              {/* Partner Dashboard Link — visible for supporters */}
+              {state?.relationship?.role === "supporter" && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => router.push("/partner")}
+                  className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  <Eye className="size-3.5" />
+                  <span>View Partner Dashboard</span>
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
