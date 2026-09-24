@@ -37,6 +37,7 @@ export interface NotificationCategoryConfig {
 
 export type NotificationPreferences = Record<NotificationCategory, boolean> & {
   reminder_days_before: ReminderTimingOption
+  sound_enabled: boolean
 }
 
 export const ALL_NOTIFICATION_CATEGORIES: readonly NotificationCategory[] = [
@@ -182,6 +183,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: Readonly<NotificationPreferences>
   cycle_transition_reminders: true,
   missed_period_reminders: true,
   reminder_days_before: 3,
+  sound_enabled: true,
 }
 
 export const NOTIFICATION_GROUPS: {
@@ -253,6 +255,13 @@ export interface NotificationPreferenceActionResponse {
 export interface ReminderTimingActionResponse {
   ok: boolean
   reminderDaysBefore?: ReminderTimingOption
+  error?: string
+  preferences?: NotificationPreferences
+}
+
+export interface NotificationSoundActionResponse {
+  ok: boolean
+  soundEnabled?: boolean
   error?: string
   preferences?: NotificationPreferences
 }

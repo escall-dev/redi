@@ -59,6 +59,8 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function") 
       badge: data.badge || "/icons/icon-192.png",
       tag: data.tag || "seijun-notification",
       renotify: true,
+      silent: false,
+      sound: data.sound || "/sounds/notification.wav",
       data:
         typeof data.data === "object" && data.data !== null
           ? { url: targetUrl, ...data.data }
@@ -80,6 +82,7 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function") 
                   body: options.body,
                   url: targetUrl,
                   data: options.data,
+                  sound: options.sound,
                 },
               });
             } catch {

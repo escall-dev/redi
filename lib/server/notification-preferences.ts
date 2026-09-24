@@ -116,6 +116,10 @@ export function mapRowToPreferences(
         ? row.missed_period_reminders
         : DEFAULT_NOTIFICATION_PREFERENCES.missed_period_reminders,
     reminder_days_before,
+    sound_enabled:
+      typeof row.sound_enabled === "boolean"
+        ? row.sound_enabled
+        : DEFAULT_NOTIFICATION_PREFERENCES.sound_enabled,
   }
 }
 
@@ -138,7 +142,7 @@ export async function getNotificationPreferences(
     const { data, error } = await supabase
       .from("notification_preferences")
       .select(
-        "personal_reminders, personal_updates, partner_daily_notes, partner_cycle_updates, partner_activity, partner_connection, shared_reminders, shared_updates, system_notifications, security_notifications, period_reminders, fertile_window_reminders, ovulation_reminders, cycle_transition_reminders, missed_period_reminders, reminder_days_before"
+        "personal_reminders, personal_updates, partner_daily_notes, partner_cycle_updates, partner_activity, partner_connection, shared_reminders, shared_updates, system_notifications, security_notifications, period_reminders, fertile_window_reminders, ovulation_reminders, cycle_transition_reminders, missed_period_reminders, reminder_days_before, sound_enabled"
       )
       .eq("user_id", userId)
       .maybeSingle()

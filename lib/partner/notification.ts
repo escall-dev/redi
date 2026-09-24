@@ -112,6 +112,7 @@ export async function sendPartnerInvitationNotification({
         icon: "/icons/icon-192.png",
         badge: "/icons/icon-192.png",
         tag: `seijun-partner-invitation-${inviterUserId}`,
+        sound: "/sounds/notification.wav",
         data: {
           url: "/settings/partner",
           type: "partner_invitation",

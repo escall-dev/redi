@@ -124,6 +124,7 @@ export interface PushNotificationPayload {
   icon?: string
   badge?: string
   tag?: string
+  sound?: string
   data?: Record<string, unknown>
 }
 

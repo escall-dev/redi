@@ -22,6 +22,8 @@ import {
   Info,
   Clock,
   Laptop,
+  Volume2,
+  VolumeX,
 } from "lucide-react"
 import {
   type NotificationCategory,
@@ -35,12 +37,14 @@ import {
   getNotificationPreferencesAction,
   updateNotificationPreferenceAction,
   updateReminderTimingAction,
+  updateNotificationSoundAction,
 } from "@/app/actions/notification-preferences"
 import {
   isWebPushSupported,
   getNotificationPermission,
   registerAndPersistWebPush,
 } from "@/lib/push/subscription-manager"
+import { playNotificationSound, setSoundEnabledLocally } from "@/lib/notifications/sound"
 import type { ProfileUsageRole } from "@/lib/supabase/types"
 
 interface NotificationPreferencesProps {
@@ -89,6 +93,8 @@ export function NotificationPreferencesCard({
   const [loading, setLoading] = React.useState<boolean>(!initialPreferences)
   const [pendingCategory, setPendingCategory] = React.useState<NotificationCategory | null>(null)
   const [pendingTiming, setPendingTiming] = React.useState<boolean>(false)
+  const [pendingSound, setPendingSound] = React.useState<boolean>(false)
+  const [isPlayingPreview, setIsPlayingPreview] = React.useState<boolean>(false)
   const [bannerMessage, setBannerMessage] = React.useState<{
     type: "success" | "error" | "info"
     text: string
@@ -108,6 +114,7 @@ export function NotificationPreferencesCard({
           const res = await getNotificationPreferencesAction()
           if (isMounted && res.ok && res.preferences) {
             setPreferences(res.preferences)
+            setSoundEnabledLocally(res.preferences.sound_enabled ?? true)
           }
         } catch {
           if (isMounted) {
@@ -266,6 +273,58 @@ export function NotificationPreferencesCard({
     }
   }
 
+  // Handle notification sound toggle
+  const handleSoundToggle = async () => {
+    if (pendingSound) return
+
+    const previousValue = preferences.sound_enabled ?? true
+    const nextValue = !previousValue
+
+    setPreferences((prev) => ({ ...prev, sound_enabled: nextValue }))
+    setSoundEnabledLocally(nextValue)
+    setPendingSound(true)
+    setBannerMessage(null)
+
+    try {
+      const result = await updateNotificationSoundAction(nextValue)
+      if (!result.ok) {
+        setPreferences((prev) => ({ ...prev, sound_enabled: previousValue }))
+        setSoundEnabledLocally(previousValue)
+        setBannerMessage({
+          type: "error",
+          text: result.error || "Failed to update notification sound preference.",
+        })
+      } else {
+        if (result.preferences) {
+          setPreferences(result.preferences)
+        }
+        setBannerMessage({
+          type: "success",
+          text: `Notification sound ${nextValue ? "enabled" : "muted"}.`,
+        })
+      }
+    } catch {
+      setPreferences((prev) => ({ ...prev, sound_enabled: previousValue }))
+      setSoundEnabledLocally(previousValue)
+      setBannerMessage({
+        type: "error",
+        text: "Network error occurred while updating sound preference.",
+      })
+    } finally {
+      setPendingSound(false)
+    }
+  }
+
+  // Handle sound preview playback
+  const handlePreviewSound = async () => {
+    setIsPlayingPreview(true)
+    try {
+      await playNotificationSound(undefined, true)
+    } finally {
+      setTimeout(() => setIsPlayingPreview(false), 1200)
+    }
+  }
+
   return (
     <Card className="overflow-hidden border-border/80 shadow-xs" id="notification-preferences">
       <CardHeader className="pb-4">
@@ -365,7 +424,95 @@ export function NotificationPreferencesCard({
           </div>
         </div>
 
-        {/* B. Reminder Timing Options */}
+        {/* B. Notification Sound Controls */}
+        <div className="rounded-xl border border-border/70 bg-secondary/30 p-3.5 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start sm:items-center gap-3">
+              <div
+                className={`flex size-8 shrink-0 items-center justify-center rounded-lg border ${
+                  preferences.sound_enabled
+                    ? "bg-primary/10 text-primary border-primary/20"
+                    : "bg-muted text-muted-foreground border-border/60"
+                }`}
+              >
+                {preferences.sound_enabled ? (
+                  <Volume2 className="size-4" />
+                ) : (
+                  <VolumeX className="size-4" />
+                )}
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-semibold text-foreground">Notification Sound</h4>
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                    Positive Chime
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Play an audible chime for push notifications, partner invites, and alerts.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 self-end sm:self-center shrink-0">
+              {/* Preview Button */}
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={handlePreviewSound}
+                disabled={isPlayingPreview}
+                className="h-7 text-xs px-2.5 gap-1.5 rounded-lg border-border/70 hover:bg-secondary cursor-pointer shadow-2xs"
+                title="Preview notification sound"
+              >
+                <Volume2 className={`size-3 text-primary ${isPlayingPreview ? "animate-pulse" : ""}`} />
+                <span>{isPlayingPreview ? "Playing..." : "Preview"}</span>
+              </Button>
+
+              <span
+                className={`text-[11px] font-semibold tracking-wide uppercase ${
+                  preferences.sound_enabled ? "text-primary" : "text-muted-foreground/60"
+                }`}
+                aria-hidden="true"
+              >
+                {preferences.sound_enabled ? "On" : "Off"}
+              </span>
+
+              {/* Accessible Switch Toggle */}
+              <button
+                id="toggle-sound-enabled"
+                type="button"
+                role="switch"
+                aria-checked={preferences.sound_enabled}
+                aria-label="Notification sound toggle"
+                disabled={pendingSound}
+                onClick={handleSoundToggle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault()
+                    handleSoundToggle()
+                  }
+                }}
+                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
+                  preferences.sound_enabled ? "bg-primary" : "bg-muted-foreground/30"
+                }`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block size-5 transform rounded-full bg-background shadow-md ring-0 transition duration-200 ease-in-out flex items-center justify-center ${
+                    preferences.sound_enabled ? "translate-x-5" : "translate-x-0"
+                  }`}
+                >
+                  {pendingSound && (
+                    <Loader2 className="size-3 animate-spin text-muted-foreground" />
+                  )}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* C. Reminder Timing Options */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 border-b border-border/50 pb-2">
             <Clock className="size-4 text-primary shrink-0" />

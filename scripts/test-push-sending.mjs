@@ -49,6 +49,7 @@ function serializeNotificationPayload(payload) {
     icon: payload.icon?.trim() || "/icons/icon-192.png",
     badge: payload.badge?.trim() || "/icons/icon-192.png",
     tag: payload.tag?.trim() || "seijun-notification",
+    sound: payload.sound?.trim() || "/sounds/notification.wav",
     data: {
       url: targetUrl,
       ...(payload.data || {}),
@@ -71,6 +72,7 @@ assert(parsed.url === "/dashboard/cycles", "Payload url serialized accurately")
 assert(parsed.data.url === "/dashboard/cycles", "Nested data.url matches root url for SW compatibility")
 assert(parsed.icon === "/icons/icon-192.png", "Default icon populated")
 assert(parsed.badge === "/icons/icon-192.png", "Default badge populated")
+assert(parsed.sound === "/sounds/notification.wav", "Default notification sound populated accurately")
 
 // Rejections
 let titleMissing = false

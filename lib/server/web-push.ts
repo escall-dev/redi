@@ -134,6 +134,7 @@ export function serializeNotificationPayload(payload: PushNotificationPayload): 
     icon: payload.icon?.trim() || "/icons/icon-192.png",
     badge: payload.badge?.trim() || "/icons/icon-192.png",
     tag: payload.tag?.trim() || "seijun-notification",
+    sound: payload.sound?.trim() || "/sounds/notification.wav",
     data: {
       url: targetUrl,
       ...(payload.data || {}),

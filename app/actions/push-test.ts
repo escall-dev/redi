@@ -38,6 +38,7 @@ const SEIJUN_TEST_PAYLOAD: PushNotificationPayload = {
   icon: "/icons/icon-192.png",
   badge: "/icons/icon-192.png",
   tag: "seijun-push-test",
+  sound: "/sounds/notification.wav",
   data: {
     url: "/dashboard",
     type: "test_notification",
@@ -115,6 +116,7 @@ export async function sendCurrentAccountTestPushAction(
     body: customPayload?.body?.trim() || SEIJUN_TEST_PAYLOAD.body,
     url: customPayload?.url?.trim() || SEIJUN_TEST_PAYLOAD.url,
     tag: customPayload?.tag?.trim() || SEIJUN_TEST_PAYLOAD.tag,
+    sound: customPayload?.sound || SEIJUN_TEST_PAYLOAD.sound,
     data: {
       ...SEIJUN_TEST_PAYLOAD.data,
       ...(customPayload?.data || {}),

@@ -7,6 +7,7 @@ import {
   type NotificationPreferenceActionResponse,
   type ReminderTimingOption,
   type ReminderTimingActionResponse,
+  type NotificationSoundActionResponse,
   isValidNotificationCategory,
   isValidReminderTimingOption,
   DEFAULT_NOTIFICATION_PREFERENCES,
@@ -286,3 +287,88 @@ export async function updateReminderTimingAction(
     }
   }
 }
+
+/**
+ * Server Action: Updates the user's notification sound preference (enabled / disabled).
+ */
+export async function updateNotificationSoundAction(
+  soundEnabled: boolean
+): Promise<NotificationSoundActionResponse> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (!user || authError) {
+    return {
+      ok: false,
+      error: "Authentication required to update notification sound settings.",
+    }
+  }
+
+  if (typeof soundEnabled !== "boolean") {
+    return {
+      ok: false,
+      error: "Sound setting value must be a valid boolean.",
+    }
+  }
+
+  try {
+    const { data: existing } = await supabase
+      .from("notification_preferences")
+      .select("user_id")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    let finalPreferences: NotificationPreferences
+
+    if (existing) {
+      const { data: updatedRow, error: updateError } = await supabase
+        .from("notification_preferences")
+        .update({ sound_enabled: soundEnabled } as PreferenceUpdate)
+        .eq("user_id", user.id)
+        .select()
+        .single()
+
+      if (updateError || !updatedRow) {
+        return {
+          ok: false,
+          error: "Failed to update notification sound setting.",
+        }
+      }
+
+      finalPreferences = mapRowToPreferences(updatedRow as unknown as Partial<NotificationPreferences>)
+    } else {
+      const { data: insertedRow, error: insertError } = await supabase
+        .from("notification_preferences")
+        .insert({
+          user_id: user.id,
+          sound_enabled: soundEnabled,
+        } as PreferenceInsert)
+        .select()
+        .single()
+
+      if (insertError || !insertedRow) {
+        return {
+          ok: false,
+          error: "Failed to save notification sound setting.",
+        }
+      }
+
+      finalPreferences = mapRowToPreferences(insertedRow as unknown as Partial<NotificationPreferences>)
+    }
+
+    return {
+      ok: true,
+      soundEnabled,
+      preferences: finalPreferences,
+    }
+  } catch {
+    return {
+      ok: false,
+      error: "An unexpected error occurred while updating notification sound setting.",
+    }
+  }
+}
+

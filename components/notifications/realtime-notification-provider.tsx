@@ -15,6 +15,7 @@ import {
   HeartHandshake,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { playNotificationSound } from "@/lib/notifications/sound"
 
 interface ToastNotification {
   id: string
@@ -163,6 +164,15 @@ export function RealtimeNotificationProvider({
               inviterDisplayName: newRow.metadata?.inviterDisplayName,
               status: "pending",
             })
+            void playNotificationSound()
+          } else {
+            showToast({
+              id: newRow.id || `notif-${Date.now()}`,
+              title: newRow.title || "Notification",
+              body: newRow.body || "You have a new update.",
+              status: "pending",
+            })
+            void playNotificationSound()
           }
         }
       )
@@ -189,6 +199,7 @@ export function RealtimeNotificationProvider({
               invitationId: newInvite.id,
               status: "pending",
             })
+            void playNotificationSound()
           }
         }
       )
@@ -212,19 +223,33 @@ export function RealtimeNotificationProvider({
             inviterDisplayName: data.inviterDisplayName,
             status: "pending",
           })
+        } else {
+          showToast({
+            id: `sw-push-${Date.now()}`,
+            title: payload.title || "Notification",
+            body: payload.body || "You have a new update.",
+            status: "pending",
+          })
         }
+        void playNotificationSound()
       }
+    }
+
+    const handlePlaySoundEvent = () => {
+      void playNotificationSound()
     }
 
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.addEventListener("message", handleSwMessage)
     }
+    window.addEventListener("seijun:play-notification-sound", handlePlaySoundEvent)
 
     return () => {
       void supabase.removeChannel(channel)
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker.removeEventListener("message", handleSwMessage)
       }
+      window.removeEventListener("seijun:play-notification-sound", handlePlaySoundEvent)
       if (timerRef.current) {
         clearTimeout(timerRef.current)
       }
