@@ -16,6 +16,8 @@ export type CycleReminderType =
   | "ovulation"
   | "cycle_transition"
   | "missed_period"
+export type PartnerRelationshipStatus = "pending" | "active" | "revoked" | "declined" | "expired"
+export type PartnerInvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled"
 
 export interface Database {
   public: {
@@ -347,6 +349,133 @@ export interface Database {
             columns: ["cycle_id"]
             isOneToOne: false
             referencedRelation: "cycles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_relationships: {
+        Row: {
+          id: string
+          owner_user_id: string
+          supporter_user_id: string | null
+          status: PartnerRelationshipStatus
+          created_at: string
+          accepted_at: string | null
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          owner_user_id: string
+          supporter_user_id?: string | null
+          status?: PartnerRelationshipStatus
+          created_at?: string
+          accepted_at?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          owner_user_id?: string
+          supporter_user_id?: string | null
+          status?: PartnerRelationshipStatus
+          created_at?: string
+          accepted_at?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      partner_sharing_preferences: {
+        Row: {
+          id: string
+          relationship_id: string
+          owner_user_id: string
+          cycle_estimates: boolean
+          period_status: boolean
+          cycle_preferences: boolean
+          daily_notes: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          relationship_id: string
+          owner_user_id: string
+          cycle_estimates?: boolean
+          period_status?: boolean
+          cycle_preferences?: boolean
+          daily_notes?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          relationship_id?: string
+          owner_user_id?: string
+          cycle_estimates?: boolean
+          period_status?: boolean
+          cycle_preferences?: boolean
+          daily_notes?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_sharing_preferences_relationship_id_fkey"
+            columns: ["relationship_id"]
+            isOneToOne: true
+            referencedRelation: "partner_relationships"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_invitations: {
+        Row: {
+          id: string
+          relationship_id: string
+          inviter_user_id: string
+          token_hash: string
+          expires_at: string
+          status: PartnerInvitationStatus
+          created_at: string
+          accepted_at: string | null
+          declined_at: string | null
+          cancelled_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          relationship_id: string
+          inviter_user_id: string
+          token_hash: string
+          expires_at: string
+          status?: PartnerInvitationStatus
+          created_at?: string
+          accepted_at?: string | null
+          declined_at?: string | null
+          cancelled_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          relationship_id?: string
+          inviter_user_id?: string
+          token_hash?: string
+          expires_at?: string
+          status?: PartnerInvitationStatus
+          created_at?: string
+          accepted_at?: string | null
+          declined_at?: string | null
+          cancelled_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_invitations_relationship_id_fkey"
+            columns: ["relationship_id"]
+            isOneToOne: false
+            referencedRelation: "partner_relationships"
             referencedColumns: ["id"]
           },
         ]

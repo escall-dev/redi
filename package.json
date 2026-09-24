@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.9",
+  "version": "2.0.10",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -18,6 +18,7 @@
     "test:push-e2e": "node scripts/test-push-e2e.mjs",
     "test:notification-click": "node scripts/test-notification-click.mjs",
     "test:notification-preferences": "node scripts/test-notification-preferences.mjs",
+    "test:partner": "node scripts/test-partner-foundation.mjs",
     "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs"
   },
   "dependencies": {
