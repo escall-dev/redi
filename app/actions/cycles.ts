@@ -78,7 +78,7 @@ function generateDateRange(startStr: string, endStr: string): string[] {
  * Helper: Synchronize and persist cycle_length for all cycles of a user
  * based strictly on consecutive cycle start_date values.
  */
-async function syncCycleLengthsForUser(
+export async function syncCycleLengthsForUser(
   supabase: Awaited<ReturnType<typeof createClient>>,
   userId: string
 ): Promise<void> {

@@ -842,6 +842,9 @@ export async function getSharingPreferences(
           period_status: DEFAULT_PARTNER_SHARING_PREFERENCES.period_status ?? false,
           cycle_preferences: DEFAULT_PARTNER_SHARING_PREFERENCES.cycle_preferences ?? false,
           daily_notes: DEFAULT_PARTNER_SHARING_PREFERENCES.daily_notes ?? false,
+          manage_cycle_preferences: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_cycle_preferences ?? false,
+          manage_period_status: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_period_status ?? false,
+          manage_daily_notes: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_daily_notes ?? false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
@@ -861,6 +864,7 @@ export async function getSharingPreferences(
 /**
  * Service: Updates sharing preferences for a relationship.
  * OWNER ONLY: Supporters CANNOT update sharing preferences.
+ * Enforces that management capabilities require their corresponding view permission.
  */
 export async function updateSharingPreferences(
   supabase: SupabaseClient<Database>,
@@ -884,14 +888,40 @@ export async function updateSharingPreferences(
       }
     }
 
+    // Fetch existing preferences to validate prerequisites
+    const { data: currentPrefs } = await supabase
+      .from("partner_sharing_preferences")
+      .select("*")
+      .eq("relationship_id", relationshipId)
+      .maybeSingle()
+
     // 2. Sanitize updates to strictly known boolean flags
     const sanitized: Partial<Database["public"]["Tables"]["partner_sharing_preferences"]["Update"]> = {}
     if (typeof updates.cycle_estimates === "boolean") sanitized.cycle_estimates = updates.cycle_estimates
     if (typeof updates.period_status === "boolean") sanitized.period_status = updates.period_status
     if (typeof updates.cycle_preferences === "boolean") sanitized.cycle_preferences = updates.cycle_preferences
     if (typeof updates.daily_notes === "boolean") sanitized.daily_notes = updates.daily_notes
+    if (typeof updates.manage_cycle_preferences === "boolean") sanitized.manage_cycle_preferences = updates.manage_cycle_preferences
+    if (typeof updates.manage_period_status === "boolean") sanitized.manage_period_status = updates.manage_period_status
+    if (typeof updates.manage_daily_notes === "boolean") sanitized.manage_daily_notes = updates.manage_daily_notes
 
-    // 3. Upsert sharing preferences record
+    // 3. Enforce view prerequisite: if view is disabled, management MUST be disabled
+    const finalCyclePrefs = sanitized.cycle_preferences ?? currentPrefs?.cycle_preferences ?? false
+    if (!finalCyclePrefs) {
+      sanitized.manage_cycle_preferences = false
+    }
+
+    const finalPeriodStatus = sanitized.period_status ?? currentPrefs?.period_status ?? false
+    if (!finalPeriodStatus) {
+      sanitized.manage_period_status = false
+    }
+
+    const finalDailyNotes = sanitized.daily_notes ?? currentPrefs?.daily_notes ?? false
+    if (!finalDailyNotes) {
+      sanitized.manage_daily_notes = false
+    }
+
+    // 4. Upsert sharing preferences record
     const { data: updated, error: updateError } = await supabase
       .from("partner_sharing_preferences")
       .upsert(

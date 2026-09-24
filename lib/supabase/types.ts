@@ -17,6 +17,8 @@ export type CycleReminderType =
   | "cycle_transition"
   | "missed_period"
   | "partner_invitation"
+  | "partner_cycle_updates"
+  | "partner_daily_notes"
 export type PartnerRelationshipStatus = "pending" | "active" | "revoked" | "declined" | "expired"
 export type PartnerInvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled"
 
@@ -399,6 +401,9 @@ export interface Database {
           period_status: boolean
           cycle_preferences: boolean
           daily_notes: boolean
+          manage_cycle_preferences: boolean
+          manage_period_status: boolean
+          manage_daily_notes: boolean
           created_at: string
           updated_at: string
         }
@@ -410,6 +415,9 @@ export interface Database {
           period_status?: boolean
           cycle_preferences?: boolean
           daily_notes?: boolean
+          manage_cycle_preferences?: boolean
+          manage_period_status?: boolean
+          manage_daily_notes?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -421,6 +429,9 @@ export interface Database {
           period_status?: boolean
           cycle_preferences?: boolean
           daily_notes?: boolean
+          manage_cycle_preferences?: boolean
+          manage_period_status?: boolean
+          manage_daily_notes?: boolean
           created_at?: string
           updated_at?: string
         }

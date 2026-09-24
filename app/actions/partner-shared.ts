@@ -2,7 +2,12 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { getEnabledSharingCategories } from "@/lib/partner/authorization"
-import type { SharingCategory, PartnerRole, AuthorizationDenialReason } from "@/lib/partner/authorization"
+import type {
+  SharingCategory,
+  CoManagementPermission,
+  PartnerRole,
+  AuthorizationDenialReason,
+} from "@/lib/partner/authorization"
 import {
   getSharedCycleEstimates,
   getSharedPeriodStatus,
@@ -15,7 +20,7 @@ import {
 } from "@/lib/partner/shared-data"
 
 /**
- * Seijun Phase 19 Batch 3 — Server Actions for Partner Shared Data
+ * Seijun Phase 19 Batch 3 & 4 — Server Actions for Partner Shared Data & Co-Management Status
  *
  * All actions derive the authenticated user from the Supabase session.
  * No client-supplied user IDs are trusted.
@@ -28,6 +33,7 @@ export interface PartnerDashboardData {
   authorized: boolean
   role?: PartnerRole
   enabledCategories?: SharingCategory[]
+  managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
   reason?: AuthorizationDenialReason

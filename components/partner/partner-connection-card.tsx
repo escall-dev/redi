@@ -14,6 +14,7 @@ import {
 import type { PartnerConnectionState } from "@/lib/partner/types"
 import { AddPartnerModal } from "@/components/partner/add-partner-modal"
 import { InvitationCancelledDialog } from "@/components/partner/invitation-cancelled-dialog"
+import { PartnerSharingSettingsCard } from "@/components/partner/partner-sharing-settings-card"
 import {
   Dialog,
   DialogContent,
@@ -395,6 +396,16 @@ export function PartnerConnectionCard({
           )}
         </CardContent>
       </Card>
+
+      {/* Owner Access & Co-Management Controls */}
+      {status === "active" && state?.relationship?.role === "owner" && state.relationship.id && (
+        <PartnerSharingSettingsCard
+          relationshipId={state.relationship.id}
+          partnerDisplayName={state.partner?.displayName}
+          partnerUsername={state.partner?.username}
+          onRevoked={fetchState}
+        />
+      )}
 
       {/* Add Partner Modal */}
       <AddPartnerModal

@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.15",
+  "version": "2.0.16",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -21,6 +21,7 @@
     "test:partner": "node scripts/test-partner-foundation.mjs",
     "test:partner:connection": "node scripts/test-partner-connection-flow.mjs",
     "test:partner:shared-data": "node scripts/test-partner-shared-data.mjs",
+    "test:partner:co-management": "node scripts/test-partner-co-management.mjs",
     "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs"
   },
   "dependencies": {

@@ -38,6 +38,9 @@ export interface PartnerSharingPreferences {
   period_status: boolean
   cycle_preferences: boolean
   daily_notes: boolean
+  manage_cycle_preferences: boolean
+  manage_period_status: boolean
+  manage_daily_notes: boolean
   created_at: string
   updated_at: string
 }
@@ -47,6 +50,9 @@ export interface PartnerSharingPreferencesInput {
   period_status?: boolean
   cycle_preferences?: boolean
   daily_notes?: boolean
+  manage_cycle_preferences?: boolean
+  manage_period_status?: boolean
+  manage_daily_notes?: boolean
 }
 
 export interface PartnerInvitation {
@@ -74,6 +80,9 @@ export const DEFAULT_PARTNER_SHARING_PREFERENCES: Readonly<PartnerSharingPrefere
   period_status: false,
   cycle_preferences: false,
   daily_notes: false,
+  manage_cycle_preferences: false,
+  manage_period_status: false,
+  manage_daily_notes: false,
 } as const
 
 /**

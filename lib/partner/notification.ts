@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "@/lib/supabase/types"
+import type { Database, CycleReminderType } from "@/lib/supabase/types"
 import { sendWebPushNotification } from "@/lib/server/web-push"
 
 interface SendPartnerInvitationNotificationParams {
@@ -146,3 +146,122 @@ export async function sendPartnerInvitationNotification({
 
   return { inAppDelivered, pushDelivered }
 }
+
+export interface SendPartnerCoManagementNotificationParams {
+  supabase: SupabaseClient<Database>
+  recipientUserId: string
+  actorUsername: string
+  category: "partner_cycle_updates" | "partner_daily_notes"
+  title: string
+  body: string
+  url: string
+}
+
+/**
+ * Dispatches a privacy-preserving notification to a cycle partner when an authorized
+ * co-management mutation or significant shared cycle event occurs.
+ *
+ * Guarantees:
+ * - Checks and respects recipient's notification_preferences
+ * - Strictly avoids leaking sensitive cycle, flow, symptom, or note contents
+ * - Dispatches both in-app notification_events and Web Push (if subscribed)
+ */
+export async function sendPartnerCoManagementNotification({
+  supabase,
+  recipientUserId,
+  actorUsername,
+  category,
+  title,
+  body,
+  url,
+}: SendPartnerCoManagementNotificationParams): Promise<{
+  inAppDelivered: boolean
+  pushDelivered: boolean
+}> {
+  let inAppDelivered = false
+  let pushDelivered = false
+
+  try {
+    // 1. Check recipient's notification preferences
+    const { data: prefRow } = await supabase
+      .from("notification_preferences")
+      .select("partner_cycle_updates, partner_daily_notes")
+      .eq("user_id", recipientUserId)
+      .maybeSingle()
+
+    // Respect recipient's preference: if the category is explicitly false, suppress notification
+    if (prefRow) {
+      if (category === "partner_cycle_updates" && prefRow.partner_cycle_updates === false) {
+        return { inAppDelivered: false, pushDelivered: false }
+      }
+      if (category === "partner_daily_notes" && prefRow.partner_daily_notes === false) {
+        return { inAppDelivered: false, pushDelivered: false }
+      }
+    }
+
+    // 2. Deliver in-app notification event
+    const { error: insertErr } = await supabase.from("notification_events").insert({
+      user_id: recipientUserId,
+      type: category as CycleReminderType,
+      title,
+      body,
+      url,
+      status: "sent",
+      scheduled_for: new Date().toISOString(),
+      metadata: {
+        partnerUsername: actorUsername,
+      },
+    })
+
+    if (!insertErr) {
+      inAppDelivered = true
+    }
+
+    // 3. Query push subscriptions for recipient
+    const { data: subscriptions } = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", recipientUserId)
+
+    // 4. Send Web Push to all active devices
+    if (subscriptions && subscriptions.length > 0) {
+      const payload = {
+        title,
+        body,
+        url,
+        icon: "/icons/icon-192.png",
+        badge: "/icons/icon-192.png",
+        tag: `seijun-${category}-${recipientUserId}`,
+        sound: "/sounds/notification.wav",
+        data: {
+          url,
+          type: category,
+          partnerUsername: actorUsername,
+        },
+      }
+
+      for (const sub of subscriptions) {
+        try {
+          const res = await sendWebPushNotification(
+            {
+              endpoint: sub.endpoint,
+              p256dh: sub.p256dh,
+              auth: sub.auth,
+            },
+            payload
+          )
+          if (res.ok) {
+            pushDelivered = true
+          }
+        } catch {
+          // Ignore individual subscription errors
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[sendPartnerCoManagementNotification] Error:", err)
+  }
+
+  return { inAppDelivered, pushDelivered }
+}
+

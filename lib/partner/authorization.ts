@@ -38,6 +38,17 @@ export const ALL_SHARING_CATEGORIES: readonly SharingCategory[] = [
   "daily_notes",
 ] as const
 
+export type CoManagementPermission =
+  | "manage_cycle_preferences"
+  | "manage_period_status"
+  | "manage_daily_notes"
+
+export const ALL_CO_MANAGEMENT_PERMISSIONS: readonly CoManagementPermission[] = [
+  "manage_cycle_preferences",
+  "manage_period_status",
+  "manage_daily_notes",
+] as const
+
 export interface AuthorizedPartnerContext {
   /** The authenticated user's ID */
   authenticatedUserId: string
@@ -57,6 +68,7 @@ export type AuthorizationDenialReason =
   | "UNAUTHENTICATED"
   | "NO_ACTIVE_RELATIONSHIP"
   | "SHARING_DISABLED"
+  | "MANAGEMENT_DISABLED"
   | "NOT_SUPPORTER"
   | "AUTHORIZATION_ERROR"
 
@@ -163,6 +175,9 @@ export async function resolvePartnerContext(
           period_status: false,
           cycle_preferences: false,
           daily_notes: false,
+          manage_cycle_preferences: false,
+          manage_period_status: false,
+          manage_daily_notes: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         }
@@ -233,9 +248,71 @@ export async function authorizeSupporterAccess(
   return partnerResult
 }
 
+// ─── Co-Management Authorization ─────────────────────────────────────────────
+
 /**
- * Returns all currently enabled sharing categories for the supporter.
- * Used by the Partner Dashboard to know which sections to render.
+ * Authorizes a supporter to execute a co-management mutation.
+ *
+ * Authorization chain (ALL must be satisfied):
+ *   1. Authenticated user (session-derived, never trusted from client)
+ *   2. Active partner relationship
+ *   3. Supporter role
+ *   4. Base view category is enabled
+ *   5. Specific co-management permission is explicitly enabled by the owner
+ *
+ * Rejection guarantees:
+ *   - Unauthenticated -> UNAUTHENTICATED
+ *   - Inactive / revoked -> NO_ACTIVE_RELATIONSHIP
+ *   - Owner role -> NOT_SUPPORTER
+ *   - Base category disabled -> SHARING_DISABLED
+ *   - Management disabled -> MANAGEMENT_DISABLED
+ */
+export async function authorizeSupporterManagement(
+  supabase: SupabaseClient<Database>,
+  permission: CoManagementPermission
+): Promise<AuthorizationResult> {
+  const partnerResult = await resolvePartnerContext(supabase)
+
+  if (!partnerResult.authorized) {
+    return partnerResult
+  }
+
+  const { context } = partnerResult
+
+  // Strictly supporter only
+  if (context.role !== "supporter") {
+    return {
+      authorized: false,
+      reason: "NOT_SUPPORTER",
+      message: "Only supporters can perform partner co-management mutations.",
+    }
+  }
+
+  // Verify the prerequisite view category is enabled
+  const requiredCategory = getRequiredCategoryForManagement(permission)
+  if (!isCategoryEnabled(context.sharingPreferences, requiredCategory)) {
+    return {
+      authorized: false,
+      reason: "SHARING_DISABLED",
+      message: `Sharing for ${formatCategoryName(requiredCategory)} is disabled. Management access requires view access.`,
+    }
+  }
+
+  // Verify the specific management capability is explicitly granted
+  if (!isManagementEnabled(context.sharingPreferences, permission)) {
+    return {
+      authorized: false,
+      reason: "MANAGEMENT_DISABLED",
+      message: `Co-management permission for ${formatManagementName(permission)} is not enabled.`,
+    }
+  }
+
+  return partnerResult
+}
+
+/**
+ * Returns all currently enabled sharing categories and management permissions for the supporter.
+ * Used by the Partner Dashboard to know which sections and mutation controls to render.
  */
 export async function getEnabledSharingCategories(
   supabase: SupabaseClient<Database>
@@ -243,6 +320,7 @@ export async function getEnabledSharingCategories(
   authorized: boolean
   role?: PartnerRole
   categories?: SharingCategory[]
+  managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
   reason?: AuthorizationDenialReason
@@ -275,6 +353,13 @@ export async function getEnabledSharingCategories(
     }
   }
 
+  const enabledManagement: CoManagementPermission[] = []
+  for (const perm of ALL_CO_MANAGEMENT_PERMISSIONS) {
+    if (isManagementEnabled(context.sharingPreferences, perm)) {
+      enabledManagement.push(perm)
+    }
+  }
+
   // Fetch minimal owner profile info (display_name, username only)
   const { data: ownerProfile } = await supabase
     .from("profiles")
@@ -286,6 +371,7 @@ export async function getEnabledSharingCategories(
     authorized: true,
     role: context.role,
     categories: enabledCategories,
+    managementPermissions: enabledManagement,
     ownerDisplayName: ownerProfile?.display_name || "Partner",
     ownerUsername: ownerProfile?.username || undefined,
   }
@@ -315,6 +401,40 @@ export function isCategoryEnabled(
 }
 
 /**
+ * Checks whether a specific co-management permission is enabled in the preferences.
+ * Enforces architectural prerequisite: view permission must ALSO be enabled.
+ */
+export function isManagementEnabled(
+  prefs: PartnerSharingPreferences,
+  permission: CoManagementPermission
+): boolean {
+  switch (permission) {
+    case "manage_cycle_preferences":
+      return prefs.cycle_preferences === true && prefs.manage_cycle_preferences === true
+    case "manage_period_status":
+      return prefs.period_status === true && prefs.manage_period_status === true
+    case "manage_daily_notes":
+      return prefs.daily_notes === true && prefs.manage_daily_notes === true
+    default:
+      return false
+  }
+}
+
+/**
+ * Maps each management permission to its required view category.
+ */
+export function getRequiredCategoryForManagement(permission: CoManagementPermission): SharingCategory {
+  switch (permission) {
+    case "manage_cycle_preferences":
+      return "cycle_preferences"
+    case "manage_period_status":
+      return "period_status"
+    case "manage_daily_notes":
+      return "daily_notes"
+  }
+}
+
+/**
  * Formats a sharing category key into a human-readable label.
  */
 export function formatCategoryName(category: SharingCategory): string {
@@ -329,5 +449,21 @@ export function formatCategoryName(category: SharingCategory): string {
       return "Daily Notes"
     default:
       return category
+  }
+}
+
+/**
+ * Formats a management permission key into a human-readable label.
+ */
+export function formatManagementName(permission: CoManagementPermission): string {
+  switch (permission) {
+    case "manage_cycle_preferences":
+      return "Cycle Preferences"
+    case "manage_period_status":
+      return "Period Status"
+    case "manage_daily_notes":
+      return "Daily Notes"
+    default:
+      return permission
   }
 }
