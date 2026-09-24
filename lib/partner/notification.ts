@@ -8,6 +8,7 @@ interface SendPartnerInvitationNotificationParams {
   inviterUserId: string
   inviterUsername: string
   inviterDisplayName?: string | null
+  invitationId?: string
 }
 
 /**
@@ -20,6 +21,7 @@ export async function sendPartnerInvitationNotification({
   inviterUserId,
   inviterUsername,
   inviterDisplayName,
+  invitationId,
 }: SendPartnerInvitationNotificationParams): Promise<{
   inAppDelivered: boolean
   pushDelivered: boolean
@@ -54,6 +56,11 @@ export async function sendPartnerInvitationNotification({
         url: "/settings/partner",
         status: "sent",
         scheduled_for: new Date().toISOString(),
+        metadata: {
+          invitationId,
+          inviterUsername,
+          inviterDisplayName: displayName,
+        },
       })
       if (!insertErr) {
         inAppDelivered = true
@@ -108,6 +115,9 @@ export async function sendPartnerInvitationNotification({
         data: {
           url: "/settings/partner",
           type: "partner_invitation",
+          invitationId,
+          inviterUsername,
+          inviterDisplayName: displayName,
         },
       }
 

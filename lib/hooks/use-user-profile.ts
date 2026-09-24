@@ -4,6 +4,7 @@ import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
 
 export interface UserProfileState {
+  userId: string | null
   displayName: string | null
   avatarUrl: string | null
   isLoading: boolean
@@ -21,6 +22,7 @@ export interface UserProfileProviderProps {
  */
 export function UserProfileProvider({ children }: UserProfileProviderProps) {
   const [state, setState] = React.useState<UserProfileState>({
+    userId: null,
     displayName: null,
     avatarUrl: null,
     isLoading: true,
@@ -38,7 +40,7 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
 
         if (!user) {
           if (isMounted) {
-            setState({ displayName: null, avatarUrl: null, isLoading: false })
+            setState({ userId: null, displayName: null, avatarUrl: null, isLoading: false })
           }
           return
         }
@@ -50,6 +52,7 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
 
         if (isMounted) {
           setState({
+            userId: user.id,
             displayName: metaName,
             avatarUrl: cleanMetaAvatar,
             isLoading: false,
@@ -68,6 +71,7 @@ export function UserProfileProvider({ children }: UserProfileProviderProps) {
           const cleanAvatar = rawDbAvatar && !rawDbAvatar.startsWith("preset:") ? rawDbAvatar : null
 
           setState({
+            userId: user.id,
             displayName: profile.display_name || metaName,
             avatarUrl: cleanAvatar,
             isLoading: false,
@@ -127,6 +131,7 @@ export function useUserProfile(): UserProfileState {
 
   // Fallback for standalone usage outside of shell
   return {
+    userId: null,
     displayName: null,
     avatarUrl: null,
     isLoading: false,

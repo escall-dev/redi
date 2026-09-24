@@ -58,13 +58,38 @@ if (typeof self !== "undefined" && typeof self.addEventListener === "function") 
       icon: data.icon || "/icons/icon-192.png",
       badge: data.badge || "/icons/icon-192.png",
       tag: data.tag || "seijun-notification",
+      renotify: true,
       data:
         typeof data.data === "object" && data.data !== null
           ? { url: targetUrl, ...data.data }
           : { url: targetUrl },
     };
 
-    event.waitUntil(self.registration.showNotification(title, options));
+    // 1. Show OS notification (triggers even when browser/app is closed or backgrounded)
+    const showPromise = self.registration.showNotification(title, options);
+
+    // 2. Broadcast to open window clients if app is active in foreground
+    const broadcastPromise = self.clients
+      ? self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+          for (const client of clients) {
+            try {
+              client.postMessage({
+                type: "SEIJUN_PUSH_RECEIVED",
+                payload: {
+                  title,
+                  body: options.body,
+                  url: targetUrl,
+                  data: options.data,
+                },
+              });
+            } catch {
+              // Ignore individual postMessage errors
+            }
+          }
+        })
+      : Promise.resolve();
+
+    event.waitUntil(Promise.all([showPromise, broadcastPromise]));
   });
 }
 

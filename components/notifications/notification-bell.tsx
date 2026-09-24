@@ -77,6 +77,20 @@ export function NotificationBell({ className }: { className?: string }) {
 
   React.useEffect(() => {
     void refreshNotifications()
+
+    const handleUpdate = () => {
+      void refreshNotifications()
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("seijun:notification-update", handleUpdate)
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("seijun:notification-update", handleUpdate)
+      }
+    }
   }, [refreshNotifications])
 
   const handleOpenChange = (nextOpen: boolean) => {

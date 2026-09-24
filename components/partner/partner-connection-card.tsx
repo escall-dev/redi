@@ -79,6 +79,20 @@ export function PartnerConnectionCard({
     if (!initialState) {
       fetchState()
     }
+
+    const handlePartnerChange = () => {
+      void fetchState()
+    }
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("seijun:partner-state-changed", handlePartnerChange)
+    }
+
+    return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener("seijun:partner-state-changed", handlePartnerChange)
+      }
+    }
   }, [initialState, fetchState])
 
   const handleConfirmCancelOutgoing = async () => {
@@ -95,6 +109,10 @@ export function PartnerConnectionCard({
         setCancelConfirmOpen(false)
         setCancelledPartnerInfo(partnerInfo)
         setCancelledSuccessOpen(true)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
         await fetchState()
       } else {
         setErrorMsg(res.error || "Failed to cancel invitation.")
@@ -112,6 +130,10 @@ export function PartnerConnectionCard({
     try {
       const res = await acceptPartnerInvitationByIdAction(invitationId)
       if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
         await fetchState()
       } else {
         setErrorMsg(res.error || "Failed to accept partner invitation.")
@@ -130,6 +152,10 @@ export function PartnerConnectionCard({
     try {
       const res = await declinePartnerInvitationAction(invitationId)
       if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
         await fetchState()
       } else {
         setErrorMsg(res.error || "Failed to decline invitation.")

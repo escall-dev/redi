@@ -310,15 +310,18 @@ export async function createPartnerInvitation(
       const inviterUsername = inviterProfile?.username || "partner"
       const inviterDisplayName = inviterProfile?.display_name || inviterUsername
 
-      void sendPartnerInvitationNotification({
-        supabase,
-        inviteeUserId: targetUserId,
-        inviterUserId,
-        inviterUsername,
-        inviterDisplayName,
-      }).catch((notifErr) => {
+      try {
+        await sendPartnerInvitationNotification({
+          supabase,
+          inviteeUserId: targetUserId,
+          inviterUserId,
+          inviterUsername,
+          inviterDisplayName,
+          invitationId: invitation.id,
+        })
+      } catch (notifErr) {
         console.error("[createPartnerInvitation] Notification delivery background error:", notifErr)
-      })
+      }
     }
 
     return {
