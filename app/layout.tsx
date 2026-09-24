@@ -4,6 +4,8 @@ import { Analytics } from "@vercel/analytics/next"
 import { AppShell } from "@/components/shell/app-shell"
 import { ThemeProvider } from "@/components/theme/theme-provider"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
+import { NavigationLoadingProvider } from "@/components/navigation/navigation-loading-context"
+import { NavigationLoadingOverlay } from "@/components/navigation/navigation-loading-overlay"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -70,7 +72,10 @@ export default function RootLayout({
         className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary"
       >
         <ThemeProvider>
-          <AppShell>{children}</AppShell>
+          <NavigationLoadingProvider>
+            <AppShell>{children}</AppShell>
+            <NavigationLoadingOverlay />
+          </NavigationLoadingProvider>
         </ThemeProvider>
         <Analytics />
         <ServiceWorkerRegistration />

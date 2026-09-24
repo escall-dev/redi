@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CycleCard } from "@/components/cycles/cycle-card"
@@ -14,7 +14,7 @@ interface CycleListProps {
 }
 
 export function CycleList({ cycles }: CycleListProps) {
-  const router = useRouter()
+  const router = useAppRouter()
   const [logOpen, setLogOpen] = React.useState(false)
 
   const handleSuccess = (cycleId?: string) => {

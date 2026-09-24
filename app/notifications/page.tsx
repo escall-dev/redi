@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import {
   Bell,
   CalendarHeart,
@@ -63,7 +63,7 @@ function formatDate(isoStr: string): string {
 }
 
 export default function NotificationsPage() {
-  const router = useRouter()
+  const router = useAppRouter()
   const [filter, setFilter] = React.useState<"all" | "unread">("all")
   const [loading, setLoading] = React.useState(true)
   const [busyId, setBusyId] = React.useState<string | null>(null)

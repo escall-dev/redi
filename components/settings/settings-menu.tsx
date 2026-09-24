@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { useTheme } from "@/components/theme/theme-provider"
+import { SeijunSpinner } from "@/components/ui/seijun-spinner"
 import { cn } from "@/lib/utils"
 import type { ProfileSettingsData } from "@/components/settings/settings-form"
 import type { NotificationPreferences } from "@/lib/notifications/types"
@@ -79,6 +80,9 @@ export function SettingsMenu({
   const [partnerModalOpen, setPartnerModalOpen] = React.useState(false)
   const [expandedCategory, setExpandedCategory] = React.useState<CategoryId | null>(null)
   const [activeView, setActiveView] = React.useState<SubViewId | null>(null)
+  const [isPendingSection, startSectionTransition] = React.useTransition()
+  const [showSectionSpinner, setShowSectionSpinner] = React.useState(false)
+  const sectionTimerRef = React.useRef<NodeJS.Timeout | null>(null)
 
   // Listen to profile updates dispatched from ProfileSettingsForm
   React.useEffect(() => {
@@ -135,16 +139,51 @@ export function SettingsMenu({
   }, [])
 
   const navigateToView = (view: SubViewId) => {
-    setActiveView(view)
-    if (typeof window !== "undefined") {
-      const url = new URL(window.location.href)
-      url.searchParams.set("view", view)
-      window.history.pushState({ view }, "", url.toString())
-      window.scrollTo({ top: 0, behavior: "instant" })
+    if (sectionTimerRef.current) {
+      clearTimeout(sectionTimerRef.current)
+      sectionTimerRef.current = null
     }
+
+    // Set 200ms threshold timer: only if section takes > 200ms will spinner display
+    sectionTimerRef.current = setTimeout(() => {
+      setShowSectionSpinner(true)
+    }, 200)
+
+    startSectionTransition(() => {
+      setActiveView(view)
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href)
+        url.searchParams.set("view", view)
+        window.history.pushState({ view }, "", url.toString())
+        window.scrollTo({ top: 0, behavior: "instant" })
+      }
+    })
   }
 
+  React.useEffect(() => {
+    if (!isPendingSection) {
+      if (sectionTimerRef.current) {
+        clearTimeout(sectionTimerRef.current)
+        sectionTimerRef.current = null
+      }
+      setShowSectionSpinner(false)
+    }
+  }, [isPendingSection])
+
+  React.useEffect(() => {
+    return () => {
+      if (sectionTimerRef.current) {
+        clearTimeout(sectionTimerRef.current)
+      }
+    }
+  }, [])
+
   const handleBack = () => {
+    if (sectionTimerRef.current) {
+      clearTimeout(sectionTimerRef.current)
+      sectionTimerRef.current = null
+    }
+    setShowSectionSpinner(false)
     setActiveView(null)
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href)
@@ -186,6 +225,23 @@ export function SettingsMenu({
   // ============================================================================
   // INSTANT SUBVIEWS (0ms Transition, No Server Network Delay)
   // ============================================================================
+  if (showSectionSpinner) {
+    return (
+      <div
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+        aria-label="Loading settings section"
+        className="py-20 flex flex-col items-center justify-center gap-3 animate-in fade-in duration-150"
+      >
+        <SeijunSpinner size="md" />
+        <span className="text-xs font-medium text-muted-foreground tracking-tight select-none">
+          Loading section...
+        </span>
+      </div>
+    )
+  }
+
   if (activeView === "profile" || activeView === "avatar") {
     return (
       <div className="space-y-6 animate-in fade-in duration-150">

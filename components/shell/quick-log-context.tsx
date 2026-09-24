@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import { PeriodLogDialog } from "@/components/cycles/period-log-dialog"
 
 interface QuickLogContextValue {
@@ -12,7 +12,7 @@ const QuickLogContext = React.createContext<QuickLogContextValue | null>(null)
 
 export function QuickLogProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false)
-  const router = useRouter()
+  const router = useAppRouter()
 
   const openQuickLog = React.useCallback(() => {
     setOpen(true)

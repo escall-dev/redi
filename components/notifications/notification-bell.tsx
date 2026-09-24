@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import {
   Bell,
   CalendarHeart,
@@ -56,7 +56,7 @@ function formatNotificationTime(isoStr: string): string {
 }
 
 export function NotificationBell({ className }: { className?: string }) {
-  const router = useRouter()
+  const router = useAppRouter()
   const [open, setOpen] = React.useState(false)
   const [loading, setLoading] = React.useState(false)
   const [notifications, setNotifications] = React.useState<NotificationEventRow[]>([])

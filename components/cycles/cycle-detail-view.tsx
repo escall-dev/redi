@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useAppRouter } from "@/components/navigation/use-app-router"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -54,7 +54,7 @@ function formatShortDate(dateStr: string): string {
 }
 
 export function CycleDetailView({ cycle }: CycleDetailViewProps) {
-  const router = useRouter()
+  const router = useAppRouter()
   const [editOpen, setEditOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [updatingDayId, setUpdatingDayId] = React.useState<string | null>(null)
