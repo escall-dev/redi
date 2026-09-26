@@ -61,9 +61,9 @@ export function PartnerConnectionCard({
     displayName?: string | null
   } | null>(null)
 
-  const fetchState = React.useCallback(async () => {
+  const fetchState = React.useCallback(async (silent = false) => {
     try {
-      setLoading(true)
+      if (!silent) setLoading(true)
       setErrorMsg(null)
       const res = await getPartnerConnectionStateAction()
       if (res.ok && res.data) {
@@ -75,7 +75,7 @@ export function PartnerConnectionCard({
     } catch {
       setErrorMsg("Network error loading partner connection.")
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [onStateChange])
 
@@ -85,7 +85,7 @@ export function PartnerConnectionCard({
     }
 
     const handlePartnerChange = () => {
-      void fetchState()
+      void fetchState(true)
     }
 
     if (typeof window !== "undefined") {
