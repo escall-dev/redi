@@ -122,6 +122,9 @@ export async function saveMpin(
 
   localStorage.setItem(getKey("verifier", userId), JSON.stringify(record))
   localStorage.setItem(getKey("remember", userId), rememberDevice ? "true" : "false")
+  if (rememberDevice) {
+    saveAutofillMpin(userId, mpin)
+  }
   if (userProfile) {
     setRememberedUser({
       id: userId,
@@ -344,6 +347,103 @@ export function clearRememberedUser(): void {
 }
 
 /**
+ * Remember MPIN Autofill preference and storage
+ */
+export function isMpinRememberMeEnabled(userId?: string): boolean {
+  if (typeof window === "undefined" || !userId) return true
+  try {
+    // If an autofill PIN already exists in localStorage, Remember Me is guaranteed active
+    const hasAutofill =
+      localStorage.getItem(getKey("autofill", userId)) ||
+      localStorage.getItem(`${PREFIX}active_autofill_pin`)
+    if (hasAutofill) return true
+
+    const val = localStorage.getItem(getKey("remember_mpin", userId))
+    // Default to true for remembered returning users on this device
+    return val !== "false"
+  } catch {
+    return true
+  }
+}
+
+export function setMpinRememberMeEnabled(userId: string, enabled: boolean): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.setItem(getKey("remember_mpin", userId), enabled ? "true" : "false")
+    if (!enabled) {
+      clearAutofillMpin(userId)
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function saveAutofillMpin(userId: string, mpin: string): void {
+  if (typeof window === "undefined" || !userId || !mpin || mpin.length !== 6) return
+  try {
+    const encoded =
+      typeof btoa !== "undefined"
+        ? btoa(`seijun_${userId}_${mpin}`)
+        : Buffer.from(`seijun_${userId}_${mpin}`).toString("base64")
+    localStorage.setItem(getKey("autofill", userId), encoded)
+    localStorage.setItem(getKey("remember_mpin", userId), "true")
+    localStorage.setItem(`${PREFIX}active_autofill_pin`, encoded)
+    localStorage.setItem(`${PREFIX}active_autofill_user`, userId)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function getAutofillMpin(userId?: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    let raw = userId ? localStorage.getItem(getKey("autofill", userId)) : null
+    if (!raw) {
+      const activeUser = localStorage.getItem(`${PREFIX}active_autofill_user`)
+      if (!userId || activeUser === userId) {
+        raw = localStorage.getItem(`${PREFIX}active_autofill_pin`)
+      }
+    }
+    // Final fallback to generic active pin
+    if (!raw) {
+      raw = localStorage.getItem(`${PREFIX}active_autofill_pin`)
+    }
+    if (!raw) return null
+
+    const decoded =
+      typeof atob !== "undefined"
+        ? atob(raw)
+        : Buffer.from(raw, "base64").toString("utf-8")
+    const parts = decoded.split("_")
+    const pin = parts[parts.length - 1]
+    if (pin && /^\d{6}$/.test(pin)) {
+      return pin
+    }
+    if (/^\d{6}$/.test(decoded)) {
+      return decoded
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+export function clearAutofillMpin(userId: string): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.removeItem(getKey("autofill", userId))
+    localStorage.setItem(getKey("remember_mpin", userId), "false")
+    const activeUser = localStorage.getItem(`${PREFIX}active_autofill_user`)
+    if (activeUser === userId) {
+      localStorage.removeItem(`${PREFIX}active_autofill_pin`)
+      localStorage.removeItem(`${PREFIX}active_autofill_user`)
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
  * Clears MPIN verifier and lock state for a specific user (e.g. Forgot MPIN)
  */
 export function clearMpin(userId: string): void {
@@ -351,6 +451,8 @@ export function clearMpin(userId: string): void {
   try {
     localStorage.removeItem(getKey("verifier", userId))
     localStorage.removeItem(getKey("remember", userId))
+    localStorage.removeItem(getKey("remember_mpin", userId))
+    localStorage.removeItem(getKey("autofill", userId))
     localStorage.removeItem(getKey("autounlock", userId))
     localStorage.removeItem(getKey("attempts", userId))
     clearRememberedUser()

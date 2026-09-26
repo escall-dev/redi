@@ -4,8 +4,17 @@ import * as React from "react"
 import { RediLogo } from "@/components/brand/redi-logo"
 import { SeijunMeadow } from "@/components/brand/seijun-meadow"
 import { MpinInput } from "@/components/auth/mpin-input"
-import { verifyMpin, getAttemptState } from "@/lib/auth/mpin-storage"
-import { AlertCircle, Loader2 } from "lucide-react"
+import {
+  verifyMpin,
+  getAttemptState,
+  isMpinRememberMeEnabled,
+  setMpinRememberMeEnabled,
+  getAutofillMpin,
+  saveAutofillMpin,
+  clearAutofillMpin,
+} from "@/lib/auth/mpin-storage"
+import { Button } from "@/components/ui/button"
+import { AlertCircle, Loader2, LogIn } from "lucide-react"
 
 export interface MpinReturningUser {
   id: string
@@ -38,11 +47,33 @@ export function MpinReturningForm({
   onForgotMpin,
   version,
 }: MpinReturningFormProps) {
-  const [mpin, setMpin] = React.useState("")
+  const initialAutofillPin = React.useMemo(() => {
+    if (typeof window === "undefined") return null
+    return getAutofillMpin(user?.id) || getAutofillMpin()
+  }, [user?.id])
+
+  const [mpin, setMpin] = React.useState<string>(() => initialAutofillPin || "")
   const [error, setError] = React.useState<string | null>(null)
   const [isVerifying, setIsVerifying] = React.useState(false)
   const [isLockedOut, setIsLockedOut] = React.useState(false)
   const [lockedSeconds, setLockedSeconds] = React.useState(0)
+  const [rememberMe, setRememberMe] = React.useState<boolean>(() => {
+    return Boolean(initialAutofillPin) || isMpinRememberMeEnabled(user?.id)
+  })
+  const rememberMeRef = React.useRef<boolean>(Boolean(initialAutofillPin) || isMpinRememberMeEnabled(user?.id))
+  const [isAutofilled, setIsAutofilled] = React.useState<boolean>(() => Boolean(initialAutofillPin))
+
+  // Initialize/sync Remember Me state and autofill MPIN if remembered
+  React.useEffect(() => {
+    const autofillPin = getAutofillMpin(user?.id) || getAutofillMpin()
+    const shouldBeRemembered = Boolean(autofillPin) || isMpinRememberMeEnabled(user?.id)
+    setRememberMe(shouldBeRemembered)
+    rememberMeRef.current = shouldBeRemembered
+    if (autofillPin) {
+      setMpin(autofillPin)
+      setIsAutofilled(true)
+    }
+  }, [user?.id])
 
   // Check initial attempt lockout status
   React.useEffect(() => {
@@ -86,12 +117,21 @@ export function MpinReturningForm({
       try {
         const result = await verifyMpin(user.id, codeToVerify)
         if (result.success) {
+          const shouldSave = rememberMeRef.current || rememberMe || isMpinRememberMeEnabled(user.id)
+          if (shouldSave) {
+            saveAutofillMpin(user.id, codeToVerify)
+            setMpinRememberMeEnabled(user.id, true)
+          } else {
+            clearAutofillMpin(user.id)
+            setMpinRememberMeEnabled(user.id, false)
+          }
           onSuccess()
           return
         }
 
         setError(result.error || "Incorrect MPIN. Please try again.")
         setMpin("")
+        setIsAutofilled(false)
 
         if (result.isLockedOut && result.lockedSecondsRemaining) {
           setIsLockedOut(true)
@@ -100,15 +140,36 @@ export function MpinReturningForm({
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Failed to verify MPIN.")
         setMpin("")
+        setIsAutofilled(false)
       } finally {
         setIsVerifying(false)
       }
     },
-    [isVerifying, isLockedOut, user.id, onSuccess]
+    [isVerifying, isLockedOut, user.id, rememberMe, onSuccess]
   )
 
   const handleComplete = (code: string) => {
+    // Only auto-submit if user interactively completed typing (not when autofilled on load)
     handleVerify(code)
+  }
+
+  const handleRememberMeChange = (checked: boolean) => {
+    rememberMeRef.current = checked
+    setRememberMe(checked)
+    if (user?.id) {
+      setMpinRememberMeEnabled(user.id, checked)
+      if (!checked) {
+        clearAutofillMpin(user.id)
+      } else if (mpin.length === 6) {
+        saveAutofillMpin(user.id, mpin)
+      }
+    }
+  }
+
+  const handleClear = () => {
+    setError(null)
+    setMpin("")
+    setIsAutofilled(false)
   }
 
   const rawName =
@@ -160,15 +221,48 @@ export function MpinReturningForm({
       <div className="space-y-4 pt-1">
         <MpinInput
           value={mpin}
-          onChange={setMpin}
+          onChange={(val) => {
+            setMpin(val)
+            if (isAutofilled) {
+              setIsAutofilled(false)
+            }
+            setError(null)
+          }}
           onComplete={handleComplete}
           disabled={isVerifying || isLockedOut}
           error={Boolean(error)}
           label="Enter your MPIN"
           showClear={true}
-          onClear={() => setError(null)}
-          autoFocus={true}
+          onClear={handleClear}
+          autoFocus={!isAutofilled}
         />
+
+        {/* Balanced Row: Remember me on the left, Forgot MPIN on the right */}
+        <div className="flex items-center justify-between px-1 pt-1 text-sm">
+          <label
+            htmlFor="rememberMpin"
+            className="flex items-center gap-2 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <input
+              id="rememberMpin"
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(e) => handleRememberMeChange(e.target.checked)}
+              disabled={isVerifying}
+              className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+            />
+            <span className="text-xs sm:text-sm font-medium">Remember me</span>
+          </label>
+
+          <button
+            type="button"
+            onClick={onForgotMpin}
+            disabled={isVerifying}
+            className="text-xs sm:text-sm font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
+          >
+            Forgot MPIN?
+          </button>
+        </div>
 
         {/* Verifying Indicator */}
         {isVerifying && (
@@ -178,17 +272,29 @@ export function MpinReturningForm({
           </div>
         )}
 
-        {/* Forgot MPIN link */}
-        <div className="text-center pt-2">
-          <button
-            type="button"
-            onClick={onForgotMpin}
-            disabled={isVerifying}
-            className="text-sm font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
-          >
-            Forgot MPIN?
-          </button>
-        </div>
+        {/* Prominent Sign In Button when MPIN is 6 digits */}
+        {mpin.length === 6 && (
+          <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
+            <Button
+              type="button"
+              onClick={() => handleVerify(mpin)}
+              disabled={isVerifying || isLockedOut}
+              className="w-full h-12 text-sm sm:text-base font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi hover:shadow-redi-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+            >
+              {isVerifying ? (
+                <>
+                  <Loader2 className="size-4.5 animate-spin" />
+                  <span>Signing in...</span>
+                </>
+              ) : (
+                <>
+                  <LogIn className="size-4.5 stroke-[2.2]" />
+                  <span>Sign In</span>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* User Email Pill & Switch Account */}

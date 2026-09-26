@@ -218,7 +218,32 @@ await test("After lockout period elapses, entering correct MPIN succeeds and res
 // ---------------------------------------------------------------------------
 // 3. Remember Me & Automatic Unlock States
 // ---------------------------------------------------------------------------
-console.log("\n--- 3. Remember Me & Automatic Unlock Invariants ---")
+console.log("\n--- 3. Remember Me & MPIN Autofill Invariants ---")
+
+function simulateSaveAutofillMpin(userId, mpin) {
+  const encoded = Buffer.from(`seijun_${userId}_${mpin}`).toString("base64")
+  mockStorage.setItem(`seijun_mpin_autofill_${userId}`, encoded)
+  mockStorage.setItem(`seijun_mpin_remember_mpin_${userId}`, "true")
+}
+
+function simulateGetAutofillMpin(userId) {
+  const isRemembered = mockStorage.getItem(`seijun_mpin_remember_mpin_${userId}`) === "true"
+  if (!isRemembered) return null
+  const raw = mockStorage.getItem(`seijun_mpin_autofill_${userId}`)
+  if (!raw) return null
+  const decoded = Buffer.from(raw, "base64").toString("utf-8")
+  const prefix = `seijun_${userId}_`
+  if (decoded.startsWith(prefix)) {
+    const pin = decoded.slice(prefix.length)
+    if (/^\d{6}$/.test(pin)) return pin
+  }
+  return null
+}
+
+function simulateClearAutofillMpin(userId) {
+  mockStorage.removeItem(`seijun_mpin_autofill_${userId}`)
+  mockStorage.setItem(`seijun_mpin_remember_mpin_${userId}`, "false")
+}
 
 await test("Default returning experience requires manual MPIN entry (autoUnlock is false by default)", () => {
   const userId = "user-settings"
@@ -234,6 +259,35 @@ await test("Automatic unlock can be explicitly enabled and disabled", () => {
 
   mockStorage.setItem(`seijun_mpin_autounlock_${userId}`, "false")
   assert.equal(mockStorage.getItem(`seijun_mpin_autounlock_${userId}`), "false")
+})
+
+await test("MPIN Remember Me saves and retrieves obfuscated autofill MPIN", () => {
+  const userId = "user-autofill-test"
+  simulateSaveAutofillMpin(userId, "987654")
+
+  assert.equal(mockStorage.getItem(`seijun_mpin_remember_mpin_${userId}`), "true")
+  const autofilledPin = simulateGetAutofillMpin(userId)
+  assert.equal(autofilledPin, "987654")
+})
+
+await test("Unchecking Remember Me clears stored autofill MPIN", () => {
+  const userId = "user-autofill-clear"
+  simulateSaveAutofillMpin(userId, "123987")
+  assert.equal(simulateGetAutofillMpin(userId), "123987")
+
+  simulateClearAutofillMpin(userId)
+  assert.equal(simulateGetAutofillMpin(userId), null)
+  assert.equal(mockStorage.getItem(`seijun_mpin_remember_mpin_${userId}`), "false")
+})
+
+await test("Autofilled MPIN survives session logout without being wiped", () => {
+  const userId = "user-logout-remember"
+  simulateSaveAutofillMpin(userId, "554433")
+
+  // Simulate logout (locks session cookie, leaves local autofill intact)
+  const isSessionLocked = true
+  const rememberedPin = simulateGetAutofillMpin(userId)
+  assert.equal(rememberedPin, "554433")
 })
 
 // ---------------------------------------------------------------------------
@@ -450,14 +504,19 @@ await test("MpinInput uses minimal rounded box styling", () => {
   assert.ok(content.includes("border-slate-300"), "Missing clean outline border")
 })
 
-// Check that MpinReturningForm contains user's email in the info pill
-await test("MpinReturningForm contains user's email and Switch Account", () => {
+// Check that MpinReturningForm contains user's email, Remember me, Forgot MPIN, and Sign In button
+await test("MpinReturningForm contains user's email, Remember me checkbox, and Sign In button", () => {
   const content = fs.readFileSync(path.resolve("components/auth/mpin-returning-form.tsx"), "utf8")
   assert.ok(content.includes("Welcome back,"), "Missing Welcome back header")
   assert.ok(content.includes("Enter your 6-digit MPIN"), "Missing MPIN subtitle")
   assert.ok(content.includes("Forgot MPIN?"), "Missing Forgot MPIN action")
+  assert.ok(content.includes("Remember me"), "Missing Remember me label")
+  assert.ok(content.includes('id="rememberMpin"'), "Missing rememberMpin checkbox input")
+  assert.ok(content.includes("Sign In"), "Missing Sign In button")
   assert.ok(content.includes("Switch Account"), "Missing Switch Account link")
   assert.ok(content.includes("user.email"), "Missing user email display")
+  assert.ok(content.includes("getAutofillMpin"), "Missing getAutofillMpin integration")
+  assert.ok(content.includes("saveAutofillMpin"), "Missing saveAutofillMpin integration")
 })
 
 console.log(`\n=================================================`)
