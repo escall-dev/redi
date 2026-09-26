@@ -319,8 +319,8 @@ export function MpinReturningForm({
         </div>
       </div>
 
-      {/* ── Bottom: Credits + Meadow raised upward to prevent bottom cutoff on phones ── */}
-      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-7 sm:pb-8 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+      {/* ── Bottom: Credits + Meadow nicely balanced slightly above bottom edge ── */}
+      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-3 sm:pb-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         {/* Version badge & Credits — stacked right above meadow */}
         <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
