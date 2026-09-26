@@ -573,7 +573,7 @@ export async function acceptInvitation(
     const now = new Date().toISOString()
 
     // 1. Transition relationship to active
-    const { error: relUpdateError } = await supabase
+    const { data: updatedRel, error: relUpdateError } = await supabase
       .from("partner_relationships")
       .update({
         supporter_user_id: acceptingUserId,
@@ -582,13 +582,19 @@ export async function acceptInvitation(
       })
       .eq("id", invitation.relationship_id)
       .eq("status", "pending")
+      .select("id")
+      .maybeSingle()
 
     if (relUpdateError) {
-      return { ok: false, error: "Failed to activate partner relationship." }
+      return { ok: false, error: relUpdateError.message || "Failed to activate partner relationship." }
+    }
+
+    if (!updatedRel) {
+      return { ok: false, error: "Failed to activate partner relationship. Record was not updated." }
     }
 
     // 2. Transition invitation to accepted (prevents reuse)
-    const { error: invUpdateError } = await supabase
+    const { data: updatedInv, error: invUpdateError } = await supabase
       .from("partner_invitations")
       .update({
         status: "accepted",
@@ -596,9 +602,15 @@ export async function acceptInvitation(
       })
       .eq("id", invitation.id)
       .eq("status", "pending")
+      .select("id")
+      .maybeSingle()
 
     if (invUpdateError) {
-      return { ok: false, error: "Failed to update invitation status to accepted." }
+      return { ok: false, error: invUpdateError.message || "Failed to update invitation status to accepted." }
+    }
+
+    if (!updatedInv) {
+      return { ok: false, error: "Failed to update invitation status to accepted. Record was not updated." }
     }
 
     return {
@@ -647,20 +659,123 @@ export async function declineInvitation(
 
     const now = new Date().toISOString()
 
-    await supabase
+    const { data: updatedInv, error: invError2 } = await supabase
       .from("partner_invitations")
       .update({
         status: "declined",
         declined_at: now,
       })
       .eq("id", invitation.id)
+      .select("id")
+      .maybeSingle()
 
-    await supabase
+    if (invError2 || !updatedInv) {
+      return { ok: false, error: invError2?.message || "Failed to decline invitation." }
+    }
+
+    const { data: updatedRel, error: relError } = await supabase
       .from("partner_relationships")
       .update({
         status: "declined",
       })
       .eq("id", invitation.relationship_id)
+      .select("id")
+      .maybeSingle()
+
+    if (relError || !updatedRel) {
+      return { ok: false, error: relError?.message || "Failed to update relationship status." }
+    }
+
+    return { ok: true }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unexpected error declining invitation."
+    return { ok: false, error: message }
+  }
+}
+
+/**
+ * Service: Declines a pending invitation directly by ID (for authenticated recipient in in-app UI).
+ */
+export async function declineInvitationById(
+  supabase: SupabaseClient<Database>,
+  invitationId: string,
+  decliningUserId: string
+): Promise<PartnerActionResult> {
+  try {
+    if (!invitationId || !decliningUserId) {
+      return { ok: false, error: "Invalid invitation decline parameters." }
+    }
+
+    // 1. Try atomic PostgreSQL RPC by ID first
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("decline_partner_invitation_by_id", {
+        p_invitation_id: invitationId,
+        p_declining_user_id: decliningUserId,
+      })
+
+      if (!rpcError && rpcData && typeof rpcData === "object") {
+        const result = rpcData as { ok?: boolean; error?: string }
+        if (result.ok) {
+          return { ok: true }
+        }
+        if (result.error) {
+          return { ok: false, error: result.error }
+        }
+      }
+    } catch {
+      // Fall through to service-level execution
+    }
+
+    const { data: invitation, error: invError } = await supabase
+      .from("partner_invitations")
+      .select("id, relationship_id, inviter_user_id, invitee_user_id, status")
+      .eq("id", invitationId)
+      .maybeSingle()
+
+    if (invError || !invitation) {
+      return { ok: false, error: "Invitation not found." }
+    }
+
+    if (invitation.status !== "pending") {
+      return { ok: false, error: `Invitation cannot be declined because it is ${invitation.status}.` }
+    }
+
+    if (invitation.inviter_user_id === decliningUserId) {
+      return { ok: false, error: "You cannot decline your own invitation. Use cancel instead." }
+    }
+
+    if (invitation.invitee_user_id && invitation.invitee_user_id !== decliningUserId) {
+      return { ok: false, error: "This invitation was addressed to a different account." }
+    }
+
+    const now = new Date().toISOString()
+
+    const { data: updatedInv, error: invError2 } = await supabase
+      .from("partner_invitations")
+      .update({
+        status: "declined",
+        declined_at: now,
+      })
+      .eq("id", invitation.id)
+      .select("id")
+      .maybeSingle()
+
+    if (invError2 || !updatedInv) {
+      return { ok: false, error: invError2?.message || "Failed to decline invitation." }
+    }
+
+    const { data: updatedRel, error: relError } = await supabase
+      .from("partner_relationships")
+      .update({
+        status: "declined",
+      })
+      .eq("id", invitation.relationship_id)
+      .select("id")
+      .maybeSingle()
+
+    if (relError || !updatedRel) {
+      return { ok: false, error: relError?.message || "Failed to update relationship status." }
+    }
 
     return { ok: true }
   } catch (err) {
@@ -1125,9 +1240,30 @@ export async function acceptInvitationById(
       return { ok: false, error: "Invalid invitation parameters." }
     }
 
+    // 1. Try atomic PostgreSQL RPC by ID first
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc("accept_partner_invitation_by_id", {
+        p_invitation_id: invitationId,
+        p_accepting_user_id: acceptingUserId,
+      })
+
+      if (!rpcError && rpcData && typeof rpcData === "object") {
+        const result = rpcData as { ok?: boolean; error?: string; relationship_id?: string }
+        if (result.ok && result.relationship_id) {
+          return { ok: true, data: { relationshipId: result.relationship_id } }
+        }
+        if (result.error) {
+          return { ok: false, error: result.error }
+        }
+      }
+    } catch {
+      // RPC by ID may not be present in all environments, fall through to token RPC or direct execution
+    }
+
+    // 2. Fetch invitation record
     const { data: invitation, error: invError } = await supabase
       .from("partner_invitations")
-      .select("id, relationship_id, inviter_user_id, invitee_user_id, expires_at, status")
+      .select("id, relationship_id, inviter_user_id, invitee_user_id, token_hash, expires_at, status")
       .eq("id", invitationId)
       .maybeSingle()
 
@@ -1135,6 +1271,29 @@ export async function acceptInvitationById(
       return { ok: false, error: "Invitation not found." }
     }
 
+    // 3. Try token-based RPC if token_hash is available
+    if (invitation.token_hash) {
+      try {
+        const { data: tokenRpcData, error: tokenRpcError } = await supabase.rpc("accept_partner_invitation", {
+          p_token_hash: invitation.token_hash,
+          p_accepting_user_id: acceptingUserId,
+        })
+
+        if (!tokenRpcError && tokenRpcData && typeof tokenRpcData === "object") {
+          const result = tokenRpcData as { ok?: boolean; error?: string; relationship_id?: string }
+          if (result.ok && result.relationship_id) {
+            return { ok: true, data: { relationshipId: result.relationship_id } }
+          }
+          if (result.error) {
+            return { ok: false, error: result.error }
+          }
+        }
+      } catch {
+        // Fall through to service-level execution
+      }
+    }
+
+    // 4. Service-level fallback validation
     if (invitation.status !== "pending") {
       return { ok: false, error: `Invitation is ${invitation.status} and cannot be accepted.` }
     }
@@ -1154,24 +1313,32 @@ export async function acceptInvitationById(
     }
 
     // 1:1 check for accepter
-    const { data: accepterActive } = await supabase
+    const { data: accepterActive, error: accepterActiveErr } = await supabase
       .from("partner_relationships")
       .select("id")
       .or(`owner_user_id.eq.${acceptingUserId},supporter_user_id.eq.${acceptingUserId}`)
       .eq("status", "active")
       .maybeSingle()
 
+    if (accepterActiveErr) {
+      return { ok: false, error: "Database error checking active relationship status." }
+    }
+
     if (accepterActive) {
       return { ok: false, error: "You already have an active partner connection. 1:1 model allows only one active connection." }
     }
 
     // 1:1 check for inviter
-    const { data: inviterActive } = await supabase
+    const { data: inviterActive, error: inviterActiveErr } = await supabase
       .from("partner_relationships")
       .select("id")
       .or(`owner_user_id.eq.${invitation.inviter_user_id},supporter_user_id.eq.${invitation.inviter_user_id}`)
       .eq("status", "active")
       .maybeSingle()
+
+    if (inviterActiveErr) {
+      return { ok: false, error: "Database error checking inviter connection status." }
+    }
 
     if (inviterActive) {
       return { ok: false, error: "The invitation sender already has an active partner connection." }
@@ -1179,7 +1346,7 @@ export async function acceptInvitationById(
 
     const now = new Date().toISOString()
 
-    const { error: relError } = await supabase
+    const { data: updatedRel, error: relError } = await supabase
       .from("partner_relationships")
       .update({
         supporter_user_id: acceptingUserId,
@@ -1188,12 +1355,18 @@ export async function acceptInvitationById(
       })
       .eq("id", invitation.relationship_id)
       .eq("status", "pending")
+      .select("id")
+      .maybeSingle()
 
     if (relError) {
-      return { ok: false, error: "Failed to activate partner relationship." }
+      return { ok: false, error: relError.message || "Failed to activate partner relationship." }
     }
 
-    const { error: invUpdateError } = await supabase
+    if (!updatedRel) {
+      return { ok: false, error: "Failed to activate partner relationship. Record was not updated." }
+    }
+
+    const { data: updatedInv, error: invUpdateError } = await supabase
       .from("partner_invitations")
       .update({
         status: "accepted",
@@ -1201,9 +1374,15 @@ export async function acceptInvitationById(
       })
       .eq("id", invitation.id)
       .eq("status", "pending")
+      .select("id")
+      .maybeSingle()
 
     if (invUpdateError) {
-      return { ok: false, error: "Failed to update invitation status to accepted." }
+      return { ok: false, error: invUpdateError.message || "Failed to update invitation status to accepted." }
+    }
+
+    if (!updatedInv) {
+      return { ok: false, error: "Failed to update invitation status to accepted. Record was not updated." }
     }
 
     return {

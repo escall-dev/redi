@@ -55,6 +55,11 @@ export function InvitationAcceptanceView({
     try {
       const res = await acceptPartnerInvitationAction(rawToken)
       if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
+        router.refresh()
         setFlowState("accepted")
       } else {
         setActionError(res.error || "Failed to accept partner invitation.")
@@ -75,6 +80,11 @@ export function InvitationAcceptanceView({
     try {
       const res = await declinePartnerInvitationAction(rawToken)
       if (res.ok) {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
+        router.refresh()
         setFlowState("declined")
       } else {
         setActionError(res.error || "Failed to decline invitation.")

@@ -9,7 +9,7 @@ import {
   getPartnerConnectionStateAction,
   cancelPartnerInvitationAction,
   acceptPartnerInvitationByIdAction,
-  declinePartnerInvitationAction,
+  declinePartnerInvitationByIdAction,
 } from "@/app/actions/partner"
 import type { PartnerConnectionState } from "@/lib/partner/types"
 import { AddPartnerModal } from "@/components/partner/add-partner-modal"
@@ -139,6 +139,7 @@ export function PartnerConnectionCard({
           window.dispatchEvent(new CustomEvent("seijun:notification-update"))
         }
         await fetchState()
+        router.refresh()
       } else {
         setErrorMsg(res.error || "Failed to accept partner invitation.")
       }
@@ -154,13 +155,14 @@ export function PartnerConnectionCard({
     setActionPending(true)
     setErrorMsg(null)
     try {
-      const res = await declinePartnerInvitationAction(invitationId)
+      const res = await declinePartnerInvitationByIdAction(invitationId)
       if (res.ok) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
           window.dispatchEvent(new CustomEvent("seijun:notification-update"))
         }
         await fetchState()
+        router.refresh()
       } else {
         setErrorMsg(res.error || "Failed to decline invitation.")
       }

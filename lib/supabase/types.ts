@@ -528,6 +528,20 @@ export interface Database {
         }
         Returns: Json
       }
+      accept_partner_invitation_by_id: {
+        Args: {
+          p_invitation_id: string
+          p_accepting_user_id: string
+        }
+        Returns: Json
+      }
+      decline_partner_invitation_by_id: {
+        Args: {
+          p_invitation_id: string
+          p_declining_user_id: string
+        }
+        Returns: Json
+      }
       search_partner_by_username: {
         Args: {
           p_query: string

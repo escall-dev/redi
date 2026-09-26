@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import {
   createPartnerInvitation,
@@ -7,6 +8,7 @@ import {
   acceptInvitation,
   acceptInvitationById,
   declineInvitation,
+  declineInvitationById,
   cancelInvitation,
   revokeRelationship,
   getPartnerRelationship,
@@ -99,7 +101,14 @@ export async function acceptPartnerInvitationAction(
     return { ok: false, error: "Authentication required to accept partner invitation." }
   }
 
-  return acceptInvitation(supabase, rawToken, user.id)
+  const res = await acceptInvitation(supabase, rawToken, user.id)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
 }
 
 /**
@@ -118,7 +127,14 @@ export async function declinePartnerInvitationAction(
     return { ok: false, error: "Authentication required to decline partner invitation." }
   }
 
-  return declineInvitation(supabase, rawToken, user.id)
+  const res = await declineInvitation(supabase, rawToken, user.id)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
 }
 
 /**
@@ -137,7 +153,14 @@ export async function cancelPartnerInvitationAction(
     return { ok: false, error: "Authentication required to cancel partner invitation." }
   }
 
-  return cancelInvitation(supabase, user.id, invitationId)
+  const res = await cancelInvitation(supabase, user.id, invitationId)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
 }
 
 /**
@@ -156,7 +179,14 @@ export async function revokePartnerRelationshipAction(
     return { ok: false, error: "Authentication required to revoke partner relationship." }
   }
 
-  return revokeRelationship(supabase, user.id, relationshipId)
+  const res = await revokeRelationship(supabase, user.id, relationshipId)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
 }
 
 /**
@@ -237,7 +267,40 @@ export async function acceptPartnerInvitationByIdAction(
     return { ok: false, error: "Authentication required to accept partner invitation." }
   }
 
-  return acceptInvitationById(supabase, invitationId, user.id)
+  const res = await acceptInvitationById(supabase, invitationId, user.id)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
+}
+
+/**
+ * Server Action: Declines a partner invitation directly by invitation ID (for in-app UI).
+ */
+export async function declinePartnerInvitationByIdAction(
+  invitationId: string
+): Promise<PartnerActionResult> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required to decline partner invitation." }
+  }
+
+  const res = await declineInvitationById(supabase, invitationId, user.id)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/notifications")
+  }
+  return res
 }
 
 /**
