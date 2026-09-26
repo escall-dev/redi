@@ -57,6 +57,7 @@ import {
 } from "@/app/actions/partner-mutations"
 import type { SharedDailyNote } from "@/lib/partner/shared-data"
 import { useAppRouter } from "@/components/navigation/use-app-router"
+import { CycleContextSwitcher } from "@/components/cycle-context/cycle-context-switcher"
 
 /**
  * Seijun Phase 19 Batch 4
@@ -68,7 +69,11 @@ import { useAppRouter } from "@/components/navigation/use-app-router"
  * strictly read-only.
  */
 
-export function PartnerDashboardView() {
+export function PartnerDashboardView({
+  isPrimaryDashboard = false,
+}: {
+  isPrimaryDashboard?: boolean
+} = {}) {
   const router = useAppRouter()
   const [dashboardData, setDashboardData] = React.useState<PartnerDashboardData | null>(null)
   const [loading, setLoading] = React.useState(true)
@@ -192,7 +197,7 @@ export function PartnerDashboardView() {
   if (error) {
     return (
       <div className="space-y-6 pb-8 max-w-2xl mx-auto animate-in fade-in duration-200">
-        <PartnerDashboardHeader />
+        <PartnerDashboardHeader isPrimaryDashboard={isPrimaryDashboard} />
         <Card className="border-destructive/30">
           <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
             <AlertCircle className="size-8 text-destructive" />
@@ -215,7 +220,8 @@ export function PartnerDashboardView() {
   if (!dashboardData?.authorized) {
     return (
       <div className="space-y-6 pb-8 max-w-2xl mx-auto animate-in fade-in duration-200">
-        <PartnerDashboardHeader />
+        {isPrimaryDashboard && <CycleContextSwitcher />}
+        <PartnerDashboardHeader isPrimaryDashboard={isPrimaryDashboard} />
         <Card className="border-border/60">
           <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-secondary/50 text-muted-foreground">
@@ -254,8 +260,14 @@ export function PartnerDashboardView() {
 
   return (
     <div className="space-y-6 pb-8 max-w-2xl mx-auto animate-in fade-in duration-200">
+      {/* Context Switcher if primary dashboard */}
+      {isPrimaryDashboard && <CycleContextSwitcher />}
+
       {/* Header */}
-      <PartnerDashboardHeader />
+      <PartnerDashboardHeader
+        isPrimaryDashboard={isPrimaryDashboard}
+        ownerDisplayName={dashboardData.ownerDisplayName}
+      />
 
       {/* Partner Profile Card */}
       <Card className="overflow-hidden border-border/70 shadow-xs">
@@ -380,26 +392,38 @@ export function PartnerDashboardView() {
 
 // ─── Sub-Components ──────────────────────────────────────────────────────────
 
-function PartnerDashboardHeader() {
+function PartnerDashboardHeader({
+  isPrimaryDashboard = false,
+  ownerDisplayName,
+}: {
+  isPrimaryDashboard?: boolean
+  ownerDisplayName?: string
+} = {}) {
   const router = useAppRouter()
   return (
     <div className="space-y-1 select-none">
-      <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push("/settings/partner")}
-          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground rounded-lg -ml-2 cursor-pointer"
-        >
-          <ChevronLeft className="size-3.5" />
-          Partner
-        </Button>
-      </div>
+      {!isPrimaryDashboard && (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push("/settings/partner")}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground rounded-lg -ml-2 cursor-pointer"
+          >
+            <ChevronLeft className="size-3.5" />
+            Partner
+          </Button>
+        </div>
+      )}
       <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-        Partner Dashboard
+        {isPrimaryDashboard && ownerDisplayName
+          ? `${ownerDisplayName}'s Cycle`
+          : "Partner Dashboard"}
       </h1>
       <p className="text-sm text-muted-foreground leading-relaxed">
-        Shared cycle awareness and authorized co-management.
+        {isPrimaryDashboard && ownerDisplayName
+          ? `Shared cycle awareness and authorized co-management for ${ownerDisplayName}.`
+          : "Shared cycle awareness and authorized co-management."}
       </p>
     </div>
   )

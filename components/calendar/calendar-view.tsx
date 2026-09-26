@@ -41,6 +41,8 @@ interface CalendarViewProps {
   initialDate?: string // YYYY-MM-DD
   symptoms?: SymptomRecord[]
   notes?: DailyNoteRecord[]
+  isPartnerView?: boolean
+  partnerDisplayName?: string
 }
 
 export function CalendarView({
@@ -48,6 +50,8 @@ export function CalendarView({
   initialDate,
   symptoms = [],
   notes = [],
+  isPartnerView = false,
+  partnerDisplayName,
 }: CalendarViewProps) {
   const todayStr = React.useMemo(() => getTodayDateString(), [])
   const [selectedDateStr, setSelectedDateStr] = React.useState<string>(
@@ -534,8 +538,8 @@ export function CalendarView({
             </div>
           )}
 
-          {/* Symptoms for selected date */}
-          {!selectedContext.isFuture && (
+          {/* Symptoms for selected date (personal cycle only) */}
+          {!selectedContext.isFuture && !isPartnerView && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
@@ -582,27 +586,29 @@ export function CalendarView({
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                   <FileText className="size-3.5" />
-                  Daily Note
+                  {isPartnerView ? "Partner Note" : "Daily Note"}
                 </span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setNoteEditorOpen(true)}
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
-                >
-                  {selectedDateNote ? (
-                    <>
-                      <Pencil className="size-3" />
-                      Edit Note
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="size-3" />
-                      Add Note
-                    </>
-                  )}
-                </Button>
+                {!isPartnerView && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setNoteEditorOpen(true)}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
+                  >
+                    {selectedDateNote ? (
+                      <>
+                        <Pencil className="size-3" />
+                        Edit Note
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="size-3" />
+                        Add Note
+                      </>
+                    )}
+                  </Button>
+                )}
               </div>
 
               {selectedDateNote ? (
@@ -617,8 +623,8 @@ export function CalendarView({
             </div>
           )}
 
-          {/* Action: Link to View Associated Cycle (Section 9) */}
-          {selectedContext.cycle && (
+          {/* Action: Link to View Associated Cycle (Personal only) */}
+          {selectedContext.cycle && !isPartnerView && (
             <div className="pt-2 flex justify-end">
               <Button
                 variant="outline"

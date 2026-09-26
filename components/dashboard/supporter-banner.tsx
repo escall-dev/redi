@@ -3,9 +3,13 @@ import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { HeartHandshake, Sparkles, ArrowRight, Eye } from "lucide-react"
+import { HeartHandshake, Sparkles, ArrowRight, Eye, UserPlus } from "lucide-react"
 
-export function SupporterBanner() {
+interface SupporterBannerProps {
+  hasActivePartner?: boolean
+}
+
+export function SupporterBanner({ hasActivePartner = false }: SupporterBannerProps) {
   return (
     <Card className="border border-lavender-border/80 bg-gradient-to-br from-lavender/30 via-background to-card shadow-xs rounded-2xl sm:rounded-3xl overflow-hidden">
       <CardContent className="p-5 sm:p-6">
@@ -23,24 +27,36 @@ export function SupporterBanner() {
                 </Badge>
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
-                Partner Supporter View
+                {hasActivePartner ? "Partner Supporter View" : "Connect with Your Partner"}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
-                You are set up to support someone else&apos;s cycle. Access your partner&apos;s shared estimates,
-                period logs, and shared daily notes in your dedicated Partner Dashboard.
+                {hasActivePartner
+                  ? "You are set up to support someone else's cycle. Access your partner's shared estimates, period logs, and shared daily notes in your dedicated Partner Dashboard."
+                  : "You are set up as a cycle supporter. Connect with your partner using an invitation link or by sending an invite to view and support their cycle."}
               </p>
             </div>
           </div>
 
           <div className="w-full sm:w-auto shrink-0 pt-1 sm:pt-0">
-            <Link
-              href="/partner"
-              className="inline-flex items-center justify-center w-full sm:w-auto h-9 px-4 rounded-xl gap-2 text-xs font-semibold cursor-pointer shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Eye className="size-3.5" />
-              <span>Partner Dashboard</span>
-              <ArrowRight className="size-3.5" />
-            </Link>
+            {hasActivePartner ? (
+              <Link
+                href="/partner"
+                className="inline-flex items-center justify-center w-full sm:w-auto h-9 px-4 rounded-xl gap-2 text-xs font-semibold cursor-pointer shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Eye className="size-3.5" />
+                <span>Partner Dashboard</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            ) : (
+              <Link
+                href="/settings/partner"
+                className="inline-flex items-center justify-center w-full sm:w-auto h-9 px-4 rounded-xl gap-2 text-xs font-semibold cursor-pointer shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <UserPlus className="size-3.5" />
+                <span>Partner Settings</span>
+                <ArrowRight className="size-3.5" />
+              </Link>
+            )}
           </div>
         </div>
       </CardContent>

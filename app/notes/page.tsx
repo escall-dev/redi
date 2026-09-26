@@ -4,6 +4,8 @@ import { getDailyNotesForUser } from "@/app/actions/notes"
 import { NotesHistory } from "@/components/notes/notes-history"
 import { Badge } from "@/components/ui/badge"
 import { BookOpen } from "lucide-react"
+import { resolveServerCycleContext } from "@/lib/cycle-context/server"
+import { CycleContextSwitcher } from "@/components/cycle-context/cycle-context-switcher"
 
 export const dynamic = "force-dynamic"
 
@@ -20,6 +22,12 @@ export default async function NotesPage() {
   }
 
   const supabase = await createClient()
+  const cycleContext = await resolveServerCycleContext(supabase, user.id)
+
+  // In partner context, supporter should access partner daily notes through partner dashboard
+  if (cycleContext.isPartnerContext) {
+    redirect("/partner")
+  }
 
   const [profileRes, notes] = await Promise.all([
     supabase
@@ -38,6 +46,9 @@ export default async function NotesPage() {
 
   return (
     <div className="space-y-6 pb-8">
+      {/* Context Switcher for dual-role users */}
+      {cycleContext.canSwitchContext && <CycleContextSwitcher />}
+
       {/* Page Header */}
       <div className="space-y-1 max-w-2xl mx-auto">
         <div className="flex items-center gap-2">

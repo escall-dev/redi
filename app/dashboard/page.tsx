@@ -22,6 +22,9 @@ import { RecentCyclesSection } from "@/components/dashboard/recent-cycles-sectio
 import { TodaySymptomsCard } from "@/components/dashboard/today-symptoms-card"
 import { TodayNoteCard } from "@/components/dashboard/today-note-card"
 import { NotificationPermissionPrompt } from "@/components/notifications/notification-permission-prompt"
+import { resolveServerCycleContext } from "@/lib/cycle-context/server"
+import { CycleContextSwitcher } from "@/components/cycle-context/cycle-context-switcher"
+import { PartnerDashboardView } from "@/components/partner/partner-dashboard-view"
 
 export const dynamic = "force-dynamic"
 
@@ -40,47 +43,21 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const todayStr = getTodayDateString()
 
-  // Concurrently execute independent server queries
-  const [profileResult, cycles, todaySymptoms, todayNote] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
-      .eq("user_id", user.id)
-      .maybeSingle(),
-    getCyclesForUser(user.id, supabase),
-    getSymptomsByDateForUser(user.id, todayStr, supabase),
-    getDailyNoteByDateForUser(user.id, todayStr, supabase),
-  ])
+  // 1. Resolve authoritative cycle context (OWN vs PARTNER)
+  const cycleContext = await resolveServerCycleContext(supabase, user.id)
 
-  const profile = profileResult.data
+  // 2. Fetch user profile for onboarding status and display name
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
+    .eq("user_id", user.id)
+    .maybeSingle()
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")
   }
 
   const displayName = profile?.display_name || user.user_metadata?.display_name || "Friend"
-  const typicalCycleLength = profile?.typical_cycle_length ?? 28
-  const onboardingStartDate = profile?.last_period_start ?? null
-  const isSupporter = profile?.usage_role === "supporter"
-
-  // 1. Current Cycle & Status
-  const currentCycle = getCurrentCycle(cycles, todayStr)
-  const statusInfo = getCurrentCycleStatus(currentCycle, todayStr)
-
-  // 2. Statistics
-  const avgCycleLength = calculateAverageCycleLength(cycles)
-  const avgPeriodDuration = calculateAveragePeriodDuration(cycles)
-  const expectedCycleLength = avgCycleLength || typicalCycleLength || 28
-
-  // 3. Period Insights (Last Period and Estimated Next Period)
-  const latestPeriod = getLatestPeriod(cycles)
-  const latestCycleStart = currentCycle?.start_date ?? onboardingStartDate
-  const estimatedNextPeriod = calculateEstimatedNextPeriod({
-    latestCycleStartDate: latestCycleStart,
-    averageCycleLength: avgCycleLength,
-    typicalCycleLength,
-    referenceDateStr: todayStr,
-  })
 
   // Opportunistic evaluation of pending due reminders in the background
   try {
@@ -90,48 +67,95 @@ export default async function DashboardPage() {
     // Non-blocking
   }
 
+  // ─── PARTNER CYCLE CONTEXT (Supporter Mode or Both-Role Partner Context) ───────
+  if (cycleContext.isPartnerContext) {
+    if (cycleContext.partnerInfo.hasActivePartner) {
+      // Naturally present the connected Partner's cycle experience
+      return <PartnerDashboardView isPrimaryDashboard={true} />
+    }
+
+    // Supporter account without active partner connection yet:
+    // Present dedicated supporter connection setup instead of inappropriate personal cycle cards
+    return (
+      <div className="space-y-6 pb-8 max-w-4xl mx-auto">
+        <DashboardHeader displayName={displayName} />
+        <NotificationPermissionPrompt usageRole={profile?.usage_role} />
+        <SupporterBanner hasActivePartner={false} />
+      </div>
+    )
+  }
+
+  // ─── OWN CYCLE CONTEXT (Cycle Tracker or Both-Role Own Context) ────────────────
+  const typicalCycleLength = profile?.typical_cycle_length ?? 28
+  const onboardingStartDate = profile?.last_period_start ?? null
+
+  const [cycles, todaySymptoms, todayNote] = await Promise.all([
+    getCyclesForUser(user.id, supabase),
+    getSymptomsByDateForUser(user.id, todayStr, supabase),
+    getDailyNoteByDateForUser(user.id, todayStr, supabase),
+  ])
+
+  // A. Current Cycle & Status
+  const currentCycle = getCurrentCycle(cycles, todayStr)
+  const statusInfo = getCurrentCycleStatus(currentCycle, todayStr)
+
+  // B. Statistics
+  const avgCycleLength = calculateAverageCycleLength(cycles)
+  const avgPeriodDuration = calculateAveragePeriodDuration(cycles)
+  const expectedCycleLength = avgCycleLength || typicalCycleLength || 28
+
+  // C. Period Insights
+  const latestPeriod = getLatestPeriod(cycles)
+  const latestCycleStart = currentCycle?.start_date ?? onboardingStartDate
+  const estimatedNextPeriod = calculateEstimatedNextPeriod({
+    latestCycleStartDate: latestCycleStart,
+    averageCycleLength: avgCycleLength,
+    typicalCycleLength,
+    referenceDateStr: todayStr,
+  })
+
   return (
     <div className="space-y-6 pb-8 max-w-4xl mx-auto">
-      {/* A. Personalized Greeting Header */}
+      {/* Context Switcher for users with dual roles */}
+      {cycleContext.canSwitchContext && <CycleContextSwitcher />}
+
+      {/* Personalized Greeting Header */}
       <DashboardHeader displayName={displayName} />
 
       {/* Explanatory Notification Permission Prompt */}
       <NotificationPermissionPrompt usageRole={profile?.usage_role} />
 
-      {/* Supporter Informational Notice */}
-      {isSupporter && <SupporterBanner />}
-
-      {/* B & G. Current Cycle Card with Progress Visualizer */}
+      {/* Current Cycle Card with Progress Visualizer */}
       <CurrentCycleCard
         currentCycle={currentCycle}
         statusInfo={statusInfo}
         expectedCycleLength={expectedCycleLength}
       />
 
-      {/* C & D. Period Insights: Last Period & Next Expected Period */}
+      {/* Period Insights: Last Period & Next Expected Period */}
       <PeriodInsights
         latestPeriod={latestPeriod}
         estimatedNextPeriod={estimatedNextPeriod}
         onboardingStartDate={onboardingStartDate}
       />
 
-      {/* H. Quick Actions (Log Period dialog, Calendar, Cycles) */}
+      {/* Quick Actions (Log Period dialog, Calendar, Cycles) */}
       <DashboardQuickActions />
 
-      {/* I. Daily Observations: Today's Symptoms & Today's Daily Note */}
+      {/* Daily Observations: Today's Symptoms & Today's Daily Note */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <TodaySymptomsCard todaySymptoms={todaySymptoms} todayStr={todayStr} />
         <TodayNoteCard todayNote={todayNote} todayStr={todayStr} />
       </div>
 
-      {/* E. Cycle Summary Statistics */}
+      {/* Cycle Summary Statistics */}
       <CycleStatsSection
         averageCycleLength={avgCycleLength}
         averagePeriodDuration={avgPeriodDuration}
         cyclesCount={cycles.length}
       />
 
-      {/* F. Recent Cycle History */}
+      {/* Recent Cycle History */}
       <RecentCyclesSection
         cycles={cycles}
         currentCycleId={currentCycle?.id}
