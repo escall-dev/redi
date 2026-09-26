@@ -9,6 +9,7 @@ import { hasMpin, isAutoUnlockEnabled, setSessionLocked, clearMpin, getRemembere
 import { MpinReturningForm, type MpinReturningUser } from "@/components/auth/mpin-returning-form"
 import { MpinSetupForm } from "@/components/auth/mpin-setup-form"
 import { RediLogo } from "@/components/brand/redi-logo"
+import { SeijunMeadow } from "@/components/brand/seijun-meadow"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -338,172 +339,183 @@ export function LoginForm({ version }: LoginFormProps = {}) {
       : null)
 
   return (
-    <div className="w-full space-y-7 max-w-md mx-auto py-2">
-      {/* Header & Logo Section */}
-      <div className="flex flex-col items-center text-center space-y-3">
-        {/* Highlighted Standalone Seijun Tulip Logo */}
-        <div className="relative flex items-center justify-center pt-2 pb-1">
-          <div
-            className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
-            aria-hidden="true"
-          />
-          <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+    <div className="w-full max-w-md mx-auto h-full min-h-0 flex flex-col justify-between overflow-hidden">
+      {/* ── Form content: centered in upper/middle portion of viewport ── */}
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-2 min-h-0 space-y-4 overflow-y-auto">
+        {/* Header & Logo Section */}
+        <div className="flex flex-col items-center text-center space-y-2.5">
+          {/* Highlighted Standalone Seijun Tulip Logo */}
+          <div className="relative flex items-center justify-center pt-1 pb-1">
+            <div
+              className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
+              aria-hidden="true"
+            />
+            <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              {greetingName ? `Welcome back, ${greetingName}` : "Sign In"}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {greetingName
+                ? "Enter your password to sign in."
+                : "Enter your credentials to access Seijun private cycle tracking."}
+            </p>
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {greetingName ? `Welcome back, ${greetingName}` : "Sign In"}
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            {greetingName
-              ? "Enter your password to sign in."
-              : "Enter your credentials to access Seijun private cycle tracking."}
+        {/* Feedback Banners */}
+        {urlVerified && (
+          <div
+            role="status"
+            className="flex items-start gap-2.5 rounded-2xl border border-success-border/60 bg-success-soft p-3 text-sm text-success-foreground"
+          >
+            <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-success" />
+            <span className="leading-snug">
+              Your email has been confirmed! You can now sign in.
+            </span>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span className="leading-snug">{errorMessage}</span>
+          </div>
+        )}
+
+        {/* Email / Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-3.5">
+          <input type="hidden" name="redirect" value={redirectTarget} />
+
+          {/* Email Field */}
+          <div className="space-y-1 text-left">
+            <Label htmlFor="email" className="text-sm font-medium text-foreground">
+              Email
+            </Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setCustomEmail(e.target.value)}
+              placeholder="you@example.com"
+              autoComplete="username email"
+              required
+              disabled={isSubmitting}
+              className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
+            />
+          </div>
+
+          {/* Password Field */}
+          <div className="space-y-1 text-left">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                Password
+              </Label>
+            </div>
+            <div className="relative">
+              <Input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                required
+                disabled={isSubmitting}
+                className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
+              >
+                {showPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Remember Me */}
+          <div className="flex items-center justify-between pt-0.5">
+            <label
+              htmlFor="rememberMe"
+              className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <input
+                id="rememberMe"
+                name="rememberMe"
+                type="checkbox"
+                checked={rememberMeChecked}
+                onChange={(e) => setRememberMeChecked(e.target.checked)}
+                disabled={isSubmitting}
+                className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+              />
+              <span>Remember me on this device</span>
+            </label>
+          </div>
+
+          {/* Submit Button */}
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="w-full h-11 text-sm font-medium rounded-xl mt-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all cursor-pointer"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="size-4 animate-spin mr-2" />
+                Signing in...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </Button>
+
+          {/* Install App Button */}
+          <InstallAppButton />
+        </form>
+
+        {/* Switch to Register */}
+        <div className="text-center pt-1">
+          <p className="text-sm text-muted-foreground">
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/register"
+              className="font-medium text-primary hover:underline underline-offset-4"
+            >
+              Create an account
+            </Link>
           </p>
         </div>
       </div>
 
-      {/* Feedback Banners */}
-      {urlVerified && (
-        <div
-          role="status"
-          className="flex items-start gap-2.5 rounded-2xl border border-success-border/60 bg-success-soft p-3 text-sm text-success-foreground"
-        >
-          <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-success" />
-          <span className="leading-snug">
-            Your email has been confirmed! You can now sign in.
-          </span>
-        </div>
-      )}
-
-      {errorMessage && (
-        <div
-          role="alert"
-          className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <span className="leading-snug">{errorMessage}</span>
-        </div>
-      )}
-
-      {/* Email / Password Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <input type="hidden" name="redirect" value={redirectTarget} />
-
-        {/* Email Field */}
-        <div className="space-y-1.5 text-left">
-          <Label htmlFor="email" className="text-sm font-medium text-foreground">
-            Email
-          </Label>
-          <Input
-            id="email"
-            name="email"
-            type="email"
-            value={email}
-            onChange={(e) => setCustomEmail(e.target.value)}
-            placeholder="you@example.com"
-            autoComplete="username email"
-            required
-            disabled={isSubmitting}
-            className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
-          />
-        </div>
-
-        {/* Password Field */}
-        <div className="space-y-1.5 text-left">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
-            </Label>
+      {/* ── Bottom: Credits + Meadow raised upward to prevent bottom cutoff on phones ── */}
+      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-7 sm:pb-8 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+        {/* Version badge & Credits — stacked right above meadow */}
+        <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
+            <RediLogo size="xs" />
+            <span>Developed by Alex for Redge</span>
           </div>
-          <div className="relative">
-            <Input
-              id="password"
-              name="password"
-              type={showPassword ? "text" : "password"}
-              placeholder="••••••••"
-              autoComplete="current-password"
-              required
-              disabled={isSubmitting}
-              className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
-            >
-              {showPassword ? (
-                <EyeOff className="size-4" />
-              ) : (
-                <Eye className="size-4" />
-              )}
-            </button>
-          </div>
-        </div>
 
-        {/* Remember Me */}
-        <div className="flex items-center justify-between pt-1">
-          <label
-            htmlFor="rememberMe"
-            className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <input
-              id="rememberMe"
-              name="rememberMe"
-              type="checkbox"
-              checked={rememberMeChecked}
-              onChange={(e) => setRememberMeChecked(e.target.checked)}
-              disabled={isSubmitting}
-              className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
-            />
-            <span>Remember me on this device</span>
-          </label>
-        </div>
-
-        {/* Submit Button */}
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all cursor-pointer"
-        >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="size-4 animate-spin mr-2" />
-              Signing in...
-            </>
-          ) : (
-            "Sign In"
+          {version && (
+            <span className="text-[10px] text-muted-foreground/40 select-none tracking-tight font-mono">
+              v{version}
+            </span>
           )}
-        </Button>
-
-        {/* Install App Button */}
-        <InstallAppButton />
-      </form>
-
-      {/* Version */}
-      {version && (
-        <div className="flex justify-end pt-1">
-          <span className="text-[11px] text-muted-foreground/50 select-none tracking-tight font-mono">
-            v{version}
-          </span>
         </div>
-      )}
 
-      {/* Switch to Register */}
-      <div className="text-center space-y-3">
-        <p className="text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
-          <Link
-            href="/register"
-            className="font-medium text-primary hover:underline underline-offset-4"
-          >
-            Create an account
-          </Link>
-        </p>
-
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
-          <RediLogo size="xs" />
-          <span>Developed by Alex for Redge</span>
+        {/* Botanical Tulip Grass Meadow Illustration */}
+        <div className="w-full leading-none">
+          <SeijunMeadow />
         </div>
       </div>
     </div>

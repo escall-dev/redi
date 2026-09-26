@@ -183,156 +183,162 @@ export function MpinReturningForm({
     .join(" ")
 
   return (
-    <div className="w-full space-y-7 max-w-md mx-auto py-2">
-      {/* Header & Logo Section */}
-      <div className="flex flex-col items-center text-center space-y-3">
-        {/* Highlighted Standalone Seijun Tulip Logo */}
-        <div className="relative flex items-center justify-center pt-2 pb-1">
-          <div
-            className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
-            aria-hidden="true"
-          />
-          <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
-        </div>
-
-        {/* Welcome Back & Subtitle */}
-        <div className="space-y-1">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Welcome back, {displayName}
-          </h1>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Enter your 6-digit MPIN
-          </p>
-        </div>
-      </div>
-
-      {/* Feedback error alert if any */}
-      {error && (
-        <div
-          role="alert"
-          className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
-        >
-          <AlertCircle className="size-4 shrink-0 mt-0.5" />
-          <span className="leading-snug">{error}</span>
-        </div>
-      )}
-
-      {/* MPIN Input with Clear Button */}
-      <div className="space-y-4 pt-1">
-        <MpinInput
-          value={mpin}
-          onChange={(val) => {
-            setMpin(val)
-            if (isAutofilled) {
-              setIsAutofilled(false)
-            }
-            setError(null)
-          }}
-          onComplete={handleComplete}
-          disabled={isVerifying || isLockedOut}
-          error={Boolean(error)}
-          label="Enter your MPIN"
-          showClear={true}
-          onClear={handleClear}
-          autoFocus={!isAutofilled}
-        />
-
-        {/* Balanced Row: Remember me on the left, Forgot MPIN on the right */}
-        <div className="flex items-center justify-between px-1 pt-1 text-sm">
-          <label
-            htmlFor="rememberMpin"
-            className="flex items-center gap-2 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors group"
-          >
-            <input
-              id="rememberMpin"
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(e) => handleRememberMeChange(e.target.checked)}
-              disabled={isVerifying}
-              className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+    <div className="w-full max-w-md mx-auto h-full min-h-0 flex flex-col justify-between overflow-hidden">
+      {/* ── Form content: centered in upper/middle portion of viewport ── */}
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-2 min-h-0 space-y-5 sm:space-y-6">
+        {/* Header & Logo Section */}
+        <div className="flex flex-col items-center text-center space-y-2.5">
+          {/* Highlighted Standalone Seijun Tulip Logo */}
+          <div className="relative flex items-center justify-center pt-1 pb-1">
+            <div
+              className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
+              aria-hidden="true"
             />
-            <span className="text-xs sm:text-sm font-medium">Remember me</span>
-          </label>
+            <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+          </div>
 
-          <button
-            type="button"
-            onClick={onForgotMpin}
-            disabled={isVerifying}
-            className="text-xs sm:text-sm font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
-          >
-            Forgot MPIN?
-          </button>
+          {/* Welcome Back & Subtitle */}
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+              Welcome back, {displayName}
+            </h1>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Enter your 6-digit MPIN
+            </p>
+          </div>
         </div>
 
-        {/* Verifying Indicator */}
-        {isVerifying && (
-          <div className="flex items-center justify-center gap-2 text-xs text-primary animate-pulse pt-1">
-            <Loader2 className="size-3.5 animate-spin" />
-            <span>Verifying MPIN...</span>
+        {/* Feedback error alert if any */}
+        {error && (
+          <div
+            role="alert"
+            className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          >
+            <AlertCircle className="size-4 shrink-0 mt-0.5" />
+            <span className="leading-snug">{error}</span>
           </div>
         )}
 
-        {/* Prominent Sign In Button when MPIN is 6 digits */}
-        {mpin.length === 6 && (
-          <div className="pt-2 animate-in fade-in slide-in-from-top-1 duration-200">
-            <Button
-              type="button"
-              onClick={() => handleVerify(mpin)}
-              disabled={isVerifying || isLockedOut}
-              className="w-full h-12 text-sm sm:text-base font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi hover:shadow-redi-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+        {/* MPIN Input with Clear Button */}
+        <div className="space-y-3.5 pt-1">
+          <MpinInput
+            value={mpin}
+            onChange={(val) => {
+              setMpin(val)
+              if (isAutofilled) {
+                setIsAutofilled(false)
+              }
+              setError(null)
+            }}
+            onComplete={handleComplete}
+            disabled={isVerifying || isLockedOut}
+            error={Boolean(error)}
+            label="Enter your MPIN"
+            showClear={true}
+            onClear={handleClear}
+            autoFocus={!isAutofilled}
+          />
+
+          {/* Balanced Row: Remember me on the left, Forgot MPIN on the right */}
+          <div className="flex items-center justify-between px-1 text-sm">
+            <label
+              htmlFor="rememberMpin"
+              className="flex items-center gap-2 cursor-pointer select-none text-muted-foreground hover:text-foreground transition-colors group"
             >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="size-4.5 animate-spin" />
-                  <span>Signing in...</span>
-                </>
-              ) : (
-                <>
-                  <LogIn className="size-4.5 stroke-[2.2]" />
-                  <span>Sign In</span>
-                </>
-              )}
-            </Button>
+              <input
+                id="rememberMpin"
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => handleRememberMeChange(e.target.checked)}
+                disabled={isVerifying}
+                className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer transition-all"
+              />
+              <span className="text-xs sm:text-sm font-medium">Remember me</span>
+            </label>
+
+            <button
+              type="button"
+              onClick={onForgotMpin}
+              disabled={isVerifying}
+              className="text-xs sm:text-sm font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
+            >
+              Forgot MPIN?
+            </button>
           </div>
-        )}
-      </div>
 
-      {/* User Email Pill & Switch Account */}
-      <div className="flex flex-col items-center justify-center pt-6 pb-2 space-y-3">
-        <div className="inline-flex items-center justify-center max-w-full px-5 py-2 rounded-2xl bg-lavender/40 dark:bg-primary/10 border border-lavender-border/50 dark:border-primary/20 text-sm font-medium text-foreground/90 tracking-normal shadow-2xs truncate">
-          {user.email || "Authenticated Account"}
+          {/* Verifying Indicator */}
+          {isVerifying && (
+            <div className="flex items-center justify-center gap-2 text-xs text-primary animate-pulse pt-1">
+              <Loader2 className="size-3.5 animate-spin" />
+              <span>Verifying MPIN...</span>
+            </div>
+          )}
+
+          {/* Prominent Sign In Button when MPIN is 6 digits */}
+          {mpin.length === 6 && (
+            <div className="pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+              <Button
+                type="button"
+                onClick={() => handleVerify(mpin)}
+                disabled={isVerifying || isLockedOut}
+                className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi hover:shadow-redi-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
+              >
+                {isVerifying ? (
+                  <>
+                    <Loader2 className="size-4.5 animate-spin" />
+                    <span>Signing in...</span>
+                  </>
+                ) : (
+                  <>
+                    <LogIn className="size-4.5 stroke-[2.2]" />
+                    <span>Sign In</span>
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
         </div>
 
-        <div className="text-sm text-muted-foreground flex items-center justify-center gap-1.5">
-          <span>Not you?</span>
-          <button
-            type="button"
-            onClick={onSwitchAccount}
-            disabled={isVerifying}
-            className="font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
-          >
-            Switch Account
-          </button>
+        {/* User Email Pill & Switch Account */}
+        <div className="flex flex-col items-center justify-center pt-2 space-y-2.5">
+          <div className="inline-flex items-center justify-center max-w-full px-5 py-1.5 rounded-2xl bg-lavender/40 dark:bg-primary/10 border border-lavender-border/50 dark:border-primary/20 text-sm font-medium text-foreground/90 tracking-normal shadow-2xs truncate">
+            {user.email || "Authenticated Account"}
+          </div>
+
+          <div className="text-sm text-muted-foreground flex items-center justify-center gap-1.5">
+            <span>Not you?</span>
+            <button
+              type="button"
+              onClick={onSwitchAccount}
+              disabled={isVerifying}
+              className="font-semibold text-primary hover:underline underline-offset-4 cursor-pointer"
+            >
+              Switch Account
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Botanical Tulip Grass Meadow Illustration */}
-      <div className="pt-2 -mx-4 sm:-mx-6">
-        <SeijunMeadow />
-      </div>
+      {/* ── Bottom: Credits + Meadow raised upward to prevent bottom cutoff on phones ── */}
+      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-7 sm:pb-8 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+        {/* Version badge & Credits — stacked right above meadow */}
+        <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
+          <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
+            <RediLogo size="xs" />
+            <span>Developed by Alex for Redge</span>
+          </div>
 
-      {/* Version badge & Credits footer cleanly lowered below meadow */}
-      <div className="flex flex-col items-center justify-center space-y-2 pt-8 pb-4 text-center">
-        <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
-          <RediLogo size="xs" />
-          <span>Developed by Alex for Redge</span>
+          {version && (
+            <span className="text-[10px] text-muted-foreground/40 select-none tracking-tight font-mono">
+              v{version}
+            </span>
+          )}
         </div>
 
-        {version && (
-          <span className="text-[10px] text-muted-foreground/40 select-none tracking-tight font-mono">
-            v{version}
-          </span>
-        )}
+        {/* Botanical Tulip Grass Meadow Illustration */}
+        <div className="w-full leading-none">
+          <SeijunMeadow />
+        </div>
       </div>
     </div>
   )

@@ -27,9 +27,15 @@ export function AppShell({ children, className }: AppShellProps) {
   return (
     <SessionTimeoutProvider>
       {isAuthRoute ? (
-        <div className="relative min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-hidden pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
-          <main className="w-full max-w-md mx-auto">{children}</main>
-        </div>
+        pathname === "/login" ? (
+          <div className="relative h-[100dvh] overflow-hidden flex flex-col justify-between bg-background text-foreground">
+            <main className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">{children}</main>
+          </div>
+        ) : (
+          <div className="relative min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-hidden pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
+            <main className="w-full max-w-md mx-auto">{children}</main>
+          </div>
+        )
       ) : (
         <CycleContextProvider>
           <QuickLogProvider>

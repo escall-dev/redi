@@ -12,12 +12,12 @@ export interface SeijunMeadowProps {
  */
 export function SeijunMeadow({ className }: SeijunMeadowProps = {}) {
   return (
-    <div className={className} aria-hidden="true">
+    <div className={className ? `leading-none ${className}` : "w-full leading-none"} aria-hidden="true">
       <svg
         viewBox="0 0 400 110"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        className="w-full h-auto select-none pointer-events-none"
+        className="w-full h-auto block select-none pointer-events-none"
       >
         <defs>
           <linearGradient id="meadowGradBack" x1="0%" y1="0%" x2="0%" y2="100%">
