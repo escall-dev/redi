@@ -2,11 +2,12 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 export interface RediLogoProps extends React.ComponentProps<"svg"> {
-  size?: "sm" | "md" | "lg" | "xl" | "hero"
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "hero"
   className?: string
 }
 
 const SIZE_MAP = {
+  xs: "size-3.5",
   sm: "size-7",
   md: "size-9",
   lg: "size-12",

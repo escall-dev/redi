@@ -5,11 +5,10 @@ import Link from "next/link"
 import { useActionState } from "react"
 import { registerAction, type AuthActionResult } from "@/app/actions/auth"
 import { RediLogo } from "@/components/brand/redi-logo"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Shield } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function RegisterForm() {
@@ -48,25 +47,27 @@ export function RegisterForm() {
   }
 
   return (
-    <div className="w-full space-y-6">
-      {/* Elevated Register Card */}
-      <Card className="border border-lavender-border/80 bg-card shadow-redi-card rounded-2xl sm:rounded-3xl transition-all">
-        <CardContent className="pt-8 pb-8 px-5 sm:px-8 space-y-6">
-          {/* Header & Logo Section inside the card */}
-          <div className="flex flex-col items-center text-center space-y-3">
-            <div className="relative flex items-center justify-center p-2 rounded-2xl bg-lavender/50 border border-lavender-border/60 shadow-xs">
-              <RediLogo size="lg" className="drop-shadow-sm" />
-            </div>
+    <div className="w-full space-y-7 max-w-md mx-auto py-2">
+      {/* Header & Logo Section */}
+      <div className="flex flex-col items-center text-center space-y-3">
+        {/* Highlighted Standalone Seijun Tulip Logo */}
+        <div className="relative flex items-center justify-center pt-2 pb-1">
+          <div
+            className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
+            aria-hidden="true"
+          />
+          <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+        </div>
 
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-                Create Account
-              </h1>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
-                Start keeping your cycle records calm, personal, and strictly private.
-              </p>
-            </div>
-          </div>
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            Create Account
+          </h1>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+            Start keeping your cycle records calm, personal, and strictly private.
+          </p>
+        </div>
+      </div>
 
           {state?.requiresEmailConfirmation ? (
             /* Email Verification Notice */
@@ -245,8 +246,6 @@ export function RegisterForm() {
               </Button>
             </form>
           )}
-        </CardContent>
-      </Card>
 
       {/* Switch to Login */}
       <div className="text-center space-y-3">
@@ -261,8 +260,8 @@ export function RegisterForm() {
         </p>
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
-          <Shield className="size-3.5 text-primary" />
-          <span>Developed by Alex for Seijun.</span>
+          <RediLogo size="xs" />
+          <span>Developed by Alex for Redge</span>
         </div>
       </div>
     </div>

@@ -4,9 +4,8 @@ import * as React from "react"
 import { RediLogo } from "@/components/brand/redi-logo"
 import { MpinInput } from "@/components/auth/mpin-input"
 import { saveMpin } from "@/lib/auth/mpin-storage"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { KeyRound, Shield, AlertCircle, ArrowLeft, Loader2, CheckCircle2 } from "lucide-react"
+import { Shield, AlertCircle, ArrowLeft, Loader2 } from "lucide-react"
 
 export interface MpinSetupFormProps {
   userId: string
@@ -65,26 +64,29 @@ export function MpinSetupForm({
   }
 
   return (
-    <div className="w-full space-y-6 max-w-md mx-auto">
-      <Card className="border border-lavender-border/80 bg-card shadow-redi-card rounded-3xl transition-all">
-        <CardContent className="pt-8 pb-8 px-5 sm:px-8 space-y-6">
-          {/* Header */}
-          <div className="flex flex-col items-center text-center space-y-3">
-            <div className="relative flex items-center justify-center p-3 rounded-2xl bg-lavender/60 border border-lavender-border/80 shadow-xs">
-              <KeyRound className="size-6 text-primary" />
-            </div>
+    <div className="w-full space-y-7 max-w-md mx-auto py-2">
+      {/* Header & Logo Section */}
+      <div className="flex flex-col items-center text-center space-y-3">
+        {/* Highlighted Standalone Seijun Tulip Logo */}
+        <div className="relative flex items-center justify-center pt-2 pb-1">
+          <div
+            className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
+            aria-hidden="true"
+          />
+          <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+        </div>
 
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground">
-                {step === "create" ? "Create your 6-digit MPIN" : "Confirm your 6-digit MPIN"}
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {step === "create"
-                  ? "Set an MPIN for fast and secure access on this device."
-                  : "Re-enter your 6 digits to verify."}
-              </p>
-            </div>
-          </div>
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            {step === "create" ? "Create your 6-digit MPIN" : "Confirm your 6-digit MPIN"}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {step === "create"
+              ? "Set an MPIN for fast and secure access on this device."
+              : "Re-enter your 6 digits to verify."}
+          </p>
+        </div>
+      </div>
 
           {/* Feedback Banner */}
           {error && (
@@ -187,10 +189,8 @@ export function MpinSetupForm({
               </div>
             </div>
           )}
-        </CardContent>
-      </Card>
 
-      <div className="text-center">
+      <div className="text-center pt-2">
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <Shield className="size-3.5 text-primary" />
           <span>Stored as a cryptographic verifier; never in plaintext</span>

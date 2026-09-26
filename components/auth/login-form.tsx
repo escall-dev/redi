@@ -9,11 +9,10 @@ import { hasMpin, isAutoUnlockEnabled, setSessionLocked, clearMpin, getRemembere
 import { MpinReturningForm, type MpinReturningUser } from "@/components/auth/mpin-returning-form"
 import { MpinSetupForm } from "@/components/auth/mpin-setup-form"
 import { RediLogo } from "@/components/brand/redi-logo"
-import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2, Shield } from "lucide-react"
+import { Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from "lucide-react"
 import { InstallAppButton } from "@/components/pwa/install-app-button"
 
 export interface LoginFormProps {
@@ -37,6 +36,16 @@ function getRememberedEmailSnapshot(): string {
 
 function getServerRememberedEmailSnapshot(): string {
   return ""
+}
+
+function formatDisplayName(name?: string | null): string {
+  if (!name) return ""
+  const trimmed = name.trim()
+  if (!trimmed) return ""
+  return trimmed
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ")
 }
 
 export function LoginForm({ version }: LoginFormProps = {}) {
@@ -66,11 +75,30 @@ export function LoginForm({ version }: LoginFormProps = {}) {
   )
   const email = customEmail ?? savedEmail
 
+  const greetingName = React.useMemo(() => {
+    if (currentUser?.displayName) {
+      return formatDisplayName(currentUser.displayName)
+    }
+    if (currentUser?.email) {
+      return formatDisplayName(currentUser.email.split("@")[0])
+    }
+    if (savedEmail) {
+      return formatDisplayName(savedEmail.split("@")[0])
+    }
+    return null
+  }, [currentUser, savedEmail])
+
   // 1. Initial audit of existing Supabase session and local MPIN on mount
   React.useEffect(() => {
     let isMounted = true
 
     async function evaluateExistingSession() {
+      // Priority 1: Check if this device has a remembered user profile
+      const remembered = getRememberedUser()
+      if (remembered && isMounted) {
+        setCurrentUser(remembered)
+      }
+
       // If user came via explicit reset MPIN, force email/password login
       if (urlResetMpin) {
         if (isMounted) {
@@ -79,11 +107,9 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         return
       }
 
-      // Priority 1: Check if this device has a remembered user with an active MPIN (default experience)
-      const remembered = getRememberedUser()
+      // If this device has a remembered user with an active MPIN (default experience)
       if (remembered && hasMpin(remembered.id)) {
         if (isMounted) {
-          setCurrentUser(remembered)
           setViewMode("returning-mpin")
         }
         return
@@ -312,153 +338,156 @@ export function LoginForm({ version }: LoginFormProps = {}) {
       : null)
 
   return (
-    <div className="w-full space-y-6">
-      <Card className="border border-lavender-border/80 bg-card shadow-redi-card rounded-2xl sm:rounded-3xl transition-all">
-        <CardContent className="pt-8 pb-8 px-5 sm:px-8 space-y-6">
-          {/* Header & Logo Section */}
-          <div className="flex flex-col items-center text-center space-y-3">
-            <div className="relative flex items-center justify-center p-2 rounded-2xl bg-lavender/50 border border-lavender-border/60 shadow-xs">
-              <RediLogo size="lg" className="drop-shadow-sm" />
-            </div>
+    <div className="w-full space-y-7 max-w-md mx-auto py-2">
+      {/* Header & Logo Section */}
+      <div className="flex flex-col items-center text-center space-y-3">
+        {/* Highlighted Standalone Seijun Tulip Logo */}
+        <div className="relative flex items-center justify-center pt-2 pb-1">
+          <div
+            className="absolute size-24 rounded-full bg-primary/15 dark:bg-primary/25 blur-xl pointer-events-none -z-10"
+            aria-hidden="true"
+          />
+          <RediLogo size="xl" className="drop-shadow-md transition-transform hover:scale-105 duration-300" />
+        </div>
 
-            <div className="space-y-1">
-              <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-                Sign In
-              </h1>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Enter your credentials to access Seijun private cycle tracking.
-              </p>
-            </div>
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+            {greetingName ? `Welcome back, ${greetingName}` : "Sign In"}
+          </h1>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            {greetingName
+              ? "Enter your password to sign in."
+              : "Enter your credentials to access Seijun private cycle tracking."}
+          </p>
+        </div>
+      </div>
+
+      {/* Feedback Banners */}
+      {urlVerified && (
+        <div
+          role="status"
+          className="flex items-start gap-2.5 rounded-2xl border border-success-border/60 bg-success-soft p-3 text-sm text-success-foreground"
+        >
+          <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-success" />
+          <span className="leading-snug">
+            Your email has been confirmed! You can now sign in.
+          </span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div
+          role="alert"
+          className="flex items-start gap-2.5 rounded-2xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+        >
+          <AlertCircle className="size-4 shrink-0 mt-0.5" />
+          <span className="leading-snug">{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Email / Password Form */}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input type="hidden" name="redirect" value={redirectTarget} />
+
+        {/* Email Field */}
+        <div className="space-y-1.5 text-left">
+          <Label htmlFor="email" className="text-sm font-medium text-foreground">
+            Email
+          </Label>
+          <Input
+            id="email"
+            name="email"
+            type="email"
+            value={email}
+            onChange={(e) => setCustomEmail(e.target.value)}
+            placeholder="you@example.com"
+            autoComplete="username email"
+            required
+            disabled={isSubmitting}
+            className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
+          />
+        </div>
+
+        {/* Password Field */}
+        <div className="space-y-1.5 text-left">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-sm font-medium text-foreground">
+              Password
+            </Label>
           </div>
-
-          {/* Feedback Banners */}
-          {urlVerified && (
-            <div
-              role="status"
-              className="flex items-start gap-2.5 rounded-xl border border-success-border/60 bg-success-soft p-3 text-sm text-success-foreground"
-            >
-              <CheckCircle2 className="size-4 shrink-0 mt-0.5 text-success" />
-              <span className="leading-snug">
-                Your email has been confirmed! You can now sign in.
-              </span>
-            </div>
-          )}
-
-          {errorMessage && (
-            <div
-              role="alert"
-              className="flex items-start gap-2.5 rounded-xl border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
-            >
-              <AlertCircle className="size-4 shrink-0 mt-0.5" />
-              <span className="leading-snug">{errorMessage}</span>
-            </div>
-          )}
-
-          {/* Email / Password Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <input type="hidden" name="redirect" value={redirectTarget} />
-
-            {/* Email Field */}
-            <div className="space-y-1.5 text-left">
-              <Label htmlFor="email" className="text-sm font-medium text-foreground">
-                Email
-              </Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={(e) => setCustomEmail(e.target.value)}
-                placeholder="you@example.com"
-                autoComplete="username email"
-                required
-                disabled={isSubmitting}
-                className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
-              />
-            </div>
-
-            {/* Password Field */}
-            <div className="space-y-1.5 text-left">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
-                  Password
-                </Label>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  required
-                  disabled={isSubmitting}
-                  className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
-                >
-                  {showPassword ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Remember Me */}
-            <div className="flex items-center justify-between pt-1">
-              <label
-                htmlFor="rememberMe"
-                className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <input
-                  id="rememberMe"
-                  name="rememberMe"
-                  type="checkbox"
-                  checked={rememberMeChecked}
-                  onChange={(e) => setRememberMeChecked(e.target.checked)}
-                  disabled={isSubmitting}
-                  className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
-                />
-                <span>Remember me on this device</span>
-              </label>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
+          <div className="relative">
+            <Input
+              id="password"
+              name="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              required
               disabled={isSubmitting}
-              className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all cursor-pointer"
+              className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="size-4 animate-spin mr-2" />
-                  Signing in...
-                </>
+              {showPassword ? (
+                <EyeOff className="size-4" />
               ) : (
-                "Sign In"
+                <Eye className="size-4" />
               )}
-            </Button>
+            </button>
+          </div>
+        </div>
 
-            {/* Install App Button */}
-            <InstallAppButton />
-          </form>
+        {/* Remember Me */}
+        <div className="flex items-center justify-between pt-1">
+          <label
+            htmlFor="rememberMe"
+            className="flex items-center gap-2 cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <input
+              id="rememberMe"
+              name="rememberMe"
+              type="checkbox"
+              checked={rememberMeChecked}
+              onChange={(e) => setRememberMeChecked(e.target.checked)}
+              disabled={isSubmitting}
+              className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+            />
+            <span>Remember me on this device</span>
+          </label>
+        </div>
 
-          {/* Version */}
-          {version && (
-            <div className="flex justify-end pt-1 -mb-3">
-              <span className="text-[11px] text-muted-foreground/60 select-none tracking-tight font-mono">
-                v{version}
-              </span>
-            </div>
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          disabled={isSubmitting}
+          className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all cursor-pointer"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="size-4 animate-spin mr-2" />
+              Signing in...
+            </>
+          ) : (
+            "Sign In"
           )}
-        </CardContent>
-      </Card>
+        </Button>
+
+        {/* Install App Button */}
+        <InstallAppButton />
+      </form>
+
+      {/* Version */}
+      {version && (
+        <div className="flex justify-end pt-1">
+          <span className="text-[11px] text-muted-foreground/50 select-none tracking-tight font-mono">
+            v{version}
+          </span>
+        </div>
+      )}
 
       {/* Switch to Register */}
       <div className="text-center space-y-3">
@@ -473,8 +502,8 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         </p>
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
-          <Shield className="size-3.5 text-primary" />
-          <span>Developed By: Alex for Seijun.</span>
+          <RediLogo size="xs" />
+          <span>Developed by Alex for Redge</span>
         </div>
       </div>
     </div>
