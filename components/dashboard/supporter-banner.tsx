@@ -20,7 +20,7 @@ export function SupporterBanner() {
               </Badge>
             </div>
             <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
-              1:1 Partner Connection Coming Soon
+              Partner Connection Coming Soon
             </h2>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-2xl">
               You are set up to support someone else&apos;s cycle. In an upcoming phase, you&apos;ll be able to

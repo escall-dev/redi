@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Partner Invitation | Seijun",
-  description: "Review and accept your 1:1 partner invitation on Seijun.",
+  description: "Review and accept your partner invitation on Seijun.",
 }
 
 interface PageProps {

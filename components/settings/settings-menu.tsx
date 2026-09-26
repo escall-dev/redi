@@ -441,7 +441,7 @@ export function SettingsMenu({
     {
       id: "partner",
       title: "Partner",
-      description: "1:1 connections, sharing options, and permissions",
+      description: "Partner connections, sharing options, and permissions",
       icon: HeartHandshake,
       summaryBadge: (
         <Badge variant="lavender" className="text-[10px] px-1.5 py-0 font-normal">
@@ -453,7 +453,7 @@ export function SettingsMenu({
           <SettingsItem
             id="item-partner-connection"
             title="Partner Connection"
-            description="1:1 synchronization with partner account"
+            description="Synchronization with partner account"
             icon={HeartHandshake}
             href="/settings/partner"
             onClick={() => navigateToView("partner")}
@@ -648,7 +648,7 @@ export function SettingsMenu({
     },
   ]
 
-  const userDisplayName = profileData.displayName || "User"
+  const userDisplayName = profileData.displayName || profileData.username || "User"
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-16">
@@ -668,8 +668,8 @@ export function SettingsMenu({
             className="size-14 rounded-full border-2 border-primary/20 shadow-xs group-hover:border-primary/50 transition-colors shrink-0"
           />
           <div className="min-w-0 flex-1">
-            <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate uppercase">
-              Hi, {userDisplayName}
+            <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate">
+              {userDisplayName}
             </h2>
             {profileData.email && (
               <p className="text-xs sm:text-sm text-muted-foreground truncate leading-normal">
@@ -763,7 +763,7 @@ export function SettingsMenu({
           </DialogHeader>
           <div className="space-y-3 pt-2 text-sm text-muted-foreground leading-relaxed">
             <p>
-              Partner Connections will enable respectful 1:1 synchronization between accounts. Trackers can selectively share cycle phases and mood symptoms, while supporters receive timely heads-up reminders.
+              Partner Connections will enable respectful synchronization between accounts. Trackers can selectively share cycle phases and mood symptoms, while supporters receive timely heads-up reminders.
             </p>
             <div className="flex items-center gap-2 text-xs text-foreground bg-secondary/50 p-3 rounded-xl border border-border/50">
               <Clock className="size-4 text-primary shrink-0" />

@@ -280,7 +280,7 @@ export function OnboardingForm({ initialDisplayName = "" }: OnboardingFormProps)
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     Because you are supporting someone else, you don&apos;t need to enter menstrual
-                    cycle dates or lengths. When 1:1 Partner Connections launch, you&apos;ll be able to
+                    cycle dates or lengths. When Partner Connections launch, you&apos;ll be able to
                     link with their account and support their cycle.
                   </p>
                 </div>

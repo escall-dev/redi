@@ -198,8 +198,8 @@ export function PartnerConnectionCard({
                 </CardTitle>
                 <CardDescription className="text-xs">
                   {status === "active"
-                    ? "Active 1:1 synchronization"
-                    : "1:1 partner relationship management"}
+                    ? "Active partner synchronization"
+                    : "Partner relationship management"}
                 </CardDescription>
               </div>
             </div>
@@ -237,7 +237,7 @@ export function PartnerConnectionCard({
               <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 text-center space-y-1.5">
                 <p className="text-sm font-semibold text-foreground">No partner connected</p>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Connect 1:1 with your partner to synchronize cycle awareness respectfully and securely.
+                  Connect with your partner to synchronize cycle awareness respectfully and securely.
                 </p>
               </div>
 
@@ -315,7 +315,7 @@ export function PartnerConnectionCard({
                 </div>
 
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Wants to connect with you on Seijun. Accepting links your accounts in a 1:1 relationship.
+                  Wants to connect with you on Seijun. Accepting links your accounts in a partner relationship.
                 </p>
               </div>
 
@@ -366,7 +366,7 @@ export function PartnerConnectionCard({
 
                 <div className="flex items-center gap-2 pt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
                   <CheckCircle2 className="size-3.5" />
-                  <span>1:1 Relationship Active</span>
+                  <span>Partner Relationship Active</span>
                 </div>
               </div>
 

@@ -343,10 +343,10 @@ export function InvitationAcceptanceView({
         <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 text-xs text-muted-foreground space-y-2 leading-relaxed">
           <div className="flex items-center gap-1.5 font-medium text-foreground">
             <Shield className="size-3.5 text-primary shrink-0" />
-            <span>1:1 Secure Partner Connection</span>
+            <span>Secure Partner Connection</span>
           </div>
           <p>
-            Accepting will link your accounts in a mutual 1:1 partner relationship. Opening this invitation does not automatically activate the connection until you explicitly confirm below.
+            Accepting will link your accounts in a mutual partner relationship. Opening this invitation does not automatically activate the connection until you explicitly confirm below.
           </p>
         </div>
 

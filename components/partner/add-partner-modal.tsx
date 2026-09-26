@@ -230,7 +230,7 @@ export function AddPartnerModal({
                       Add Partner
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                      Search by username to connect 1:1 with your partner
+                      Search by username to connect with your partner
                     </DialogDescription>
                   </div>
                 </div>

@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic"
 
 export const metadata = {
   title: "Partner Settings | Seijun",
-  description: "Manage 1:1 partner connection, invitations, and sharing preferences.",
+  description: "Manage partner connection, invitations, and sharing preferences.",
 }
 
 export default async function PartnerSettingsPage() {

@@ -17,7 +17,7 @@ export function PartnerSettingsView({ onBack }: PartnerSettingsViewProps) {
         badgeText="Partner"
         badgeIcon={HeartHandshake}
         title="Partner Connection"
-        description="Connect with your partner for respectful 1:1 synchronization and cycle awareness."
+        description="Connect with your partner for respectful synchronization and cycle awareness."
         onBack={onBack}
       />
 
@@ -30,7 +30,7 @@ export function PartnerSettingsView({ onBack }: PartnerSettingsViewProps) {
           <CardHeader className="p-4 pb-2">
             <div className="flex items-center gap-2">
               <Users className="size-4 text-primary shrink-0" />
-              <CardTitle className="text-xs font-semibold">1:1 Private Model</CardTitle>
+              <CardTitle className="text-xs font-semibold">Partner Model</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="p-4 pt-0">

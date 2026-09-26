@@ -442,7 +442,7 @@ export function ProfileSettingsForm({ initialData }: ProfileSettingsFormProps) {
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               {initialData.usageRole === "supporter"
-                ? "You support a partner or friend's cycle. When 1:1 Partner Connections launch, you'll be able to link accounts and view their shared menstrual data."
+                ? "You support a partner or friend's cycle. When Partner Connections launch, you'll be able to link accounts and view their shared menstrual data."
                 : initialData.usageRole === "both"
                 ? "You track your own cycle and symptoms while also being ready to connect and support a partner or friend."
                 : "You track your own menstrual cycle, log personal symptoms and daily notes, and receive tailored period predictions."}

@@ -131,7 +131,7 @@ export function AboutSettingsView() {
             <div className="space-y-1">
               <h4 className="font-semibold text-foreground">What is Supporter Mode?</h4>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Supporter mode allows partners or loved ones to participate respectfully without requiring personal cycle tracking. When 1:1 Partner Connections launch in Phase 20, you will be able to view shared updates.
+                Supporter mode allows partners or loved ones to participate respectfully without requiring personal cycle tracking. When Partner Connections launch in Phase 20, you will be able to view shared updates.
               </p>
             </div>
             <div className="space-y-1">
