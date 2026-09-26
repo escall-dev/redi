@@ -7,6 +7,8 @@ import {
   type DailyNoteRecord,
   type DailyNoteActionResult,
 } from "@/lib/notes/types"
+import { getPartnerRelationship } from "@/lib/partner/service"
+import { sendPartnerCoManagementNotification } from "@/lib/partner/notification"
 
 export type { DailyNoteRecord, DailyNoteActionResult }
 
@@ -34,27 +36,39 @@ export async function getDailyNotesForUser(
 }
 
 /**
- * Internal: Fetch a single daily note for a specific date and user.
+ * Internal: Fetch all daily notes for a specific date and user, newest first.
  */
-export async function getDailyNoteByDateForUser(
+export async function getDailyNotesByDateForUser(
   userId: string,
   date: string,
   customClient?: Awaited<ReturnType<typeof createClient>>
-): Promise<DailyNoteRecord | null> {
+): Promise<DailyNoteRecord[]> {
   const supabase = customClient || (await createClient())
   const { data, error } = await supabase
     .from("daily_notes")
     .select("*")
     .eq("user_id", userId)
     .eq("date", date)
-    .maybeSingle()
+    .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("[getDailyNoteByDateForUser]", error.message)
-    return null
+    console.error("[getDailyNotesByDateForUser]", error.message)
+    return []
   }
 
-  return data as DailyNoteRecord | null
+  return (data ?? []) as DailyNoteRecord[]
+}
+
+/**
+ * Internal: Fetch the latest daily note for a specific date and user (backwards compatible).
+ */
+export async function getDailyNoteByDateForUser(
+  userId: string,
+  date: string,
+  customClient?: Awaited<ReturnType<typeof createClient>>
+): Promise<DailyNoteRecord | null> {
+  const notes = await getDailyNotesByDateForUser(userId, date, customClient)
+  return notes[0] ?? null
 }
 
 /**
@@ -68,7 +82,19 @@ export async function getDailyNotesAction(): Promise<DailyNoteRecord[]> {
 }
 
 /**
- * Public Server Action: Fetch a single daily note for a specific date.
+ * Public Server Action: Fetch all daily notes for a specific date, newest first.
+ */
+export async function getDailyNotesByDateAction(
+  date: string
+): Promise<DailyNoteRecord[]> {
+  const user = await getAuthenticatedUser()
+  if (!user) return []
+  const supabase = await createClient()
+  return getDailyNotesByDateForUser(user.id, date, supabase)
+}
+
+/**
+ * Public Server Action: Fetch a single (latest) daily note for a specific date.
  */
 export async function getDailyNoteByDateAction(
   date: string
@@ -81,7 +107,7 @@ export async function getDailyNoteByDateAction(
 
 /**
  * Create a daily note for a specific date.
- * Strictly enforces 1 note per user per date.
+ * Supports multiple distinct note entries on the same date with timestamps.
  */
 export async function createDailyNoteAction(
   _prev: DailyNoteActionResult | null,
@@ -119,51 +145,73 @@ export async function createDailyNoteAction(
     }
   }
 
-  // Pre-check for existing note on this date to return a helpful error
-  const { data: existing } = await supabase
-    .from("daily_notes")
-    .select("id")
-    .eq("date", date)
-    .maybeSingle()
-
-  if (existing) {
-    return {
-      success: false,
-      error: "A daily note already exists for this date. Please edit the existing note.",
-      noteId: existing.id,
-    }
-  }
-
   const { data, error } = await supabase
     .from("daily_notes")
     .insert({
       user_id: user.id,
+      author_id: user.id,
       date,
       content: rawContent,
     })
-    .select("id")
+    .select("id, created_at")
     .single()
 
-  if (error) {
-    // Unique violation code 23505
-    if (error.code === "23505") {
-      return {
-        success: false,
-        error: "A daily note already exists for this date. Please edit the existing note.",
+  if (error || !data) {
+    console.error("[createDailyNoteAction]", error?.message)
+    return { success: false, error: "Failed to save note. Please try again." }
+  }
+
+  // ── Notify connected partner if active relationship & sharing enabled ──
+  try {
+    const relationship = await getPartnerRelationship(supabase, user.id)
+    if (relationship && relationship.status === "active") {
+      const isOwner = relationship.owner_user_id === user.id
+      const recipientUserId = isOwner
+        ? relationship.supporter_user_id
+        : relationship.owner_user_id
+
+      if (recipientUserId) {
+        const { data: prefs } = await supabase
+          .from("partner_sharing_preferences")
+          .select("daily_notes")
+          .eq("relationship_id", relationship.id)
+          .maybeSingle()
+
+        if (prefs && prefs.daily_notes) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("username")
+            .eq("user_id", user.id)
+            .maybeSingle()
+
+          const actorUsername = profile?.username || "partner"
+
+          await sendPartnerCoManagementNotification({
+            supabase,
+            recipientUserId,
+            actorUsername,
+            category: "partner_daily_notes",
+            title: "New Daily Note",
+            body: `@${actorUsername} added a new daily note.`,
+            url: isOwner ? "/partner" : "/notes",
+          })
+        }
       }
     }
-    console.error("[createDailyNoteAction]", error.message)
-    return { success: false, error: "Failed to save note. Please try again." }
+  } catch (notifErr) {
+    // Non-blocking notification dispatch
+    console.error("[createDailyNoteAction] Partner notification error:", notifErr)
   }
 
   revalidatePath("/notes")
   revalidatePath("/calendar")
   revalidatePath("/dashboard")
+  revalidatePath("/partner")
   return { success: true, noteId: data.id }
 }
 
 /**
- * Update an existing daily note.
+ * Update an existing daily note by unique note ID.
  */
 export async function updateDailyNoteAction(
   id: string,
@@ -202,37 +250,17 @@ export async function updateDailyNoteAction(
     }
   }
 
-  // Check if changing date would collide with another note
-  const { data: existing } = await supabase
-    .from("daily_notes")
-    .select("id")
-    .eq("date", date)
-    .neq("id", id)
-    .maybeSingle()
-
-  if (existing) {
-    return {
-      success: false,
-      error: "Another daily note already exists for this date.",
-    }
-  }
-
   const { error } = await supabase
     .from("daily_notes")
     .update({
       date,
       content: rawContent,
+      updated_at: new Date().toISOString(),
     })
     .eq("id", id)
     .eq("user_id", user.id)
 
   if (error) {
-    if (error.code === "23505") {
-      return {
-        success: false,
-        error: "Another daily note already exists for this date.",
-      }
-    }
     console.error("[updateDailyNoteAction]", error.message)
     return { success: false, error: "Failed to update note. Please try again." }
   }
@@ -240,11 +268,12 @@ export async function updateDailyNoteAction(
   revalidatePath("/notes")
   revalidatePath("/calendar")
   revalidatePath("/dashboard")
+  revalidatePath("/partner")
   return { success: true, noteId: id }
 }
 
 /**
- * Delete a daily note by ID.
+ * Delete a single daily note by unique note ID.
  */
 export async function deleteDailyNoteAction(
   id: string
@@ -272,5 +301,6 @@ export async function deleteDailyNoteAction(
   revalidatePath("/notes")
   revalidatePath("/calendar")
   revalidatePath("/dashboard")
+  revalidatePath("/partner")
   return { success: true }
 }

@@ -17,6 +17,10 @@ import {
   updateDailyNoteAction,
   type DailyNoteRecord,
 } from "@/app/actions/notes"
+import {
+  createPartnerDailyNoteAction,
+  updatePartnerDailyNoteAction,
+} from "@/app/actions/partner-mutations"
 import { NOTE_MAX_LENGTH } from "@/lib/notes/types"
 import { FileText, AlertCircle, Loader2 } from "lucide-react"
 
@@ -26,6 +30,8 @@ interface NoteEditorDialogProps {
   noteToEdit?: DailyNoteRecord | null
   defaultDate?: string // YYYY-MM-DD
   existingNotes?: DailyNoteRecord[]
+  isPartnerContext?: boolean
+  partnerDisplayName?: string
   onSuccess?: (noteId?: string) => void
 }
 
@@ -33,6 +39,8 @@ interface NoteEditorFormProps {
   noteToEdit?: DailyNoteRecord | null
   defaultDate?: string
   existingNotes: DailyNoteRecord[]
+  isPartnerContext?: boolean
+  partnerDisplayName?: string
   onClose: () => void
   onSuccess?: (noteId?: string) => void
 }
@@ -40,7 +48,8 @@ interface NoteEditorFormProps {
 function NoteEditorForm({
   noteToEdit,
   defaultDate,
-  existingNotes,
+  isPartnerContext = false,
+  partnerDisplayName,
   onClose,
   onSuccess,
 }: NoteEditorFormProps) {
@@ -53,12 +62,6 @@ function NoteEditorForm({
   const [content, setContent] = React.useState(noteToEdit?.content || "")
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, setIsPending] = React.useState(false)
-
-  // Check if a note already exists for the selected date (when creating)
-  const duplicateNote = React.useMemo(() => {
-    if (isEditing) return null
-    return existingNotes.find((n) => n.date === date) ?? null
-  }, [isEditing, existingNotes, date])
 
   const charCount = content.length
   const isOverLimit = charCount > NOTE_MAX_LENGTH
@@ -88,24 +91,50 @@ function NoteEditorForm({
       return
     }
 
-    const formData = new FormData()
-    formData.append("date", date)
-    formData.append("content", trimmed)
-
     setIsPending(true)
     try {
-      let result
-      if (isEditing && noteToEdit) {
-        result = await updateDailyNoteAction(noteToEdit.id, null, formData)
+      if (isPartnerContext) {
+        if (isEditing && noteToEdit) {
+          const res = await updatePartnerDailyNoteAction({
+            noteId: noteToEdit.id,
+            content: trimmed,
+          })
+          if (!res.ok) {
+            setError(res.error || "Failed to update daily note.")
+          } else {
+            onClose()
+            onSuccess?.(noteToEdit.id)
+          }
+        } else {
+          const res = await createPartnerDailyNoteAction({
+            date,
+            content: trimmed,
+          })
+          if (!res.ok) {
+            setError(res.error || "Failed to save daily note.")
+          } else {
+            onClose()
+            onSuccess?.(res.data?.noteId)
+          }
+        }
       } else {
-        result = await createDailyNoteAction(null, formData)
-      }
+        const formData = new FormData()
+        formData.append("date", date)
+        formData.append("content", trimmed)
 
-      if (!result.success) {
-        setError(result.error || "Failed to save daily note.")
-      } else {
-        onClose()
-        onSuccess?.(result.noteId)
+        let result
+        if (isEditing && noteToEdit) {
+          result = await updateDailyNoteAction(noteToEdit.id, null, formData)
+        } else {
+          result = await createDailyNoteAction(null, formData)
+        }
+
+        if (!result.success) {
+          setError(result.error || "Failed to save daily note.")
+        } else {
+          onClose()
+          onSuccess?.(result.noteId)
+        }
       }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "An unexpected error occurred.")
@@ -127,18 +156,6 @@ function NoteEditorForm({
         </div>
       )}
 
-      {/* Duplicate Date Warning (When Creating) */}
-      {duplicateNote && (
-        <div className="rounded-xl border border-primary/20 bg-lavender/40 p-3 text-xs text-foreground space-y-1">
-          <p className="font-medium text-primary">
-            A note already exists for this date.
-          </p>
-          <p className="text-muted-foreground">
-            Saving will be rejected by the database. Switch dates or edit the existing note.
-          </p>
-        </div>
-      )}
-
       {/* Date Picker */}
       <div className="space-y-1.5">
         <Label htmlFor="noteDate">Date *</Label>
@@ -155,7 +172,9 @@ function NoteEditorForm({
       {/* Note Content Textarea */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between">
-          <Label htmlFor="noteContent">Your Note *</Label>
+          <Label htmlFor="noteContent">
+            {isPartnerContext ? `Note for ${partnerDisplayName || "Partner"} *` : "Your Note *"}
+          </Label>
           <span
             className={`text-[11px] font-medium transition-colors ${
               isOverLimit
@@ -174,7 +193,11 @@ function NoteEditorForm({
           id="noteContent"
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          placeholder="How are you feeling today? Any thoughts, physical observations, or reminders..."
+          placeholder={
+            isPartnerContext
+              ? `Add a note or observation for ${partnerDisplayName || "partner"}...`
+              : "How are you feeling today? Any thoughts, physical observations, or reminders..."
+          }
           rows={5}
           disabled={isPending}
           className="w-full rounded-xl border border-border/80 bg-card p-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/15 transition-all resize-y min-h-[120px]"
@@ -213,6 +236,8 @@ export function NoteEditorDialog({
   noteToEdit,
   defaultDate,
   existingNotes = [],
+  isPartnerContext = false,
+  partnerDisplayName,
   onSuccess,
 }: NoteEditorDialogProps) {
   const isEditing = Boolean(noteToEdit)
@@ -230,7 +255,9 @@ export function NoteEditorDialog({
                 {isEditing ? "Edit Daily Note" : "Write Daily Note"}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Private personal reflections for this date.
+                {isPartnerContext
+                  ? `Notes for ${partnerDisplayName || "partner"}'s cycle.`
+                  : "Private personal reflections for this date."}
               </DialogDescription>
             </div>
           </div>
@@ -242,6 +269,8 @@ export function NoteEditorDialog({
             noteToEdit={noteToEdit}
             defaultDate={defaultDate}
             existingNotes={existingNotes}
+            isPartnerContext={isPartnerContext}
+            partnerDisplayName={partnerDisplayName}
             onClose={() => onOpenChange(false)}
             onSuccess={onSuccess}
           />

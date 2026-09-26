@@ -5,6 +5,7 @@
 export interface DailyNoteRecord {
   id: string
   user_id: string
+  author_id?: string | null
   date: string // YYYY-MM-DD
   content: string
   created_at: string

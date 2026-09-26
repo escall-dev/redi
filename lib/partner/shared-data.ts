@@ -387,20 +387,22 @@ export async function getSharedCyclePreferences(
 // ─── Step 14b: Shared Daily Notes ────────────────────────────────────────────
 
 /**
- * Minimal daily note fields exposed to supporters.
- * Excludes: internal IDs, user_id, system fields.
+ * Shared daily note fields exposed to authorized partners.
+ * Excludes: user_id, system metadata. Includes id, date, content, createdAt, authorId.
  */
 export interface SharedDailyNote {
+  id: string
   date: string
   content: string
   createdAt: string
+  authorId?: string | null
 }
 
 /**
  * Fetches shared daily notes for the supporter.
  *
  * Authorization: daily_notes must be enabled.
- * Supporter can VIEW but CANNOT create, edit, or delete.
+ * Supporter can VIEW, and if manage_daily_notes is enabled, can also mutate.
  */
 export async function getSharedDailyNotes(
   supabase: SupabaseClient<Database>,
@@ -421,9 +423,10 @@ export async function getSharedDailyNotes(
   try {
     const { data: notes, error: notesError } = await supabase
       .from("daily_notes")
-      .select("date, content, created_at")
+      .select("id, date, content, created_at, author_id")
       .eq("user_id", ownerUserId)
       .order("date", { ascending: false })
+      .order("created_at", { ascending: false })
       .limit(Math.min(limit, 100)) // Hard cap at 100
 
     if (notesError) {
@@ -434,11 +437,13 @@ export async function getSharedDailyNotes(
       }
     }
 
-    // Return only minimal fields — no IDs, no user_id, no updated_at
+    // Return sanitized fields — includes note ID and timestamp for timeline & management
     const sharedNotes: SharedDailyNote[] = (notes || []).map((note) => ({
+      id: note.id,
       date: note.date,
       content: note.content,
       createdAt: note.created_at,
+      authorId: note.author_id ?? null,
     }))
 
     return {

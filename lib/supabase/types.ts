@@ -175,6 +175,7 @@ export interface Database {
         Row: {
           id: string
           user_id: string
+          author_id: string | null
           date: string
           content: string
           created_at: string
@@ -183,6 +184,7 @@ export interface Database {
         Insert: {
           id?: string
           user_id: string
+          author_id?: string | null
           date: string
           content: string
           created_at?: string
@@ -191,6 +193,7 @@ export interface Database {
         Update: {
           id?: string
           user_id?: string
+          author_id?: string | null
           date?: string
           content?: string
           created_at?: string

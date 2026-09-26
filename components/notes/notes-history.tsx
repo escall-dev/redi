@@ -4,33 +4,116 @@ import * as React from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { NoteEditorDialog } from "@/components/notes/note-editor-dialog"
 import { NoteDeleteDialog } from "@/components/notes/note-delete-dialog"
 import type { DailyNoteRecord } from "@/app/actions/notes"
-import { BookOpen, Plus, Pencil, Trash2, Calendar, ChevronDown, ChevronUp } from "lucide-react"
+import {
+  BookOpen,
+  Plus,
+  Pencil,
+  Trash2,
+  Calendar,
+  Clock,
+  ChevronDown,
+  ChevronUp,
+  User,
+  Users,
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface NotesHistoryProps {
   notes: DailyNoteRecord[]
+  partnerNotes?: DailyNoteRecord[]
+  isPartnerContext?: boolean
+  hasActivePartner?: boolean
+  partnerDisplayName?: string
+  canManage?: boolean
+  currentUserId?: string
 }
 
-function formatDate(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-").map(Number)
-  return new Date(y, m - 1, d).toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  })
+function formatDateHeader(dateStr: string): { formatted: string; relative: string | null } {
+  try {
+    const todayStr = new Date().toISOString().split("T")[0]
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yesterdayStr = yesterday.toISOString().split("T")[0]
+
+    const [y, m, d] = dateStr.split("-").map(Number)
+    const dateObj = new Date(y, m - 1, d)
+    const formatted = dateObj.toLocaleDateString("en-US", {
+      weekday: "short",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    })
+
+    let relative: string | null = null
+    if (dateStr === todayStr) relative = "Today"
+    else if (dateStr === yesterdayStr) relative = "Yesterday"
+
+    return { formatted, relative }
+  } catch {
+    return { formatted: dateStr, relative: null }
+  }
+}
+
+function formatPostingTime(isoString?: string): string {
+  if (!isoString) return ""
+  try {
+    const d = new Date(isoString)
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  } catch {
+    return ""
+  }
 }
 
 const TRUNCATE_LENGTH = 300
 
-function NoteCard({
+interface DateGroup {
+  date: string
+  entries: DailyNoteRecord[]
+}
+
+function groupNotesByDate(notes: DailyNoteRecord[]): DateGroup[] {
+  const groups: DateGroup[] = []
+  const map = new Map<string, DailyNoteRecord[]>()
+
+  for (const note of notes) {
+    if (!map.has(note.date)) {
+      const arr: DailyNoteRecord[] = []
+      map.set(note.date, arr)
+      groups.push({ date: note.date, entries: arr })
+    }
+    map.get(note.date)!.push(note)
+  }
+
+  // Sort entries within each date: newest created_at first
+  for (const group of groups) {
+    group.entries.sort((a, b) => {
+      const timeA = a.created_at ? new Date(a.created_at).getTime() : 0
+      const timeB = b.created_at ? new Date(b.created_at).getTime() : 0
+      return timeB - timeA
+    })
+  }
+
+  return groups
+}
+
+function NoteEntryItem({
   note,
+  canManage,
+  showAuthor,
+  partnerDisplayName,
+  currentUserId,
   onEdit,
   onDelete,
 }: {
   note: DailyNoteRecord
+  canManage: boolean
+  showAuthor?: boolean
+  partnerDisplayName?: string
+  currentUserId?: string
   onEdit: (note: DailyNoteRecord) => void
   onDelete: (note: DailyNoteRecord) => void
 }) {
@@ -40,21 +123,42 @@ function NoteCard({
     ? `${note.content.slice(0, TRUNCATE_LENGTH)}...`
     : note.content
 
-  return (
-    <Card className="hover:border-primary/40 transition-all">
-      <CardHeader className="pb-2.5 pt-4 px-4 sm:px-5 border-b border-border/40">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2 text-foreground font-semibold text-sm sm:text-base">
-            <Calendar className="size-4 text-primary shrink-0" />
-            <span>{formatDate(note.date)}</span>
-          </div>
+  const postingTime = formatPostingTime(note.created_at)
+  const isSelf = note.author_id === currentUserId
 
+  return (
+    <div className="p-3.5 sm:p-4 rounded-xl bg-secondary/30 border border-border/40 space-y-2.5 transition-all hover:border-primary/30">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
+          {postingTime && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-background/80 px-2 py-0.5 rounded-md border border-border/40 font-mono">
+              <Clock className="size-3 text-primary shrink-0" />
+              {postingTime}
+            </span>
+          )}
+
+          {showAuthor && (
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-[10px] px-1.5 py-0 font-normal",
+                isSelf
+                  ? "border-primary/30 text-primary bg-primary/5"
+                  : "border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5"
+              )}
+            >
+              {isSelf ? "You" : `By ${partnerDisplayName || "Partner"}`}
+            </Badge>
+          )}
+        </div>
+
+        {canManage && (
           <div className="flex items-center gap-1">
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label={`Edit note for ${note.date}`}
+              aria-label={`Edit note from ${postingTime || note.date}`}
               onClick={() => onEdit(note)}
               className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70"
             >
@@ -64,52 +168,131 @@ function NoteCard({
               type="button"
               variant="ghost"
               size="icon-xs"
-              aria-label={`Delete note for ${note.date}`}
+              aria-label={`Delete note from ${postingTime || note.date}`}
               onClick={() => onDelete(note)}
               className="size-7 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 className="size-3.5" />
             </Button>
           </div>
+        )}
+      </div>
+
+      <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed break-words">
+        {displayContent}
+      </p>
+
+      {isLong && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsExpanded((prev) => !prev)}
+          className="h-6 px-2 text-xs font-medium text-primary hover:text-primary/80 hover:bg-lavender/50 gap-1"
+        >
+          {isExpanded ? (
+            <>
+              <span>Show less</span>
+              <ChevronUp className="size-3" />
+            </>
+          ) : (
+            <>
+              <span>Read more</span>
+              <ChevronDown className="size-3" />
+            </>
+          )}
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function DateGroupCard({
+  group,
+  canManage,
+  showAuthor,
+  partnerDisplayName,
+  currentUserId,
+  onEdit,
+  onDelete,
+}: {
+  group: DateGroup
+  canManage: boolean
+  showAuthor?: boolean
+  partnerDisplayName?: string
+  currentUserId?: string
+  onEdit: (note: DailyNoteRecord) => void
+  onDelete: (note: DailyNoteRecord) => void
+}) {
+  const { formatted, relative } = formatDateHeader(group.date)
+
+  return (
+    <Card className="overflow-hidden hover:border-primary/40 transition-all shadow-xs">
+      <CardHeader className="pb-2.5 pt-4 px-4 sm:px-5 border-b border-border/40 bg-secondary/15">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 text-foreground font-semibold text-sm sm:text-base">
+            <Calendar className="size-4 text-primary shrink-0" />
+            <span>{formatted}</span>
+            {relative && (
+              <Badge variant="lavender" className="text-[10px] font-medium py-0 px-2">
+                {relative}
+              </Badge>
+            )}
+          </div>
+          <span className="text-xs text-muted-foreground font-medium">
+            {group.entries.length === 1
+              ? "1 entry"
+              : `${group.entries.length} entries`}
+          </span>
         </div>
       </CardHeader>
 
-      <CardContent className="p-4 sm:p-5 space-y-3">
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-          {displayContent}
-        </p>
-
-        {isLong && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className="h-7 px-2 text-xs font-medium text-primary hover:text-primary/80 hover:bg-lavender/50 gap-1"
-          >
-            {isExpanded ? (
-              <>
-                <span>Show less</span>
-                <ChevronUp className="size-3" />
-              </>
-            ) : (
-              <>
-                <span>Read more</span>
-                <ChevronDown className="size-3" />
-              </>
-            )}
-          </Button>
-        )}
+      <CardContent className="p-3 sm:p-4 space-y-3">
+        {group.entries.map((note) => (
+          <NoteEntryItem
+            key={note.id}
+            note={note}
+            canManage={canManage}
+            showAuthor={showAuthor}
+            partnerDisplayName={partnerDisplayName}
+            currentUserId={currentUserId}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
       </CardContent>
     </Card>
   )
 }
 
-export function NotesHistory({ notes }: NotesHistoryProps) {
+export function NotesHistory({
+  notes,
+  partnerNotes = [],
+  isPartnerContext = false,
+  hasActivePartner = false,
+  partnerDisplayName = "Partner",
+  canManage = true,
+  currentUserId,
+}: NotesHistoryProps) {
   const router = useRouter()
+
+  // Tab state for Cycle Owner when partner notes exist or partner is active
+  const showTabs = !isPartnerContext && (hasActivePartner || partnerNotes.length > 0)
+  const [activeTab, setActiveTab] = React.useState<"own" | "partner">("own")
+
   const [editorOpen, setEditorOpen] = React.useState(false)
   const [editTarget, setEditTarget] = React.useState<DailyNoteRecord | null>(null)
   const [deleteTarget, setDeleteTarget] = React.useState<DailyNoteRecord | null>(null)
+
+  const activeNotes = isPartnerContext
+    ? notes
+    : activeTab === "partner"
+    ? partnerNotes
+    : notes
+
+  const groupedNotes = React.useMemo(() => {
+    return groupNotesByDate(activeNotes)
+  }, [activeNotes])
 
   const handleOpenCreate = () => {
     setEditTarget(null)
@@ -131,59 +314,121 @@ export function NotesHistory({ notes }: NotesHistoryProps) {
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
+      {/* Bidirectional Tabs for Cycle Owner */}
+      {showTabs && (
+        <div className="flex border-b border-border/60 gap-4 text-sm font-medium">
+          <button
+            type="button"
+            onClick={() => setActiveTab("own")}
+            className={cn(
+              "pb-2.5 px-1 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5",
+              activeTab === "own"
+                ? "border-primary text-foreground font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <User className="size-3.5" />
+            <span>My Notes</span>
+            <span className="ml-1 text-[11px] px-1.5 py-0.2 rounded-full bg-secondary text-muted-foreground">
+              {notes.length}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("partner")}
+            className={cn(
+              "pb-2.5 px-1 border-b-2 transition-colors cursor-pointer flex items-center gap-1.5",
+              activeTab === "partner"
+                ? "border-primary text-foreground font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Users className="size-3.5" />
+            <span>Partner Notes</span>
+            <span className="ml-1 text-[11px] px-1.5 py-0.2 rounded-full bg-secondary text-muted-foreground">
+              {partnerNotes.length}
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* Header action row */}
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-foreground">
-            Journal Entries
+            {isPartnerContext
+              ? `${partnerDisplayName}'s Journal Entries`
+              : activeTab === "partner"
+              ? `Notes from ${partnerDisplayName}`
+              : "Journal Entries"}
           </h2>
           <p className="text-xs text-muted-foreground">
-            {notes.length === 1 ? "1 note recorded" : `${notes.length} notes recorded`}
+            {activeNotes.length === 1
+              ? "1 note recorded"
+              : `${activeNotes.length} notes recorded`}
           </p>
         </div>
 
-        <Button
-          type="button"
-          onClick={handleOpenCreate}
-          size="sm"
-          className="gap-1.5 rounded-xl shadow-redi-sm"
-        >
-          <Plus className="size-4" />
-          <span>Write Note</span>
-        </Button>
+        {canManage && (activeTab === "own" || isPartnerContext) && (
+          <Button
+            type="button"
+            onClick={handleOpenCreate}
+            size="sm"
+            className="gap-1.5 rounded-xl shadow-redi-sm cursor-pointer"
+          >
+            <Plus className="size-4" />
+            <span>Write Note</span>
+          </Button>
+        )}
       </div>
 
       {/* Notes List or Empty State */}
-      {notes.length === 0 ? (
+      {activeNotes.length === 0 ? (
         <Card className="rounded-2xl border-dashed border-border/80 p-8 sm:p-12 text-center bg-card/50">
           <div className="flex flex-col items-center justify-center space-y-3 max-w-xs mx-auto">
             <div className="flex size-14 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/70">
-              <BookOpen className="size-7" />
+              {activeTab === "partner" || isPartnerContext ? (
+                <Users className="size-7" />
+              ) : (
+                <BookOpen className="size-7" />
+              )}
             </div>
             <div className="space-y-1">
               <p className="text-base font-semibold text-foreground">
-                Nothing written yet.
+                {activeTab === "partner" || isPartnerContext
+                  ? "No partner notes yet."
+                  : "Nothing written yet."}
               </p>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                Add a note whenever you&apos;d like to remember how your day went.
+                {activeTab === "partner"
+                  ? `Notes created by ${partnerDisplayName} will appear here.`
+                  : isPartnerContext
+                  ? `No daily notes recorded for ${partnerDisplayName}'s cycle yet.`
+                  : "Add a note whenever you'd like to remember how your day went."}
               </p>
             </div>
-            <Button
-              type="button"
-              onClick={handleOpenCreate}
-              className="gap-1.5 rounded-xl shadow-redi-sm pt-1"
-            >
-              <Plus className="size-4" />
-              <span>Write Your First Note</span>
-            </Button>
+            {canManage && (activeTab === "own" || isPartnerContext) && (
+              <Button
+                type="button"
+                onClick={handleOpenCreate}
+                className="gap-1.5 rounded-xl shadow-redi-sm pt-1 cursor-pointer"
+              >
+                <Plus className="size-4" />
+                <span>Write Your First Note</span>
+              </Button>
+            )}
           </div>
         </Card>
       ) : (
         <div className="space-y-4">
-          {notes.map((note) => (
-            <NoteCard
-              key={note.id}
-              note={note}
+          {groupedNotes.map((group) => (
+            <DateGroupCard
+              key={group.date}
+              group={group}
+              canManage={canManage}
+              showAuthor={activeTab === "partner" || isPartnerContext}
+              partnerDisplayName={partnerDisplayName}
+              currentUserId={currentUserId}
               onEdit={handleEdit}
               onDelete={handleDelete}
             />
@@ -196,7 +441,9 @@ export function NotesHistory({ notes }: NotesHistoryProps) {
         open={editorOpen}
         onOpenChange={setEditorOpen}
         noteToEdit={editTarget}
-        existingNotes={notes}
+        existingNotes={activeNotes}
+        isPartnerContext={isPartnerContext}
+        partnerDisplayName={partnerDisplayName}
         onSuccess={handleSuccess}
       />
 
@@ -205,6 +452,7 @@ export function NotesHistory({ notes }: NotesHistoryProps) {
         open={Boolean(deleteTarget)}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
         note={deleteTarget}
+        isPartnerContext={isPartnerContext}
         onSuccess={handleSuccess}
       />
     </div>

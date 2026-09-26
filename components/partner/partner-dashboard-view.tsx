@@ -706,24 +706,24 @@ function DailyNotesCard({
 }) {
   const [addModalOpen, setAddModalOpen] = React.useState(false)
   const [editingNote, setEditingNote] = React.useState<SharedDailyNote | null>(null)
-  const [deletePendingDate, setDeletePendingDate] = React.useState<string | null>(null)
+  const [deletePendingId, setDeletePendingId] = React.useState<string | null>(null)
 
   if (!data.ok || !data.data) return null
 
   const notes = data.data
 
-  const handleDelete = async (date: string) => {
-    if (!confirm(`Delete partner daily note for ${date}?`)) return
-    setDeletePendingDate(date)
+  const handleDelete = async (note: SharedDailyNote) => {
+    if (!confirm(`Delete partner daily note for ${formatDate(note.date)}?`)) return
+    setDeletePendingId(note.id)
     try {
-      const res = await deletePartnerDailyNoteAction({ date })
+      const res = await deletePartnerDailyNoteAction({ noteId: note.id })
       if (res.ok) {
         onNotesUpdated()
       } else {
         alert(res.error || "Failed to delete note.")
       }
     } finally {
-      setDeletePendingDate(null)
+      setDeletePendingId(null)
     }
   }
 
@@ -775,13 +775,20 @@ function DailyNotesCard({
             <div className="space-y-2 max-h-80 overflow-y-auto">
               {notes.slice(0, 15).map((note) => (
                 <div
-                  key={note.date}
+                  key={note.id}
                   className="p-3 rounded-xl bg-secondary/30 border border-border/30 space-y-1 relative group"
                 >
                   <div className="flex items-center justify-between">
-                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-                      {formatDate(note.date)}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                        {formatDate(note.date)}
+                      </p>
+                      {note.createdAt && (
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          {new Date(note.createdAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                        </span>
+                      )}
+                    </div>
                     {canManage && (
                       <div className="flex items-center gap-1">
                         <Button
@@ -798,12 +805,12 @@ function DailyNotesCard({
                           type="button"
                           variant="ghost"
                           size="sm"
-                          disabled={deletePendingDate === note.date}
-                          onClick={() => handleDelete(note.date)}
+                          disabled={deletePendingId === note.id}
+                          onClick={() => handleDelete(note)}
                           className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive rounded-md cursor-pointer"
                           aria-label={`Delete note for ${note.date}`}
                         >
-                          {deletePendingDate === note.date ? (
+                          {deletePendingId === note.id ? (
                             <Loader2 className="size-3 animate-spin" />
                           ) : (
                             <Trash2 className="size-3" />
@@ -1289,7 +1296,7 @@ function EditDailyNoteDialog({
     setSuccess(false)
 
     try {
-      const res = await updatePartnerDailyNoteAction({ date: note.date, content })
+      const res = await updatePartnerDailyNoteAction({ noteId: note.id, content })
 
       if (res.ok) {
         setSuccess(true)

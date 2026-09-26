@@ -517,25 +517,11 @@ export async function createPartnerDailyNoteAction(
   }
 
   try {
-    // Check if a note already exists for this date on owner's account
-    const { data: existing } = await supabase
-      .from("daily_notes")
-      .select("id")
-      .eq("user_id", ownerUserId)
-      .eq("date", date)
-      .maybeSingle()
-
-    if (existing) {
-      return {
-        ok: false,
-        error: "A daily note already exists for this date. Please edit the existing note.",
-      }
-    }
-
     const { data: newNote, error: insertError } = await supabase
       .from("daily_notes")
       .insert({
         user_id: ownerUserId,
+        author_id: supporterUserId,
         date,
         content,
       })

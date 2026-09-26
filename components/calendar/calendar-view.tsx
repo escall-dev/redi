@@ -127,13 +127,20 @@ export function CalendarView({
     return new Set(notes.map((n) => n.date))
   }, [notes])
 
-  // Daily note for the currently selected date
-  const selectedDateNote = React.useMemo(() => {
-    return notes.find((n) => n.date === selectedDateStr) ?? null
+  // Daily notes for the currently selected date, newest first
+  const selectedDateNotes = React.useMemo(() => {
+    return notes
+      .filter((n) => n.date === selectedDateStr)
+      .sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0
+        return timeB - timeA
+      })
   }, [notes, selectedDateStr])
 
-  // Note editor dialog for calendar "Add Note" / "Edit Note" action
+  // Note editor dialog state
   const [noteEditorOpen, setNoteEditorOpen] = React.useState(false)
+  const [editingNote, setEditingNote] = React.useState<DailyNoteRecord | null>(null)
 
   const monthTitle = `${getMonthName(viewMonth)} ${viewYear}`
 
@@ -587,33 +594,66 @@ export function CalendarView({
                 <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
                   <FileText className="size-3.5" />
                   {isPartnerView ? "Partner Note" : "Daily Note"}
+                  {selectedDateNotes.length > 0 && (
+                    <span className="text-[10px] text-muted-foreground font-normal">
+                      ({selectedDateNotes.length})
+                    </span>
+                  )}
                 </span>
                 {!isPartnerView && (
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    onClick={() => setNoteEditorOpen(true)}
-                    className="h-7 px-2 text-xs text-muted-foreground hover:text-primary gap-1"
+                    onClick={() => {
+                      setEditingNote(null)
+                      setNoteEditorOpen(true)
+                    }}
+                    className="h-7 px-2 text-xs text-muted-foreground hover:text-primary gap-1 cursor-pointer"
                   >
-                    {selectedDateNote ? (
-                      <>
-                        <Pencil className="size-3" />
-                        Edit Note
-                      </>
-                    ) : (
-                      <>
-                        <Plus className="size-3" />
-                        Add Note
-                      </>
-                    )}
+                    <Plus className="size-3" />
+                    <span>Add Note</span>
                   </Button>
                 )}
               </div>
 
-              {selectedDateNote ? (
-                <div className="rounded-xl bg-secondary/40 p-3 border border-border/50 text-xs sm:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
-                  &ldquo;{selectedDateNote.content}&rdquo;
+              {selectedDateNotes.length > 0 ? (
+                <div className="space-y-2">
+                  {selectedDateNotes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="rounded-xl bg-secondary/40 p-3 border border-border/50 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        {note.created_at && (
+                          <span className="font-mono">
+                            {new Date(note.created_at).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        )}
+                        {!isPartnerView && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            onClick={() => {
+                              setEditingNote(note)
+                              setNoteEditorOpen(true)
+                            }}
+                            className="size-6 text-muted-foreground hover:text-primary cursor-pointer"
+                            aria-label="Edit note"
+                          >
+                            <Pencil className="size-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-xs sm:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                        &ldquo;{note.content}&rdquo;
+                      </p>
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <p className="text-xs text-muted-foreground py-0.5">
@@ -654,7 +694,7 @@ export function CalendarView({
       <NoteEditorDialog
         open={noteEditorOpen}
         onOpenChange={setNoteEditorOpen}
-        noteToEdit={selectedDateNote}
+        noteToEdit={editingNote}
         defaultDate={selectedDateStr}
         existingNotes={notes}
         onSuccess={() => { /* router.refresh() handled via revalidatePath server-side */ }}
