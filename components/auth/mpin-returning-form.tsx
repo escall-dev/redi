@@ -320,7 +320,7 @@ export function MpinReturningForm({
       </div>
 
       {/* ── Bottom: Credits + Meadow nicely balanced slightly above bottom edge ── */}
-      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-3 sm:pb-4 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-5 sm:pb-6 pb-[max(4.15rem,env(safe-area-inset-bottom))]">
         {/* Version badge & Credits — stacked right above meadow */}
         <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
