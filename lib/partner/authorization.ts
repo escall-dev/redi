@@ -320,6 +320,7 @@ export async function getEnabledSharingCategories(
   authorized: boolean
   role?: PartnerRole
   categories?: SharingCategory[]
+  enabledCategories?: SharingCategory[]
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
@@ -371,6 +372,7 @@ export async function getEnabledSharingCategories(
     authorized: true,
     role: context.role,
     categories: enabledCategories,
+    enabledCategories,
     managementPermissions: enabledManagement,
     ownerDisplayName: ownerProfile?.display_name || "Partner",
     ownerUsername: ownerProfile?.username || undefined,

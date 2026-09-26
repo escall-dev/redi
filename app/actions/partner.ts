@@ -248,7 +248,15 @@ export async function updatePartnerSharingPreferencesAction(
     return { ok: false, error: "Authentication required." }
   }
 
-  return updateSharingPreferences(supabase, user.id, relationshipId, updates)
+  const res = await updateSharingPreferences(supabase, user.id, relationshipId, updates)
+  if (res.ok) {
+    revalidatePath("/partner")
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/calendar")
+    revalidatePath("/notes")
+  }
+  return res
 }
 
 /**

@@ -33,6 +33,7 @@ export interface PartnerDashboardData {
   authorized: boolean
   role?: PartnerRole
   enabledCategories?: SharingCategory[]
+  categories?: SharingCategory[]
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string

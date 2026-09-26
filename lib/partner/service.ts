@@ -1036,19 +1036,45 @@ export async function updateSharingPreferences(
       sanitized.manage_daily_notes = false
     }
 
-    // 4. Upsert sharing preferences record
-    const { data: updated, error: updateError } = await supabase
-      .from("partner_sharing_preferences")
-      .upsert(
-        {
-          relationship_id: relationshipId,
-          owner_user_id: ownerUserId,
+    // 4. Update or upsert sharing preferences record
+    let updated: Database["public"]["Tables"]["partner_sharing_preferences"]["Row"] | null = null
+    let updateError: unknown = null
+
+    if (currentPrefs) {
+      const res = await supabase
+        .from("partner_sharing_preferences")
+        .update({
           ...sanitized,
-        },
-        { onConflict: "relationship_id" }
-      )
-      .select()
-      .single()
+          updated_at: new Date().toISOString(),
+        })
+        .eq("relationship_id", relationshipId)
+        .select()
+        .single()
+      updated = res.data
+      updateError = res.error
+    } else {
+      const res = await supabase
+        .from("partner_sharing_preferences")
+        .upsert(
+          {
+            relationship_id: relationshipId,
+            owner_user_id: ownerUserId,
+            cycle_estimates: DEFAULT_PARTNER_SHARING_PREFERENCES.cycle_estimates ?? false,
+            period_status: DEFAULT_PARTNER_SHARING_PREFERENCES.period_status ?? false,
+            cycle_preferences: DEFAULT_PARTNER_SHARING_PREFERENCES.cycle_preferences ?? false,
+            daily_notes: DEFAULT_PARTNER_SHARING_PREFERENCES.daily_notes ?? false,
+            manage_cycle_preferences: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_cycle_preferences ?? false,
+            manage_period_status: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_period_status ?? false,
+            manage_daily_notes: DEFAULT_PARTNER_SHARING_PREFERENCES.manage_daily_notes ?? false,
+            ...sanitized,
+          },
+          { onConflict: "relationship_id" }
+        )
+        .select()
+        .single()
+      updated = res.data
+      updateError = res.error
+    }
 
     if (updateError || !updated) {
       return { ok: false, error: "Failed to update sharing preferences in database." }
