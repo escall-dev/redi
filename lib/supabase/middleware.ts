@@ -89,6 +89,9 @@ export async function updateSession(request: NextRequest) {
     return supabaseResponse
   }
 
+  const isMpinLocked = request.cookies.get("seijun-mpin-locked")?.value === "true"
+  const isMpinSetupPending = request.cookies.get("seijun-mpin-setup")?.value === "pending"
+
   // 1. Unauthenticated user on protected route -> /login
   if (!user && isProtectedRoute) {
     const redirectUrl = request.nextUrl.clone()
@@ -114,8 +117,27 @@ export async function updateSession(request: NextRequest) {
     return redirectResponse
   }
 
-  // 3. Authenticated user visiting /login or /register -> /dashboard
+  // 2b. Authenticated user whose device/session is locked by MPIN -> redirect to /login
+  if (user && isMpinLocked && (isProtectedRoute || isRoot)) {
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = "/login"
+    if (pathname !== "/dashboard" && pathname !== "/onboarding" && pathname !== "/") {
+      redirectUrl.searchParams.set("redirect", pathname)
+    }
+    const redirectResponse = NextResponse.redirect(redirectUrl)
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie)
+    })
+    return redirectResponse
+  }
+
+  // 3. Authenticated user visiting /login or /register
   if (user && isAuthRoute) {
+    // If MPIN is locked or MPIN creation is pending, allow access to /login to unlock/setup
+    if (isMpinLocked || isMpinSetupPending) {
+      return supabaseResponse
+    }
+
     const redirectUrl = request.nextUrl.clone()
     redirectUrl.pathname = "/dashboard"
     redirectUrl.searchParams.delete("redirect")

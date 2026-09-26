@@ -1,0 +1,382 @@
+/**
+ * Seijun MPIN Local Storage & Session State Manager
+ *
+ * Enforces secure local persistence of MPIN verifiers without storing plaintext PINs.
+ * Manages lockout rates, failed attempts, Remember Device, and Auto-Unlock states.
+ */
+
+import { generateSalt, hashMpin, timingSafeEqual } from "./mpin-crypto"
+
+export interface MpinRecord {
+  salt: string
+  verifier: string
+  createdAt: string
+  lastChangedAt: string
+}
+
+export interface AttemptState {
+  count: number
+  lockedUntil: number | null // epoch ms
+}
+
+export interface VerifyMpinResult {
+  success: boolean
+  error?: string
+  remainingAttempts?: number
+  isLockedOut?: boolean
+  lockedSecondsRemaining?: number
+}
+
+const MAX_FAILED_ATTEMPTS = 5
+const LOCKOUT_DURATION_MS = 60 * 1000 // 60 seconds lockout after 5 consecutive failures
+
+const PREFIX = "seijun_mpin_"
+
+function getKey(suffix: string, userId?: string): string {
+  if (userId) {
+    return `${PREFIX}${suffix}_${userId}`
+  }
+  return `${PREFIX}${suffix}`
+}
+
+/**
+ * Checks if document cookie contains seijun-mpin-locked=true
+ */
+export function isSessionLocked(): boolean {
+  if (typeof window === "undefined") return false
+  const match = document.cookie.match(/(?:^|;\s*)seijun-mpin-locked=([^;]*)/)
+  return match ? match[1] === "true" : false
+}
+
+/**
+ * Updates both client-side cookie and session storage for lock status
+ */
+export function setSessionLocked(locked: boolean): void {
+  if (typeof window === "undefined") return
+  const maxAge = locked ? 30 * 24 * 60 * 60 : 0 // 30 days if locked, delete if unlocked
+  const expires = locked
+    ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString()
+    : "Thu, 01 Jan 1970 00:00:00 GMT"
+
+  document.cookie = `seijun-mpin-locked=${locked ? "true" : "false"}; path=/; SameSite=Lax; expires=${expires}`
+
+  try {
+    if (locked) {
+      sessionStorage.setItem("seijun_session_locked", "true")
+    } else {
+      sessionStorage.removeItem("seijun_session_locked")
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Check if an MPIN record exists for the given user ID.
+ */
+export function hasMpin(userId: string): boolean {
+  if (typeof window === "undefined" || !userId) return false
+  try {
+    const raw = localStorage.getItem(getKey("verifier", userId))
+    return Boolean(raw)
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Get the stored MPIN record for a user.
+ */
+export function getMpinRecord(userId: string): MpinRecord | null {
+  if (typeof window === "undefined" || !userId) return null
+  try {
+    const raw = localStorage.getItem(getKey("verifier", userId))
+    if (!raw) return null
+    return JSON.parse(raw) as MpinRecord
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Save / Set a new 6-digit MPIN for a user.
+ */
+export async function saveMpin(
+  userId: string,
+  mpin: string,
+  rememberDevice: boolean = true,
+  userProfile?: { email?: string; displayName?: string | null }
+): Promise<void> {
+  if (typeof window === "undefined" || !userId) return
+
+  const salt = generateSalt(16)
+  const verifier = await hashMpin(mpin, salt)
+  const now = new Date().toISOString()
+
+  const record: MpinRecord = {
+    salt,
+    verifier,
+    createdAt: now,
+    lastChangedAt: now,
+  }
+
+  localStorage.setItem(getKey("verifier", userId), JSON.stringify(record))
+  localStorage.setItem(getKey("remember", userId), rememberDevice ? "true" : "false")
+  if (userProfile) {
+    setRememberedUser({
+      id: userId,
+      email: userProfile.email,
+      displayName: userProfile.displayName,
+    })
+  }
+  resetFailedAttempts(userId)
+  setSessionLocked(false)
+}
+
+/**
+ * Get current failed-attempts state.
+ */
+export function getAttemptState(userId: string): AttemptState {
+  if (typeof window === "undefined" || !userId) {
+    return { count: 0, lockedUntil: null }
+  }
+  try {
+    const raw = localStorage.getItem(getKey("attempts", userId))
+    if (!raw) return { count: 0, lockedUntil: null }
+    const state = JSON.parse(raw) as AttemptState
+
+    // If lock duration has expired, reset count
+    if (state.lockedUntil && Date.now() > state.lockedUntil) {
+      resetFailedAttempts(userId)
+      return { count: 0, lockedUntil: null }
+    }
+    return state
+  } catch {
+    return { count: 0, lockedUntil: null }
+  }
+}
+
+/**
+ * Record a failed attempt and initiate temporary lockout if limit reached.
+ */
+export function recordFailedAttempt(userId: string): AttemptState {
+  const current = getAttemptState(userId)
+  const newCount = current.count + 1
+  let lockedUntil: number | null = null
+
+  if (newCount >= MAX_FAILED_ATTEMPTS) {
+    lockedUntil = Date.now() + LOCKOUT_DURATION_MS
+  }
+
+  const newState: AttemptState = {
+    count: newCount,
+    lockedUntil,
+  }
+
+  try {
+    localStorage.setItem(getKey("attempts", userId), JSON.stringify(newState))
+  } catch {
+    // Ignore storage errors
+  }
+
+  return newState
+}
+
+/**
+ * Reset failed attempts counter.
+ */
+export function resetFailedAttempts(userId: string): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.removeItem(getKey("attempts", userId))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Verifies entered 6-digit MPIN against stored cryptographic verifier.
+ */
+export async function verifyMpin(
+  userId: string,
+  enteredMpin: string
+): Promise<VerifyMpinResult> {
+  const attemptState = getAttemptState(userId)
+
+  // 1. Check if currently locked out
+  if (attemptState.lockedUntil && Date.now() < attemptState.lockedUntil) {
+    const remainingSeconds = Math.ceil((attemptState.lockedUntil - Date.now()) / 1000)
+    return {
+      success: false,
+      isLockedOut: true,
+      lockedSecondsRemaining: remainingSeconds,
+      error: `Too many failed attempts. Please try again in ${remainingSeconds}s.`,
+    }
+  }
+
+  // 2. Validate format
+  if (!enteredMpin || enteredMpin.length !== 6 || !/^\d{6}$/.test(enteredMpin)) {
+    return {
+      success: false,
+      error: "Please enter a valid 6-digit MPIN.",
+    }
+  }
+
+  // 3. Fetch stored record
+  const record = getMpinRecord(userId)
+  if (!record) {
+    return {
+      success: false,
+      error: "No MPIN configured for this account on this device.",
+    }
+  }
+
+  // 4. Compute PBKDF2 hash of entered MPIN with stored salt
+  const enteredVerifier = await hashMpin(enteredMpin, record.salt)
+  const isMatch = timingSafeEqual(enteredVerifier, record.verifier)
+
+  if (isMatch) {
+    resetFailedAttempts(userId)
+    setSessionLocked(false)
+    return { success: true }
+  }
+
+  // 5. Handle failure
+  const updatedAttempts = recordFailedAttempt(userId)
+  if (updatedAttempts.lockedUntil) {
+    const remainingSeconds = Math.ceil(LOCKOUT_DURATION_MS / 1000)
+    return {
+      success: false,
+      isLockedOut: true,
+      lockedSecondsRemaining: remainingSeconds,
+      remainingAttempts: 0,
+      error: `Incorrect MPIN. Maximum attempts reached. Locked for ${remainingSeconds}s.`,
+    }
+  }
+
+  const remaining = MAX_FAILED_ATTEMPTS - updatedAttempts.count
+  return {
+    success: false,
+    remainingAttempts: remaining,
+    error: `Incorrect MPIN. ${remaining} ${remaining === 1 ? "attempt" : "attempts"} remaining.`,
+  }
+}
+
+/**
+ * Remember Device preference
+ */
+export function isRememberDeviceEnabled(userId: string): boolean {
+  if (typeof window === "undefined" || !userId) return true
+  try {
+    const val = localStorage.getItem(getKey("remember", userId))
+    return val !== "false"
+  } catch {
+    return true
+  }
+}
+
+export function setRememberDeviceEnabled(userId: string, enabled: boolean): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.setItem(getKey("remember", userId), enabled ? "true" : "false")
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Automatic Unlock preference
+ */
+export function isAutoUnlockEnabled(userId: string): boolean {
+  if (typeof window === "undefined" || !userId) return false
+  try {
+    const val = localStorage.getItem(getKey("autounlock", userId))
+    return val === "true"
+  } catch {
+    return false
+  }
+}
+
+export function setAutoUnlockEnabled(userId: string, enabled: boolean): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.setItem(getKey("autounlock", userId), enabled ? "true" : "false")
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export interface RememberedUser {
+  id: string
+  email?: string
+  displayName?: string | null
+}
+
+const REMEMBERED_USER_KEY = "seijun_remembered_user"
+
+export function getRememberedUser(): RememberedUser | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = localStorage.getItem(REMEMBERED_USER_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as RememberedUser
+  } catch {
+    return null
+  }
+}
+
+export function setRememberedUser(user: RememberedUser): void {
+  if (typeof window === "undefined" || !user?.id) return
+  try {
+    localStorage.setItem(REMEMBERED_USER_KEY, JSON.stringify(user))
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearRememberedUser(): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.removeItem(REMEMBERED_USER_KEY)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Clears MPIN verifier and lock state for a specific user (e.g. Forgot MPIN)
+ */
+export function clearMpin(userId: string): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.removeItem(getKey("verifier", userId))
+    localStorage.removeItem(getKey("remember", userId))
+    localStorage.removeItem(getKey("autounlock", userId))
+    localStorage.removeItem(getKey("attempts", userId))
+    clearRememberedUser()
+    setSessionLocked(false)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+/**
+ * Clears all MPIN data and unlock cookies across all users (e.g. on full hard reset)
+ */
+export function clearAllMpinState(): void {
+  if (typeof window === "undefined") return
+  try {
+    const keysToRemove: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && (key.startsWith(PREFIX) || key === REMEMBERED_USER_KEY)) {
+        keysToRemove.push(key)
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k))
+    setSessionLocked(false)
+  } catch {
+    // Ignore storage errors
+  }
+}
+

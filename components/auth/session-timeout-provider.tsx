@@ -3,7 +3,8 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { logoutAction } from "@/app/actions/auth"
+import { logoutAction, setSessionLockAction } from "@/app/actions/auth"
+import { hasMpin, setSessionLocked } from "@/lib/auth/mpin-storage"
 import {
   INACTIVITY_TIMEOUT_MS,
   INACTIVITY_WARNING_MS,
@@ -41,6 +42,7 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
   const lastRecordedActivityRef = React.useRef<number>(0)
   const isLoggingOutRef = React.useRef<boolean>(false)
   const isWarningOpenRef = React.useRef<boolean>(false)
+  const currentUserIdRef = React.useRef<string | null>(null)
 
   // Keep ref in sync for synchronous access inside event listeners
   React.useEffect(() => {
@@ -63,12 +65,16 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
         if (isMounted) {
           setIsAuthenticated(Boolean(user))
           if (user) {
+            currentUserIdRef.current = user.id
             lastActivityRef.current = Date.now()
+          } else {
+            currentUserIdRef.current = null
           }
         }
       } catch {
         if (isMounted) {
           setIsAuthenticated(false)
+          currentUserIdRef.current = null
         }
       }
     }
@@ -80,10 +86,12 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
       const hasUser = Boolean(session?.user)
       setIsAuthenticated(hasUser)
 
-      if (hasUser) {
+      if (hasUser && session?.user) {
+        currentUserIdRef.current = session.user.id
         lastActivityRef.current = Date.now()
         isLoggingOutRef.current = false
       } else {
+        currentUserIdRef.current = null
         // Clear warning state if user logged out or session disappeared
         setIsWarningOpen(false)
       }
@@ -95,12 +103,23 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
     }
   }, [])
 
-  // 2. Perform automatic logout using canonical logout flow
-  const performLogout = React.useCallback(async () => {
+  // 2. Perform timeout handling: Lock session with MPIN if configured, otherwise full logout
+  const performTimeoutAction = React.useCallback(async () => {
     if (isLoggingOutRef.current) return
     isLoggingOutRef.current = true
     setIsWarningOpen(false)
 
+    const userId = currentUserIdRef.current
+    if (userId && hasMpin(userId)) {
+      // User has MPIN: Lock session to MPIN unlock screen, preserving Supabase session
+      setSessionLocked(true)
+      await setSessionLockAction(true)
+      router.push(`/login?redirect=${encodeURIComponent(pathname)}`)
+      router.refresh()
+      return
+    }
+
+    // Fallback: Full logout
     try {
       await logoutAction()
     } catch (err: unknown) {
@@ -116,7 +135,7 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
       router.push("/login")
       router.refresh()
     }
-  }, [router])
+  }, [pathname, router])
 
   // 3. User action: "Stay Logged In"
   const handleStayLoggedIn = React.useCallback(() => {
@@ -137,7 +156,7 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
 
     if (remaining <= 0) {
       // 10 minutes of inactivity reached
-      performLogout()
+      performTimeoutAction()
     } else if (remaining <= INACTIVITY_WARNING_MS) {
       // Within warning window (remaining <= 2 minutes)
       setRemainingMs(remaining)
@@ -150,7 +169,7 @@ export function SessionTimeoutProvider({ children }: SessionTimeoutProviderProps
         setIsWarningOpen(false)
       }
     }
-  }, [isAuthenticated, isAuthRoute, performLogout])
+  }, [isAuthenticated, isAuthRoute, performTimeoutAction])
 
   // 5. Activity listener setup and periodic check timer
   React.useEffect(() => {

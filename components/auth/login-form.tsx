@@ -2,9 +2,12 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useSearchParams } from "next/navigation"
-import { useActionState } from "react"
-import { loginAction, type AuthActionResult } from "@/app/actions/auth"
+import { useSearchParams, useRouter } from "next/navigation"
+import { loginAction, setSessionLockAction, setMpinSetupPendingAction, logoutAction, type AuthActionResult } from "@/app/actions/auth"
+import { createClient } from "@/lib/supabase/client"
+import { hasMpin, isAutoUnlockEnabled, setSessionLocked, clearMpin, getRememberedUser, setRememberedUser, clearRememberedUser } from "@/lib/auth/mpin-storage"
+import { MpinReturningForm, type MpinReturningUser } from "@/components/auth/mpin-returning-form"
+import { MpinSetupForm } from "@/components/auth/mpin-setup-form"
 import { RediLogo } from "@/components/brand/redi-logo"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,6 +19,8 @@ import { InstallAppButton } from "@/components/pwa/install-app-button"
 export interface LoginFormProps {
   version?: string
 }
+
+type AuthViewMode = "loading" | "returning-mpin" | "setup-mpin" | "email-password"
 
 function subscribeToLocalStorage(callback: () => void) {
   window.addEventListener("storage", callback)
@@ -35,27 +40,186 @@ function getServerRememberedEmailSnapshot(): string {
 }
 
 export function LoginForm({ version }: LoginFormProps = {}) {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTarget = searchParams.get("redirect") || "/dashboard"
   const urlError = searchParams.get("error")
   const urlVerified = searchParams.get("verified") === "true"
+  const urlResetMpin = searchParams.get("reset_mpin") === "true"
+
+  const [viewMode, setViewMode] = React.useState<AuthViewMode>("loading")
+  const [currentUser, setCurrentUser] = React.useState<MpinReturningUser | null>(null)
+  const [setupUserId, setSetupUserId] = React.useState<string | null>(null)
+  const [setupUserEmail, setSetupUserEmail] = React.useState<string | undefined>(undefined)
+  const [setupDisplayName, setSetupDisplayName] = React.useState<string | null>(null)
+
   const [showPassword, setShowPassword] = React.useState(false)
+  const [rememberMeChecked, setRememberMeChecked] = React.useState(true)
+  const [customEmail, setCustomEmail] = React.useState<string | null>(null)
+  const [formError, setFormError] = React.useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
+
   const savedEmail = React.useSyncExternalStore(
     subscribeToLocalStorage,
     getRememberedEmailSnapshot,
     getServerRememberedEmailSnapshot
   )
-  const [customEmail, setCustomEmail] = React.useState<string | null>(null)
   const email = customEmail ?? savedEmail
-  const [rememberMeChecked, setRememberMeChecked] = React.useState(true)
 
-  const [state, formAction, isPending] = useActionState<AuthActionResult | null, FormData>(
-    loginAction,
-    null
-  )
+  // 1. Initial audit of existing Supabase session and local MPIN on mount
+  React.useEffect(() => {
+    let isMounted = true
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    async function evaluateExistingSession() {
+      // If user came via explicit reset MPIN, force email/password login
+      if (urlResetMpin) {
+        if (isMounted) {
+          setViewMode("email-password")
+        }
+        return
+      }
+
+      // Priority 1: Check if this device has a remembered user with an active MPIN (default experience)
+      const remembered = getRememberedUser()
+      if (remembered && hasMpin(remembered.id)) {
+        if (isMounted) {
+          setCurrentUser(remembered)
+          setViewMode("returning-mpin")
+        }
+        return
+      }
+
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+        } = await supabase.auth.getUser()
+
+        if (!isMounted) return
+
+        if (user) {
+          const userObj: MpinReturningUser = {
+            id: user.id,
+            email: user.email,
+            displayName: user.user_metadata?.display_name || null,
+          }
+          setCurrentUser(userObj)
+          setRememberedUser(userObj)
+
+          if (hasMpin(user.id)) {
+            // Check automatic unlock preference
+            if (isAutoUnlockEnabled(user.id)) {
+              setSessionLocked(false)
+              await setSessionLockAction(false)
+              router.push(redirectTarget)
+              router.refresh()
+              return
+            }
+
+            // Default returning experience: 6-digit MPIN keypad
+            setViewMode("returning-mpin")
+          } else {
+            // Authenticated user without MPIN on this device -> First-time setup
+            setSetupUserId(user.id)
+            setSetupUserEmail(user.email)
+            setSetupDisplayName(user.user_metadata?.display_name || null)
+            setViewMode("setup-mpin")
+          }
+        } else {
+          // No active Supabase session and no local MPIN -> Standard email/password login
+          setViewMode("email-password")
+        }
+      } catch {
+        if (isMounted) {
+          setViewMode("email-password")
+        }
+      }
+    }
+
+    evaluateExistingSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [urlResetMpin, redirectTarget, router])
+
+  // 2. Handle MPIN unlock success for returning user
+  const handleMpinUnlockSuccess = React.useCallback(async () => {
+    setSessionLocked(false)
+    await setSessionLockAction(false)
+
+    try {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) {
+        setFormError("Session expired. Please sign in with your email and password to reconnect.")
+        setViewMode("email-password")
+        return
+      }
+    } catch {
+      // Ignore
+    }
+
+    router.push(redirectTarget)
+    router.refresh()
+  }, [redirectTarget, router])
+
+  // 3. Handle Switch Account
+  const handleSwitchAccount = React.useCallback(async () => {
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore
+    }
+    clearRememberedUser()
+    setSessionLocked(false)
+    await setSessionLockAction(false)
+    await setMpinSetupPendingAction(false)
+    setCurrentUser(null)
+    setViewMode("email-password")
+  }, [])
+
+  // 4. Handle Forgot MPIN
+  const handleForgotMpin = React.useCallback(async () => {
+    if (currentUser?.id) {
+      clearMpin(currentUser.id)
+    }
+    clearRememberedUser()
+    try {
+      const supabase = createClient()
+      await supabase.auth.signOut()
+    } catch {
+      // Ignore
+    }
+    setSessionLocked(false)
+    await setSessionLockAction(false)
+    await setMpinSetupPendingAction(false)
+    setCurrentUser(null)
+    setViewMode("email-password")
+    setFormError("Your local MPIN has been reset. Please sign in with your email and password to create a new MPIN.")
+  }, [currentUser])
+
+  // 5. Handle First-Time MPIN Setup Success
+  const handleMpinSetupSuccess = React.useCallback(async () => {
+    setSessionLocked(false)
+    await setSessionLockAction(false)
+    await setMpinSetupPendingAction(false)
+    router.push(redirectTarget)
+    router.refresh()
+  }, [redirectTarget, router])
+
+  // 6. Handle Email + Password Submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setFormError(null)
+
     const formData = new FormData(e.currentTarget)
+    formData.set("skipRedirect", "true")
+
     const submittedEmail = formData.get("email")?.toString() || ""
     const isRemembered = formData.get("rememberMe") !== null
     const submittedPassword = formData.get("password")?.toString() || ""
@@ -64,64 +228,105 @@ export function LoginForm({ version }: LoginFormProps = {}) {
       try {
         localStorage.setItem("seijun_remembered_email", submittedEmail)
       } catch {
-        // Ignore localStorage quota or restriction errors
+        // Ignore quota error
       }
     }
 
-    // Trigger browser credential storage API if supported by the browser
-    if (
-      typeof window !== "undefined" &&
-      "PasswordCredential" in window &&
-      navigator.credentials?.store &&
-      submittedEmail &&
-      submittedPassword
-    ) {
-      try {
-        const CredentialConstructor = (
-          window as unknown as {
-            PasswordCredential: new (data: {
-              id: string
-              password: string
-              name?: string
-            }) => unknown
-          }
-        ).PasswordCredential
-        const cred = new CredentialConstructor({
-          id: submittedEmail,
-          password: submittedPassword,
-          name: submittedEmail,
-        })
-        navigator.credentials.store(cred as unknown as Credential).catch(() => {})
-      } catch {
-        // Fail silently if browser blocks or doesn't support credential creation
+    try {
+      const result: AuthActionResult = await loginAction(null, formData)
+
+      if (!result.success || !result.user) {
+        setFormError(result.error || "Invalid email or password.")
+        setIsSubmitting(false)
+        return
       }
+
+      // Persist remembered user profile for subsequent default MPIN visits
+      setRememberedUser({
+        id: result.user.id,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      })
+
+      // Check if MPIN is already configured for this user
+      if (hasMpin(result.user.id)) {
+        setSessionLocked(false)
+        await setSessionLockAction(false)
+        await setMpinSetupPendingAction(false)
+        router.push(result.redirectUrl || redirectTarget)
+        router.refresh()
+        return
+      }
+
+      // First login: prompt user to create 6-digit MPIN
+      await setMpinSetupPendingAction(true)
+      setSetupUserId(result.user.id)
+      setSetupUserEmail(result.user.email)
+      setSetupDisplayName(result.user.displayName || null)
+      setViewMode("setup-mpin")
+    } catch (err: unknown) {
+      setFormError(err instanceof Error ? err.message : "An unexpected error occurred.")
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
+  // --- RENDERING VIEWS ---
+
+  if (viewMode === "loading") {
+    return (
+      <div className="flex flex-col items-center justify-center p-8 space-y-3 min-h-[320px]">
+        <Loader2 className="size-6 text-primary animate-spin" />
+        <span className="text-xs text-muted-foreground">Checking authentication state...</span>
+      </div>
+    )
+  }
+
+  if (viewMode === "returning-mpin" && currentUser) {
+    return (
+      <MpinReturningForm
+        user={currentUser}
+        onSuccess={handleMpinUnlockSuccess}
+        onSwitchAccount={handleSwitchAccount}
+        onForgotMpin={handleForgotMpin}
+        version={version}
+      />
+    )
+  }
+
+  if (viewMode === "setup-mpin" && setupUserId) {
+    return (
+      <MpinSetupForm
+        userId={setupUserId}
+        userEmail={setupUserEmail}
+        displayName={setupDisplayName}
+        onSuccess={handleMpinSetupSuccess}
+      />
+    )
+  }
+
   const errorMessage =
-    state?.error ||
+    formError ||
     (urlError === "verification_failed"
       ? "The verification link is invalid or has expired. Please sign in or request a new link."
       : null)
 
   return (
     <div className="w-full space-y-6">
-      {/* Elevated Login Card */}
       <Card className="border border-lavender-border/80 bg-card shadow-redi-card rounded-2xl sm:rounded-3xl transition-all">
         <CardContent className="pt-8 pb-8 px-5 sm:px-8 space-y-6">
-          {/* Header & Logo Section inside the card */}
+          {/* Header & Logo Section */}
           <div className="flex flex-col items-center text-center space-y-3">
-            {/* Prominent Authentic Redi SVG Icon */}
             <div className="relative flex items-center justify-center p-2 rounded-2xl bg-lavender/50 border border-lavender-border/60 shadow-xs">
               <RediLogo size="lg" className="drop-shadow-sm" />
             </div>
 
             <div className="space-y-1">
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
-                Welcome back
+                Sign In
               </h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Sign in to your private cycle tracker.
+                Enter your credentials to access Seijun private cycle tracking.
               </p>
             </div>
           </div>
@@ -149,8 +354,8 @@ export function LoginForm({ version }: LoginFormProps = {}) {
             </div>
           )}
 
-          {/* Form */}
-          <form action={formAction} onSubmit={handleSubmit} className="space-y-4">
+          {/* Email / Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
             <input type="hidden" name="redirect" value={redirectTarget} />
 
             {/* Email Field */}
@@ -167,7 +372,7 @@ export function LoginForm({ version }: LoginFormProps = {}) {
                 placeholder="you@example.com"
                 autoComplete="username email"
                 required
-                disabled={isPending}
+                disabled={isSubmitting}
                 className="h-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
               />
             </div>
@@ -187,14 +392,14 @@ export function LoginForm({ version }: LoginFormProps = {}) {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   required
-                  disabled={isPending}
+                  disabled={isSubmitting}
                   className="h-11 pr-11 rounded-xl border-input/80 bg-background/50 focus-visible:ring-primary/25"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   aria-label={showPassword ? "Hide password" : "Show password"}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40"
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 transition-colors rounded-lg focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 cursor-pointer"
                 >
                   {showPassword ? (
                     <EyeOff className="size-4" />
@@ -217,20 +422,20 @@ export function LoginForm({ version }: LoginFormProps = {}) {
                   type="checkbox"
                   checked={rememberMeChecked}
                   onChange={(e) => setRememberMeChecked(e.target.checked)}
-                  disabled={isPending}
+                  disabled={isSubmitting}
                   className="size-4 rounded border-border text-primary focus:ring-primary/20 accent-primary cursor-pointer"
                 />
                 <span>Remember me on this device</span>
               </label>
             </div>
 
-            {/* Primary Action Button */}
+            {/* Submit Button */}
             <Button
               type="submit"
-              disabled={isPending}
-              className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all"
+              disabled={isSubmitting}
+              className="w-full h-11 text-sm font-medium rounded-xl mt-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi-sm transition-all cursor-pointer"
             >
-              {isPending ? (
+              {isSubmitting ? (
                 <>
                   <Loader2 className="size-4 animate-spin mr-2" />
                   Signing in...
@@ -240,11 +445,11 @@ export function LoginForm({ version }: LoginFormProps = {}) {
               )}
             </Button>
 
-            {/* Download as App Button */}
+            {/* Install App Button */}
             <InstallAppButton />
           </form>
 
-          {/* Form Version Display at Lower Right */}
+          {/* Version */}
           {version && (
             <div className="flex justify-end pt-1 -mb-3">
               <span className="text-[11px] text-muted-foreground/60 select-none tracking-tight font-mono">

@@ -10,6 +10,13 @@ export interface AuthActionResult {
   error?: string
   message?: string
   requiresEmailConfirmation?: boolean
+  user?: {
+    id: string
+    email?: string
+    displayName?: string | null
+    onboardingCompleted?: boolean
+  }
+  redirectUrl?: string
 }
 
 function isValidEmail(email: string): boolean {
@@ -27,6 +34,7 @@ export async function loginAction(
   const password = formData.get("password") as string
   const redirectUrl = (formData.get("redirect") as string) || "/dashboard"
   const rememberMe = formData.get("rememberMe") === "on" || formData.get("rememberMe") === "true"
+  const skipRedirect = formData.get("skipRedirect") === "true"
 
   if (!email || !isValidEmail(email)) {
     return { success: false, error: "Please enter a valid email address." }
@@ -37,6 +45,7 @@ export async function loginAction(
   }
 
   let targetRedirect: string | null = null
+  let authenticatedUser: AuthActionResult["user"] = undefined
 
   try {
     const supabase = await createClient({ rememberMe })
@@ -94,6 +103,13 @@ export async function loginAction(
         )
       }
 
+      authenticatedUser = {
+        id: data.user.id,
+        email: data.user.email,
+        displayName: displayName,
+        onboardingCompleted: profile?.onboarding_completed ?? false,
+      }
+
       if (!profile?.onboarding_completed) {
         targetRedirect = "/onboarding"
       } else {
@@ -113,11 +129,15 @@ export async function loginAction(
     }
   }
 
-  if (targetRedirect) {
+  if (targetRedirect && !skipRedirect) {
     redirect(targetRedirect)
   }
 
-  return { success: true }
+  return {
+    success: true,
+    user: authenticatedUser,
+    redirectUrl: targetRedirect || "/dashboard",
+  }
 }
 
 /**
@@ -263,8 +283,70 @@ export async function logoutAction(): Promise<void> {
     await supabase.auth.signOut()
     const cookieStore = await cookies()
     cookieStore.delete("sb-remember-me")
+    cookieStore.delete("seijun-mpin-locked")
+    cookieStore.delete("seijun-mpin-setup")
   } catch {
     // Ignore error and proceed with redirect
   }
   redirect("/login")
 }
+
+/**
+ * Server Action: Update session lock cookie state
+ */
+export async function setSessionLockAction(locked: boolean): Promise<void> {
+  try {
+    const cookieStore = await cookies()
+    if (locked) {
+      cookieStore.set("seijun-mpin-locked", "true", {
+        path: "/",
+        sameSite: "lax",
+        httpOnly: false,
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      })
+    } else {
+      cookieStore.delete("seijun-mpin-locked")
+    }
+  } catch {
+    // Ignore cookie update errors
+  }
+}
+
+/**
+ * Server Action: Set or clear first-time MPIN setup pending cookie
+ */
+export async function setMpinSetupPendingAction(pending: boolean): Promise<void> {
+  try {
+    const cookieStore = await cookies()
+    if (pending) {
+      cookieStore.set("seijun-mpin-setup", "pending", {
+        path: "/",
+        sameSite: "lax",
+        httpOnly: false,
+        maxAge: 3600, // 1 hour
+      })
+    } else {
+      cookieStore.delete("seijun-mpin-setup")
+    }
+  } catch {
+    // Ignore cookie update errors
+  }
+}
+
+/**
+ * Server Action: Forgot MPIN action (signs out and redirects to login with reset flag)
+ */
+export async function forgotMpinAction(): Promise<void> {
+  try {
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+    const cookieStore = await cookies()
+    cookieStore.delete("sb-remember-me")
+    cookieStore.delete("seijun-mpin-locked")
+    cookieStore.delete("seijun-mpin-setup")
+  } catch {
+    // Ignore error
+  }
+  redirect("/login?reset_mpin=true")
+}
+

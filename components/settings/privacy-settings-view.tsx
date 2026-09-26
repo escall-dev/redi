@@ -4,6 +4,7 @@ import * as React from "react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { LogoutButton } from "@/components/auth/logout-button"
+import { MpinSettingsCard } from "@/components/settings/mpin-settings-card"
 import {
   ShieldCheck,
   Lock,
@@ -87,6 +88,9 @@ export function PrivacySettingsView({ email, createdAt }: PrivacySettingsViewPro
           <LogoutButton />
         </CardFooter>
       </Card>
+
+      {/* MPIN & Device Security */}
+      <MpinSettingsCard />
 
       {/* Privacy Guarantees Card */}
       <Card className="overflow-hidden border-border/70 shadow-xs">
