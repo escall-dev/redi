@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.32",
+  "version": "2.0.33",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -22,6 +22,7 @@
     "test:partner:connection": "node scripts/test-partner-connection-flow.mjs",
     "test:partner:shared-data": "node scripts/test-partner-shared-data.mjs",
     "test:partner:co-management": "node scripts/test-partner-co-management.mjs",
+    "test:partner:affinity": "node scripts/test-partner-affinity.mjs",
     "test:mpin": "node scripts/test-mpin-auth.mjs",
     "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs && node scripts/test-mpin-auth.mjs"
   },

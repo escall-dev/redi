@@ -4,7 +4,7 @@ import * as React from "react"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react"
 
 interface DatePickerProps {
   id?: string
@@ -88,6 +88,18 @@ export function DatePicker({
     }
   }
 
+  const prevYear = () => {
+    setViewYear((y) => Math.max(1900, y - 1))
+  }
+
+  const nextYear = () => {
+    if (maxDate) {
+      const nextY = `${viewYear + 1}-01-01`
+      if (nextY > maxDate) return
+    }
+    setViewYear((y) => y + 1)
+  }
+
   // Days calculations
   const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate()
   const firstDayOfWeek = new Date(viewYear, viewMonth, 1).getDay()
@@ -136,29 +148,57 @@ export function DatePicker({
         >
           {/* Header Month / Year controls */}
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-foreground px-1">
-              {monthNames[viewMonth]} {viewYear}
-            </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={prevYear}
+                aria-label="Previous year"
+                className="size-7 rounded-lg text-muted-foreground hover:text-foreground"
+                title="Previous year (-1 yr)"
+              >
+                <ChevronsLeft className="size-3.5" />
+              </Button>
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
                 onClick={prevMonth}
                 aria-label="Previous month"
-                className="size-7 rounded-lg"
+                className="size-7 rounded-lg text-muted-foreground hover:text-foreground"
+                title="Previous month"
               >
                 <ChevronLeft className="size-4" />
               </Button>
+            </div>
+
+            <span className="text-sm font-semibold text-foreground px-1 truncate">
+              {monthNames[viewMonth]} {viewYear}
+            </span>
+
+            <div className="flex items-center gap-0.5">
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-xs"
                 onClick={nextMonth}
                 aria-label="Next month"
-                className="size-7 rounded-lg"
+                className="size-7 rounded-lg text-muted-foreground hover:text-foreground"
+                title="Next month"
               >
                 <ChevronRight className="size-4" />
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                onClick={nextYear}
+                aria-label="Next year"
+                className="size-7 rounded-lg text-muted-foreground hover:text-foreground"
+                title="Next year (+1 yr)"
+              >
+                <ChevronsRight className="size-3.5" />
               </Button>
             </div>
           </div>

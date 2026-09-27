@@ -15,6 +15,7 @@ import type { PartnerConnectionState } from "@/lib/partner/types"
 import { AddPartnerModal } from "@/components/partner/add-partner-modal"
 import { InvitationCancelledDialog } from "@/components/partner/invitation-cancelled-dialog"
 import { PartnerSharingSettingsCard } from "@/components/partner/partner-sharing-settings-card"
+import { AffinityCard } from "@/components/partner/affinity-card"
 import {
   Dialog,
   DialogContent,
@@ -398,6 +399,20 @@ export function PartnerConnectionCard({
           )}
         </CardContent>
       </Card>
+
+      {/* Active Relationship: Affinity & Duration Section */}
+      {status === "active" && state?.partner && (
+        <AffinityCard
+          startDate={state.relationship?.startDate}
+          initialFormat={state.affinityDisplayFormat}
+          partnerDisplayName={state.partner.displayName}
+          partnerUsername={state.partner.username}
+          relationshipStatus={status}
+          canEdit={true}
+          onStartDateChange={() => fetchState(true)}
+          onFormatChange={() => fetchState(true)}
+        />
+      )}
 
       {/* Owner Access & Co-Management Controls */}
       {status === "active" && state?.relationship?.role === "owner" && state.relationship.id && (

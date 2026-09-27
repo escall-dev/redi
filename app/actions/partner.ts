@@ -16,6 +16,8 @@ import {
   updateSharingPreferences,
   searchPartnerByUsername,
   getPartnerConnectionState,
+  updateRelationshipStartDate,
+  updateAffinityDisplayFormat,
 } from "@/lib/partner/service"
 import type {
   CreateInvitationResult,
@@ -26,6 +28,7 @@ import type {
   PartnerActionResult,
   PartnerSearchResult,
   PartnerConnectionState,
+  AffinityDisplayFormat,
 } from "@/lib/partner/types"
 
 /**
@@ -329,4 +332,58 @@ export async function getPartnerConnectionStateAction(): Promise<
 
   return getPartnerConnectionState(supabase, user.id)
 }
+
+/**
+ * Server Action: Updates the relationship start date for the active connection.
+ * Authorized for both owner and supporter in the active relationship.
+ */
+export async function updateRelationshipStartDateAction(
+  startDate: string | null
+): Promise<PartnerActionResult<{ startDate: string | null }>> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required." }
+  }
+
+  const res = await updateRelationshipStartDate(supabase, user.id, startDate)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/settings")
+  }
+  return res
+}
+
+/**
+ * Server Action: Updates the user's preferred duration display format.
+ */
+export async function updateAffinityDisplayFormatAction(
+  format: AffinityDisplayFormat
+): Promise<PartnerActionResult<{ format: AffinityDisplayFormat }>> {
+  const supabase = await createClient()
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser()
+
+  if (authError || !user) {
+    return { ok: false, error: "Authentication required." }
+  }
+
+  const res = await updateAffinityDisplayFormat(supabase, user.id, format)
+  if (res.ok) {
+    revalidatePath("/settings/partner")
+    revalidatePath("/dashboard")
+    revalidatePath("/partner")
+    revalidatePath("/settings")
+  }
+  return res
+}
+
 

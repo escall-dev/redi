@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
-import type { PartnerSharingPreferences } from "./types"
+import type { PartnerSharingPreferences, AffinityDisplayFormat } from "./types"
 
 /**
  * Seijun Phase 19 Batch 3 — Step 11
@@ -60,6 +60,8 @@ export interface AuthorizedPartnerContext {
   supporterUserId: string
   /** The relationship ID */
   relationshipId: string
+  /** The relationship start date (if set) */
+  relationshipStartDate?: string | null
   /** Current sharing preferences (for authorization checks) */
   sharingPreferences: PartnerSharingPreferences
 }
@@ -121,7 +123,7 @@ export async function resolvePartnerContext(
     // 2. Find active relationship where the authenticated user is either owner or supporter
     const { data: relationship, error: relError } = await supabase
       .from("partner_relationships")
-      .select("id, owner_user_id, supporter_user_id, status")
+      .select("id, owner_user_id, supporter_user_id, status, relationship_start_date")
       .or(`owner_user_id.eq.${authenticatedUserId},supporter_user_id.eq.${authenticatedUserId}`)
       .eq("status", "active")
       .maybeSingle()
@@ -190,6 +192,7 @@ export async function resolvePartnerContext(
         ownerUserId,
         supporterUserId,
         relationshipId: relationship.id,
+        relationshipStartDate: relationship.relationship_start_date || null,
         sharingPreferences,
       },
     }
@@ -324,6 +327,8 @@ export async function getEnabledSharingCategories(
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
+  relationshipStartDate?: string | null
+  affinityDisplayFormat?: AffinityDisplayFormat
   reason?: AuthorizationDenialReason
   message?: string
 }> {
@@ -368,6 +373,13 @@ export async function getEnabledSharingCategories(
     .eq("user_id", context.ownerUserId)
     .maybeSingle()
 
+  // Fetch supporter's affinity display format preference
+  const { data: supporterProfile } = await supabase
+    .from("profiles")
+    .select("affinity_display_format")
+    .eq("user_id", context.authenticatedUserId)
+    .maybeSingle()
+
   return {
     authorized: true,
     role: context.role,
@@ -376,6 +388,8 @@ export async function getEnabledSharingCategories(
     managementPermissions: enabledManagement,
     ownerDisplayName: ownerProfile?.display_name || "Partner",
     ownerUsername: ownerProfile?.username || undefined,
+    relationshipStartDate: context.relationshipStartDate || null,
+    affinityDisplayFormat: supporterProfile?.affinity_display_format || "detailed",
   }
 }
 

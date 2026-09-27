@@ -11,6 +11,7 @@ import {
   type PartnerActionResult,
   type PartnerSearchResult,
   type PartnerConnectionState,
+  type AffinityDisplayFormat,
   DEFAULT_PARTNER_SHARING_PREFERENCES,
 } from "./types"
 import {
@@ -20,6 +21,7 @@ import {
   isInvitationExpired,
 } from "./token"
 import { sendPartnerInvitationNotification } from "./notification"
+import { isValidRelationshipDate } from "./affinity"
 
 /**
  * Normalizes username input: strips leading '@', trims whitespace, lowercases.
@@ -1110,7 +1112,7 @@ export async function getPartnerConnectionState(
     // 1. Check for active relationship
     const { data: activeRel, error: activeErr } = await supabase
       .from("partner_relationships")
-      .select("id, status, owner_user_id, supporter_user_id, created_at, accepted_at")
+      .select("id, status, owner_user_id, supporter_user_id, created_at, accepted_at, relationship_start_date")
       .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
       .eq("status", "active")
       .maybeSingle()
@@ -1118,6 +1120,16 @@ export async function getPartnerConnectionState(
     if (activeErr) {
       return { ok: false, error: "Error checking active relationship." }
     }
+
+    // Fetch user profile affinity format preference
+    const { data: userProfile } = await supabase
+      .from("profiles")
+      .select("affinity_display_format")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    const affinityDisplayFormat: AffinityDisplayFormat =
+      userProfile?.affinity_display_format || "detailed"
 
     if (activeRel) {
       const isOwner = activeRel.owner_user_id === userId
@@ -1150,7 +1162,9 @@ export async function getPartnerConnectionState(
             role: isOwner ? "owner" : "supporter",
             createdAt: activeRel.created_at,
             acceptedAt: activeRel.accepted_at,
+            startDate: activeRel.relationship_start_date || null,
           },
+          affinityDisplayFormat,
         },
       }
     }
@@ -1420,4 +1434,117 @@ export async function acceptInvitationById(
     return { ok: false, error: message }
   }
 }
+
+/**
+ * Service: Updates the relationship start date for the active connection.
+ * Authorized for both owner and supporter in the active relationship.
+ * Rejects if relationship is not active.
+ * Rejects future dates or invalid format.
+ */
+export async function updateRelationshipStartDate(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  startDate: string | null
+): Promise<PartnerActionResult<{ startDate: string | null }>> {
+  try {
+    if (!userId) {
+      return { ok: false, error: "Authentication required." }
+    }
+
+    // 1. Verify active relationship exists for this user
+    const { data: relationship, error: relError } = await supabase
+      .from("partner_relationships")
+      .select("id, status, owner_user_id, supporter_user_id")
+      .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
+      .eq("status", "active")
+      .maybeSingle()
+
+    if (relError || !relationship) {
+      return {
+        ok: false,
+        error: "No active partner relationship found. You must be in an active connection to modify the start date.",
+      }
+    }
+
+    // 2. Validate date if provided
+    let sanitizedDate: string | null = null
+    if (startDate && startDate.trim().length > 0) {
+      const validation = isValidRelationshipDate(startDate.trim())
+      if (!validation.valid) {
+        return { ok: false, error: validation.error || "Invalid relationship start date." }
+      }
+      sanitizedDate = startDate.trim()
+    }
+
+    // 3. Update partner_relationships
+    const { error: updateError } = await supabase
+      .from("partner_relationships")
+      .update({
+        relationship_start_date: sanitizedDate,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", relationship.id)
+      .eq("status", "active")
+
+    if (updateError) {
+      return { ok: false, error: updateError.message || "Failed to update relationship start date." }
+    }
+
+    return {
+      ok: true,
+      data: { startDate: sanitizedDate },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error updating relationship start date."
+    return { ok: false, error: message }
+  }
+}
+
+/**
+ * Service: Updates the user's preferred duration display format.
+ * Persisted to the user's profile row.
+ */
+export async function updateAffinityDisplayFormat(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  format: AffinityDisplayFormat
+): Promise<PartnerActionResult<{ format: AffinityDisplayFormat }>> {
+  try {
+    if (!userId) {
+      return { ok: false, error: "Authentication required." }
+    }
+
+    const validFormats: AffinityDisplayFormat[] = [
+      "detailed",
+      "years_months",
+      "months_days",
+      "weeks_days",
+      "total_days",
+    ]
+    if (!validFormats.includes(format)) {
+      return { ok: false, error: "Invalid duration display format." }
+    }
+
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({
+        affinity_display_format: format,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("user_id", userId)
+
+    if (updateError) {
+      return { ok: false, error: updateError.message || "Failed to update duration display format." }
+    }
+
+    return {
+      ok: true,
+      data: { format },
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Error updating display format."
+    return { ok: false, error: message }
+  }
+}
+
 

@@ -19,11 +19,51 @@ export type PartnerInvitationStatus =
   | "expired"
   | "cancelled"
 
+export type AffinityDisplayFormat =
+  | "detailed"
+  | "years_months"
+  | "months_days"
+  | "weeks_days"
+  | "total_days"
+
+export const AFFINITY_DISPLAY_FORMATS: readonly {
+  id: AffinityDisplayFormat
+  label: string
+  description: string
+}[] = [
+  {
+    id: "detailed",
+    label: "Detailed",
+    description: "Years, months, and days composite breakdown",
+  },
+  {
+    id: "years_months",
+    label: "Years & Months",
+    description: "Years and months with minimal day noise",
+  },
+  {
+    id: "months_days",
+    label: "Months & Days",
+    description: "Total elapsed months plus days",
+  },
+  {
+    id: "weeks_days",
+    label: "Weeks & Days",
+    description: "Total elapsed weeks plus remaining days",
+  },
+  {
+    id: "total_days",
+    label: "Total Days",
+    description: "Pure cumulative day count",
+  },
+] as const
+
 export interface PartnerRelationship {
   id: string
   owner_user_id: string
   supporter_user_id: string | null
   status: PartnerRelationshipStatus
+  relationship_start_date?: string | null
   created_at: string
   accepted_at: string | null
   revoked_at: string | null
@@ -145,7 +185,9 @@ export interface PartnerConnectionState {
     role: "owner" | "supporter"
     createdAt: string
     acceptedAt: string | null
+    startDate?: string | null
   }
+  affinityDisplayFormat?: AffinityDisplayFormat
   outgoingInvitation?: {
     id: string
     expiresAt: string
@@ -162,6 +204,21 @@ export interface PartnerConnectionState {
     inviterDisplayName: string
     tokenHash: string
   }
+}
+
+export interface RelationshipDurationResult {
+  years: number
+  months: number
+  days: number
+  totalDays: number
+  totalWeeks: number
+  remainingDaysAfterWeeks: number
+  totalMonths: number
+  formattedText: string
+  primaryLabel: string
+  secondaryLabel?: string
+  isToday: boolean
+  isFuture: boolean
 }
 
 export interface PartnerActionResult<T = undefined> {

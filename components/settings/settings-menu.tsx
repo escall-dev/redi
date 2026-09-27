@@ -441,13 +441,8 @@ export function SettingsMenu({
     {
       id: "partner",
       title: "Partner",
-      description: "Partner connections, sharing options, and permissions",
+      description: "Partner connections, affinity milestones, and sharing options",
       icon: HeartHandshake,
-      summaryBadge: (
-        <Badge variant="lavender" className="text-[10px] px-1.5 py-0 font-normal">
-          Phase 20
-        </Badge>
-      ),
       items: (
         <>
           <SettingsItem
@@ -459,28 +454,20 @@ export function SettingsMenu({
             onClick={() => navigateToView("partner")}
           />
           <SettingsItem
-            id="item-sharing-preferences"
-            title="Sharing Preferences"
-            description="Choose which cycle phases and symptoms to share"
-            icon={Share2}
-            badge={
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
-                Upcoming
-              </Badge>
-            }
-            onClick={() => setPartnerModalOpen(true)}
+            id="item-affinity-milestones"
+            title="Affinity & Duration"
+            description="Anniversary date and duration display preferences"
+            icon={CalendarDays}
+            href="/settings/partner"
+            onClick={() => navigateToView("partner")}
           />
           <SettingsItem
-            id="item-partner-permissions"
-            title="Partner Permissions"
-            description="Access controls, edit privileges, and revoke access"
-            icon={ShieldAlert}
-            badge={
-              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal text-muted-foreground">
-                Upcoming
-              </Badge>
-            }
-            onClick={() => setPartnerModalOpen(true)}
+            id="item-sharing-preferences"
+            title="Sharing Preferences"
+            description="Control shared cycle phases, notes, and permissions"
+            icon={Share2}
+            href="/settings/partner"
+            onClick={() => navigateToView("partner")}
           />
         </>
       ),

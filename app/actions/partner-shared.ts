@@ -8,6 +8,7 @@ import type {
   PartnerRole,
   AuthorizationDenialReason,
 } from "@/lib/partner/authorization"
+import type { AffinityDisplayFormat } from "@/lib/partner/types"
 import {
   getSharedCycleEstimates,
   getSharedPeriodStatus,
@@ -37,6 +38,8 @@ export interface PartnerDashboardData {
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
+  relationshipStartDate?: string | null
+  affinityDisplayFormat?: AffinityDisplayFormat
   reason?: AuthorizationDenialReason
   message?: string
 }

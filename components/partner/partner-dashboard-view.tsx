@@ -58,6 +58,7 @@ import {
 import type { SharedDailyNote } from "@/lib/partner/shared-data"
 import { useAppRouter } from "@/components/navigation/use-app-router"
 import { CycleContextSwitcher } from "@/components/cycle-context/cycle-context-switcher"
+import { AffinityCard } from "@/components/partner/affinity-card"
 
 /**
  * Seijun Phase 19 Batch 4
@@ -295,6 +296,18 @@ export function PartnerDashboardView({
           </div>
         </CardContent>
       </Card>
+
+      {/* Affinity & Duration Card */}
+      <AffinityCard
+        startDate={dashboardData.relationshipStartDate}
+        initialFormat={dashboardData.affinityDisplayFormat}
+        partnerDisplayName={dashboardData.ownerDisplayName || "Partner"}
+        partnerUsername={dashboardData.ownerUsername}
+        relationshipStatus="active"
+        canEdit={true}
+        onStartDateChange={() => load(false)}
+        onFormatChange={() => load(false)}
+      />
 
       {/* Mode Indicator: Co-Management vs Read-Only */}
       {managementPermissions.length > 0 ? (

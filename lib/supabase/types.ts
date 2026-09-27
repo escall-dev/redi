@@ -21,6 +21,12 @@ export type CycleReminderType =
   | "partner_daily_notes"
 export type PartnerRelationshipStatus = "pending" | "active" | "revoked" | "declined" | "expired"
 export type PartnerInvitationStatus = "pending" | "accepted" | "declined" | "expired" | "cancelled"
+export type AffinityDisplayFormat =
+  | "detailed"
+  | "years_months"
+  | "months_days"
+  | "weeks_days"
+  | "total_days"
 
 export interface Database {
   public: {
@@ -37,6 +43,7 @@ export interface Database {
           last_period_start: string | null
           typical_cycle_length: number | null
           onboarding_completed: boolean
+          affinity_display_format: AffinityDisplayFormat
           created_at: string
           updated_at: string
         }
@@ -51,6 +58,7 @@ export interface Database {
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
+          affinity_display_format?: AffinityDisplayFormat
           created_at?: string
           updated_at?: string
         }
@@ -65,6 +73,7 @@ export interface Database {
           last_period_start?: string | null
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
+          affinity_display_format?: AffinityDisplayFormat
           created_at?: string
           updated_at?: string
         }
@@ -368,6 +377,7 @@ export interface Database {
           owner_user_id: string
           supporter_user_id: string | null
           status: PartnerRelationshipStatus
+          relationship_start_date: string | null
           created_at: string
           accepted_at: string | null
           revoked_at: string | null
@@ -378,6 +388,7 @@ export interface Database {
           owner_user_id: string
           supporter_user_id?: string | null
           status?: PartnerRelationshipStatus
+          relationship_start_date?: string | null
           created_at?: string
           accepted_at?: string | null
           revoked_at?: string | null
@@ -388,6 +399,7 @@ export interface Database {
           owner_user_id?: string
           supporter_user_id?: string | null
           status?: PartnerRelationshipStatus
+          relationship_start_date?: string | null
           created_at?: string
           accepted_at?: string | null
           revoked_at?: string | null
