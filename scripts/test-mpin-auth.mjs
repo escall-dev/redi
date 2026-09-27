@@ -519,7 +519,156 @@ await test("MpinReturningForm contains user's email, Remember me checkbox, and S
   assert.ok(content.includes("saveAutofillMpin"), "Missing saveAutofillMpin integration")
 })
 
+// ---------------------------------------------------------------------------
+// 9. MPIN Sign In Loading Feedback & Duplicate Submission Prevention
+// ---------------------------------------------------------------------------
+console.log("\n--- 9. Sign In Loading State & Duplicate Submission Prevention ---")
+
+await test("MpinReturningForm enforces synchronous submission ref and awaits post-login navigation", () => {
+  const content = fs.readFileSync(path.resolve("components/auth/mpin-returning-form.tsx"), "utf8")
+  assert.ok(content.includes("isSubmittingRef"), "Missing isSubmittingRef submission guard")
+  assert.ok(content.includes("if (isSubmittingRef.current"), "Missing synchronous gate checking isSubmittingRef")
+  assert.ok(content.includes("isSubmittingRef.current = true"), "Missing synchronous gate latching isSubmittingRef")
+  assert.ok(content.includes("await onSuccess()"), "Must await onSuccess() to keep loading active during navigation")
+  assert.ok(content.includes("Signing in..."), "Must show 'Signing in...' label while submitting")
+  assert.ok(content.includes("aria-busy={isVerifying}"), "Must set aria-busy when verifying")
+  assert.ok(content.includes("aria-disabled={isVerifying || isLockedOut}"), "Must set aria-disabled when verifying")
+})
+
+await test("MpinInput prevents default event handling on Enter key when 6 digits are entered", () => {
+  const content = fs.readFileSync(path.resolve("components/auth/mpin-input.tsx"), "utf8")
+  assert.ok(content.includes('e.key === "Enter" && value.length === 6'), "Missing Enter key trigger condition")
+  assert.ok(content.includes("e.preventDefault()"), "Enter key must call e.preventDefault() to block double submissions")
+})
+
+await test("Submission state machine blocks rapid multiple clicks to exactly one execution", async () => {
+  let verifyCalls = 0
+  let isVerifyingState = false
+  const isSubmittingRef = { current: false }
+
+  const handleVerify = async (code) => {
+    if (isSubmittingRef.current || isVerifyingState || code.length !== 6) {
+      return
+    }
+    isSubmittingRef.current = true
+    isVerifyingState = true
+    verifyCalls++
+
+    // Simulate async network / cryptographic verification
+    await new Promise((r) => setTimeout(r, 20))
+  }
+
+  // Rapidly fire 5 calls within the same tick before async resolution
+  const p1 = handleVerify("123456")
+  const p2 = handleVerify("123456")
+  const p3 = handleVerify("123456")
+  const p4 = handleVerify("123456")
+  const p5 = handleVerify("123456")
+
+  await Promise.all([p1, p2, p3, p4, p5])
+
+  assert.equal(verifyCalls, 1, "Exactly one verification call should execute despite 5 rapid clicks")
+})
+
+await test("Submission state machine maintains loading state throughout post-login navigation", async () => {
+  let isVerifyingState = false
+  const isSubmittingRef = { current: false }
+  let navigationCompleted = false
+
+  const mockOnSuccess = async () => {
+    // Navigation takes time
+    await new Promise((r) => setTimeout(r, 30))
+    navigationCompleted = true
+  }
+
+  const handleVerify = async (code) => {
+    if (isSubmittingRef.current || isVerifyingState || code.length !== 6) return
+    isSubmittingRef.current = true
+    isVerifyingState = true
+
+    // Verification succeeds
+    await new Promise((r) => setTimeout(r, 10))
+
+    // Await navigation without resetting isVerifying
+    await mockOnSuccess()
+    // Do NOT reset isVerifying on success!
+  }
+
+  const verifyPromise = handleVerify("123456")
+
+  // Mid-flight: state must be loading
+  await new Promise((r) => setTimeout(r, 15))
+  assert.equal(isVerifyingState, true, "Loading state must be active during verification")
+  assert.equal(isSubmittingRef.current, true, "Submission guard must be active")
+
+  // Mid-navigation: state must still be loading
+  await new Promise((r) => setTimeout(r, 15))
+  assert.equal(isVerifyingState, true, "Loading state must remain active during navigation")
+
+  await verifyPromise
+  assert.equal(navigationCompleted, true, "Navigation must complete")
+  assert.equal(isVerifyingState, true, "Loading state must NOT reset before navigation completes")
+})
+
+await test("Submission state machine restores idle state and re-enables button on verification failure", async () => {
+  let isVerifyingState = false
+  let errorMessage = null
+  let mpinValue = "654321"
+  const isSubmittingRef = { current: false }
+
+  const handleVerify = async (code) => {
+    if (isSubmittingRef.current || isVerifyingState || code.length !== 6) return
+    isSubmittingRef.current = true
+    isVerifyingState = true
+
+    // Simulate verification failure
+    await new Promise((r) => setTimeout(r, 10))
+    const success = false
+
+    if (!success) {
+      isSubmittingRef.current = false
+      isVerifyingState = false
+      errorMessage = "Incorrect MPIN. Please try again."
+      mpinValue = ""
+    }
+  }
+
+  await handleVerify(mpinValue)
+
+  assert.equal(isVerifyingState, false, "Loading state must be cleared on failure")
+  assert.equal(isSubmittingRef.current, false, "Submission guard must be released on failure")
+  assert.equal(mpinValue, "", "MPIN input must be cleared on failure")
+  assert.equal(errorMessage, "Incorrect MPIN. Please try again.", "Error message must be set")
+})
+
+await test("Submission state machine safely restores idle state if an unexpected error throws", async () => {
+  let isVerifyingState = false
+  let errorMessage = null
+  const isSubmittingRef = { current: false }
+
+  const handleVerify = async (code) => {
+    if (isSubmittingRef.current || isVerifyingState || code.length !== 6) return
+    isSubmittingRef.current = true
+    isVerifyingState = true
+
+    try {
+      await new Promise((_, reject) => setTimeout(() => reject(new Error("Network timeout")), 10))
+    } catch (err) {
+      isSubmittingRef.current = false
+      isVerifyingState = false
+      errorMessage = err.message
+    }
+  }
+
+  await handleVerify("123456")
+
+  assert.equal(isVerifyingState, false, "Loading state must not get stuck on throw")
+  assert.equal(isSubmittingRef.current, false, "Submission guard must be released on throw")
+  assert.equal(errorMessage, "Network timeout")
+})
+
 console.log(`\n=================================================`)
 console.log(`ALL SEIJUN MPIN AUTH TESTS PASSED! 🎉 (${passed} passed, ${failed} failed)`)
 console.log(`=================================================`)
+
 

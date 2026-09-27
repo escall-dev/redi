@@ -87,6 +87,7 @@ export function MpinInput({
     }
 
     if (e.key === "Enter" && value.length === 6) {
+      e.preventDefault()
       onComplete?.(value)
     }
   }

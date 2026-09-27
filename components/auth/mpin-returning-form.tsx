@@ -24,20 +24,20 @@ export interface MpinReturningUser {
 
 export interface MpinReturningFormProps {
   user: MpinReturningUser
-  onSuccess: () => void
+  onSuccess: () => void | Promise<void>
   onSwitchAccount: () => void
   onForgotMpin: () => void
   version?: string
 }
 
-function maskEmail(email?: string): string {
-  if (!email) return "Account Authenticated"
-  const [local, domain] = email.split("@")
-  if (!domain) return email
-  if (local.length <= 2) {
-    return `${local[0]}***@${domain}`
+function getInitialLockout(userId: string) {
+  if (typeof window === "undefined" || !userId) return { locked: false, remaining: 0 }
+  const attempt = getAttemptState(userId)
+  if (attempt.lockedUntil && Date.now() < attempt.lockedUntil) {
+    const remaining = Math.ceil((attempt.lockedUntil - Date.now()) / 1000)
+    return { locked: true, remaining }
   }
-  return `${local.slice(0, 3)}***@${domain}`
+  return { locked: false, remaining: 0 }
 }
 
 export function MpinReturningForm({
@@ -49,42 +49,35 @@ export function MpinReturningForm({
 }: MpinReturningFormProps) {
   const initialAutofillPin = React.useMemo(() => {
     if (typeof window === "undefined") return null
-    return getAutofillMpin(user?.id) || getAutofillMpin()
-  }, [user?.id])
+    return getAutofillMpin(user.id) || getAutofillMpin()
+  }, [user.id])
+
+  const initialRememberMe = React.useMemo(() => {
+    if (typeof window === "undefined") return false
+    return Boolean(initialAutofillPin) || isMpinRememberMeEnabled(user.id)
+  }, [initialAutofillPin, user.id])
+
+  const [initialLockout] = React.useState(() => getInitialLockout(user.id))
 
   const [mpin, setMpin] = React.useState<string>(() => initialAutofillPin || "")
-  const [error, setError] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(() =>
+    initialLockout.locked ? `Too many failed attempts. Locked for ${initialLockout.remaining}s.` : null
+  )
   const [isVerifying, setIsVerifying] = React.useState(false)
-  const [isLockedOut, setIsLockedOut] = React.useState(false)
-  const [lockedSeconds, setLockedSeconds] = React.useState(0)
-  const [rememberMe, setRememberMe] = React.useState<boolean>(() => {
-    return Boolean(initialAutofillPin) || isMpinRememberMeEnabled(user?.id)
-  })
-  const rememberMeRef = React.useRef<boolean>(Boolean(initialAutofillPin) || isMpinRememberMeEnabled(user?.id))
+  const [isLockedOut, setIsLockedOut] = React.useState(() => initialLockout.locked)
+  const [lockedSeconds, setLockedSeconds] = React.useState(() => initialLockout.remaining)
+  const [rememberMe, setRememberMe] = React.useState<boolean>(() => initialRememberMe)
+  const rememberMeRef = React.useRef<boolean>(initialRememberMe)
   const [isAutofilled, setIsAutofilled] = React.useState<boolean>(() => Boolean(initialAutofillPin))
+  const isSubmittingRef = React.useRef(false)
+  const isMountedRef = React.useRef(true)
 
-  // Initialize/sync Remember Me state and autofill MPIN if remembered
   React.useEffect(() => {
-    const autofillPin = getAutofillMpin(user?.id) || getAutofillMpin()
-    const shouldBeRemembered = Boolean(autofillPin) || isMpinRememberMeEnabled(user?.id)
-    setRememberMe(shouldBeRemembered)
-    rememberMeRef.current = shouldBeRemembered
-    if (autofillPin) {
-      setMpin(autofillPin)
-      setIsAutofilled(true)
+    isMountedRef.current = true
+    return () => {
+      isMountedRef.current = false
     }
-  }, [user?.id])
-
-  // Check initial attempt lockout status
-  React.useEffect(() => {
-    const attempt = getAttemptState(user.id)
-    if (attempt.lockedUntil && Date.now() < attempt.lockedUntil) {
-      const remaining = Math.ceil((attempt.lockedUntil - Date.now()) / 1000)
-      setIsLockedOut(true)
-      setLockedSeconds(remaining)
-      setError(`Too many failed attempts. Locked for ${remaining}s.`)
-    }
-  }, [user.id])
+  }, [])
 
   // Countdown timer for lockout
   React.useEffect(() => {
@@ -109,8 +102,12 @@ export function MpinReturningForm({
 
   const handleVerify = React.useCallback(
     async (codeToVerify: string) => {
-      if (isVerifying || isLockedOut || codeToVerify.length !== 6) return
+      // Synchronous boundary guard to prevent duplicate submissions from rapid taps, repeated clicks, Enter key, or autofill
+      if (isSubmittingRef.current || isVerifying || isLockedOut || codeToVerify.length !== 6) {
+        return
+      }
 
+      isSubmittingRef.current = true
       setIsVerifying(true)
       setError(null)
 
@@ -125,24 +122,36 @@ export function MpinReturningForm({
             clearAutofillMpin(user.id)
             setMpinRememberMeEnabled(user.id, false)
           }
-          onSuccess()
+
+          // Await post-login navigation while keeping loading state active.
+          // On success, do NOT reset isVerifying or isSubmittingRef to keep the button disabled
+          // and showing "Signing in..." while the existing navigation transition completes.
+          await onSuccess()
           return
         }
 
-        setError(result.error || "Incorrect MPIN. Please try again.")
-        setMpin("")
-        setIsAutofilled(false)
+        // Authentication failure / invalid MPIN:
+        isSubmittingRef.current = false
+        if (isMountedRef.current) {
+          setIsVerifying(false)
+          setError(result.error || "Incorrect MPIN. Please try again.")
+          setMpin("")
+          setIsAutofilled(false)
 
-        if (result.isLockedOut && result.lockedSecondsRemaining) {
-          setIsLockedOut(true)
-          setLockedSeconds(result.lockedSecondsRemaining)
+          if (result.isLockedOut && result.lockedSecondsRemaining) {
+            setIsLockedOut(true)
+            setLockedSeconds(result.lockedSecondsRemaining)
+          }
         }
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to verify MPIN.")
-        setMpin("")
-        setIsAutofilled(false)
-      } finally {
-        setIsVerifying(false)
+        // Unexpected error (or if post-login handler throws): safely restore idle state
+        isSubmittingRef.current = false
+        if (isMountedRef.current) {
+          setIsVerifying(false)
+          setError(err instanceof Error ? err.message : "Failed to verify MPIN.")
+          setMpin("")
+          setIsAutofilled(false)
+        }
       }
     },
     [isVerifying, isLockedOut, user.id, rememberMe, onSuccess]
@@ -167,6 +176,7 @@ export function MpinReturningForm({
   }
 
   const handleClear = () => {
+    isSubmittingRef.current = false
     setError(null)
     setMpin("")
     setIsAutofilled(false)
@@ -266,14 +276,6 @@ export function MpinReturningForm({
             </button>
           </div>
 
-          {/* Verifying Indicator */}
-          {isVerifying && (
-            <div className="flex items-center justify-center gap-2 text-xs text-primary animate-pulse pt-1">
-              <Loader2 className="size-3.5 animate-spin" />
-              <span>Verifying MPIN...</span>
-            </div>
-          )}
-
           {/* Prominent Sign In Button when MPIN is 6 digits */}
           {mpin.length === 6 && (
             <div className="pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -281,6 +283,8 @@ export function MpinReturningForm({
                 type="button"
                 onClick={() => handleVerify(mpin)}
                 disabled={isVerifying || isLockedOut}
+                aria-busy={isVerifying}
+                aria-disabled={isVerifying || isLockedOut}
                 className="w-full h-11 sm:h-12 text-sm sm:text-base font-semibold rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-redi hover:shadow-redi-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-[0.99]"
               >
                 {isVerifying ? (
