@@ -69,7 +69,7 @@ export default function RootLayout({
       </head>
       <body
         suppressHydrationWarning
-        className="min-h-full flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary"
+        className="min-h-full min-h-dvh flex flex-col font-sans bg-background text-foreground selection:bg-lavender selection:text-primary"
       >
         <ThemeProvider>
           <NavigationLoadingProvider>
