@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Avatar } from "@/components/ui/avatar"
 import {
   Dialog,
   DialogContent,
@@ -219,31 +220,40 @@ export function PartnerDashboardView({
 
   // No active relationship / not a supporter
   if (!dashboardData?.authorized) {
+    const isRevoked = dashboardData?.reason === "NO_ACTIVE_RELATIONSHIP" && (dashboardData?.message?.toLowerCase().includes("revoked") || dashboardData?.message?.toLowerCase().includes("no active"))
     return (
       <div className="space-y-6 pb-8 max-w-2xl mx-auto animate-in fade-in duration-200">
         {isPrimaryDashboard && <CycleContextSwitcher />}
         <PartnerDashboardHeader isPrimaryDashboard={isPrimaryDashboard} />
-        <Card className="border-border/60">
-          <CardContent className="flex flex-col items-center justify-center py-16 gap-4 text-center">
-            <div className="flex size-14 items-center justify-center rounded-2xl bg-secondary/50 text-muted-foreground">
+        <Card className="border-border/60 rounded-3xl overflow-hidden shadow-xs">
+          <CardContent className="flex flex-col items-center justify-center py-16 px-6 gap-4 text-center">
+            <div className="flex size-14 items-center justify-center rounded-2xl bg-lavender/50 text-primary border border-lavender-border/60">
               <UserX className="size-7" />
             </div>
-            <div className="space-y-1.5">
-              <p className="text-sm font-semibold text-foreground">No Partner Connection</p>
-              <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+            <div className="space-y-2 max-w-sm">
+              <p className="text-base font-semibold text-foreground">
                 {dashboardData?.reason === "NOT_SUPPORTER"
-                  ? "This dashboard is for supporters. As the cycle owner, your data is on the main dashboard."
-                  : "Connect with a partner to view shared cycle data here."}
+                  ? "Cycle Owner Dashboard"
+                  : isRevoked
+                  ? "Partner Connection Ended"
+                  : "No Partner Connected Yet"}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {dashboardData?.reason === "NOT_SUPPORTER"
+                  ? "This view is designed for supporters. As the cycle owner, your complete private cycle tracking is on your main personal dashboard."
+                  : isRevoked
+                  ? "This relationship connection has ended. All shared cycle data and notes were immediately revoked, keeping both accounts fully private and secure."
+                  : "Welcome to your supporter space! Once your partner connects with you, their shared cycle metrics, period flow, and daily notes will appear here."}
               </p>
             </div>
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => router.push("/settings/partner")}
-              className="rounded-xl text-xs gap-1.5 cursor-pointer"
+              className="rounded-xl text-xs gap-1.5 cursor-pointer shadow-xs font-semibold"
             >
               <HeartHandshake className="size-3.5" />
-              Partner Settings
+              <span>Partner Settings</span>
             </Button>
           </CardContent>
         </Card>
@@ -253,7 +263,6 @@ export function PartnerDashboardView({
 
   const categories = dashboardData.enabledCategories || dashboardData.categories || []
   const managementPermissions = dashboardData.managementPermissions || []
-  const noSharedCategories = categories.length === 0
 
   const canManagePeriod = managementPermissions.includes("manage_period_status")
   const canManageCyclePrefs = managementPermissions.includes("manage_cycle_preferences")
@@ -270,26 +279,65 @@ export function PartnerDashboardView({
         ownerDisplayName={dashboardData.ownerDisplayName}
       />
 
-      {/* Partner Profile Card */}
-      <Card className="overflow-hidden border-border/70 shadow-xs">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/60">
-              <HeartHandshake className="size-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-bold text-foreground truncate">
-                {dashboardData.ownerDisplayName}
-              </p>
-              {dashboardData.ownerUsername && (
-                <p className="text-xs font-mono text-primary font-medium">
-                  @{dashboardData.ownerUsername}
+      {/* Partner Couple Identity Card with Interlinked Avatars */}
+      <Card className="overflow-hidden border-border/70 rounded-3xl shadow-xs bg-gradient-to-br from-lavender/25 via-background to-card">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+              {/* Dual Interlinked Avatars with Overlapping Rings */}
+              <div className="relative flex items-center shrink-0 py-1">
+                {/* Supporter (You) Avatar */}
+                <div className="relative z-10">
+                  <Avatar
+                    src={dashboardData.supporterAvatarUrl}
+                    alt={dashboardData.supporterDisplayName || "You"}
+                    fallbackInitials={dashboardData.supporterDisplayName || "You"}
+                    size="md"
+                    className="size-11 sm:size-12 ring-2 ring-background shadow-xs border-2 border-primary/20"
+                  />
+                </div>
+
+                {/* Heart bridge badge */}
+                <div className="absolute left-7 sm:left-8 -bottom-1 z-20 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs ring-2 ring-background">
+                  <HeartHandshake className="size-2.5 stroke-[2.4]" />
+                </div>
+
+                {/* Partner (Owner) Avatar */}
+                <div className="relative z-0 -ml-3 sm:-ml-3.5">
+                  <Avatar
+                    src={dashboardData.ownerAvatarUrl}
+                    alt={dashboardData.ownerDisplayName || "Partner"}
+                    fallbackInitials={dashboardData.ownerDisplayName || "Partner"}
+                    size="md"
+                    className="size-11 sm:size-12 ring-2 ring-background shadow-xs border-2 border-lavender-border bg-lavender/60"
+                  />
+                </div>
+              </div>
+
+              {/* Partner Details */}
+              <div className="space-y-0.5 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Badge
+                    variant="lavender"
+                    className="text-[10px] px-2 py-0.5 font-medium border-lavender-border/70 text-primary"
+                  >
+                    Supporter Space
+                  </Badge>
+                </div>
+                <p className="text-sm sm:text-base font-bold text-foreground truncate">
+                  {dashboardData.ownerDisplayName}
                 </p>
-              )}
+                {dashboardData.ownerUsername && (
+                  <p className="text-xs font-mono text-primary font-medium">
+                    @{dashboardData.ownerUsername}
+                  </p>
+                )}
+              </div>
             </div>
+
             <Badge
               variant="outline"
-              className="text-[10px] px-2 py-0.5 font-medium border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shrink-0"
+              className="text-[10px] px-2.5 py-0.5 font-medium border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 shrink-0"
             >
               Connected
             </Badge>
@@ -324,25 +372,7 @@ export function PartnerDashboardView({
         </div>
       )}
 
-      {/* No Sharing Enabled */}
-      {noSharedCategories && (
-        <Card className="border-border/50">
-          <CardContent className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-secondary/50 text-muted-foreground">
-              <EyeOff className="size-6" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">No Data Shared Yet</p>
-              <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
-                Your partner hasn&apos;t enabled any sharing categories yet. They can control what
-                data is shared from their Settings.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Shared Category Cards — only rendered for enabled categories */}
+      {/* Shared Category Cards with Reassuring Privacy Placeholders */}
       {categoryLoading && categories.length > 0 ? (
         <div className="space-y-4">
           {categories.map((cat) => (
@@ -351,13 +381,18 @@ export function PartnerDashboardView({
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Cycle Estimates */}
-          {categories.includes("cycle_estimates") && cycleEstimates && (
+          {/* 1. Cycle Estimates */}
+          {categories.includes("cycle_estimates") && cycleEstimates ? (
             <CycleEstimatesCard data={cycleEstimates} />
+          ) : (
+            <PrivateCategoryPlaceholderCard
+              category="cycle_estimates"
+              partnerDisplayName={dashboardData.ownerDisplayName}
+            />
           )}
 
-          {/* Period Status */}
-          {categories.includes("period_status") && periodStatus && (
+          {/* 2. Period Status */}
+          {categories.includes("period_status") && periodStatus ? (
             <PeriodStatusCard
               data={periodStatus}
               canManage={canManagePeriod}
@@ -367,10 +402,15 @@ export function PartnerDashboardView({
                 if (categories.includes("cycle_estimates")) refreshEstimates()
               }}
             />
+          ) : (
+            <PrivateCategoryPlaceholderCard
+              category="period_status"
+              partnerDisplayName={dashboardData.ownerDisplayName}
+            />
           )}
 
-          {/* Cycle Preferences */}
-          {categories.includes("cycle_preferences") && cyclePreferences && (
+          {/* 3. Cycle Preferences */}
+          {categories.includes("cycle_preferences") && cyclePreferences ? (
             <CyclePreferencesCard
               data={cyclePreferences}
               canManage={canManageCyclePrefs}
@@ -380,15 +420,25 @@ export function PartnerDashboardView({
                 if (categories.includes("cycle_estimates")) refreshEstimates()
               }}
             />
+          ) : (
+            <PrivateCategoryPlaceholderCard
+              category="cycle_preferences"
+              partnerDisplayName={dashboardData.ownerDisplayName}
+            />
           )}
 
-          {/* Daily Notes */}
-          {categories.includes("daily_notes") && dailyNotes && (
+          {/* 4. Daily Notes */}
+          {categories.includes("daily_notes") && dailyNotes ? (
             <DailyNotesCard
               data={dailyNotes}
               canManage={canManageDailyNotes}
               partnerDisplayName={dashboardData.ownerDisplayName}
               onNotesUpdated={refreshDailyNotes}
+            />
+          ) : (
+            <PrivateCategoryPlaceholderCard
+              category="daily_notes"
+              partnerDisplayName={dashboardData.ownerDisplayName}
             />
           )}
         </div>
@@ -400,6 +450,68 @@ export function PartnerDashboardView({
         <span>Privacy-first • Your partner controls all sharing & co-management permissions</span>
       </div>
     </div>
+  )
+}
+
+function PrivateCategoryPlaceholderCard({
+  category,
+  partnerDisplayName,
+}: {
+  category: "cycle_estimates" | "period_status" | "cycle_preferences" | "daily_notes"
+  partnerDisplayName?: string
+}) {
+  const meta = {
+    cycle_estimates: {
+      title: "Cycle Estimates",
+      description: `Current phase and cycle estimates are kept confidential by ${partnerDisplayName || "your partner"}.`,
+      icon: Activity,
+    },
+    period_status: {
+      title: "Period Status",
+      description: `Active bleeding and period flow tracking are kept confidential by ${partnerDisplayName || "your partner"}.`,
+      icon: Droplets,
+    },
+    cycle_preferences: {
+      title: "Cycle Preferences",
+      description: `Typical cycle length targets and preferences are kept confidential by ${partnerDisplayName || "your partner"}.`,
+      icon: Settings2,
+    },
+    daily_notes: {
+      title: "Daily Notes",
+      description: `Daily journal observations and personal entries are kept confidential by ${partnerDisplayName || "your partner"}.`,
+      icon: BookOpen,
+    },
+  }[category]
+
+  const Icon = meta.icon
+
+  return (
+    <Card className="border-border/50 bg-secondary/15 opacity-80 hover:opacity-100 transition-opacity rounded-2xl shadow-2xs">
+      <CardContent className="p-3.5 flex items-center justify-between gap-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <div className="flex size-8 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground shrink-0 mt-0.5 border border-border/40">
+            <Icon className="size-4" />
+          </div>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="text-xs font-semibold text-foreground truncate">{meta.title}</p>
+              <Badge
+                variant="outline"
+                className="text-[9px] px-1.5 py-0 font-normal border-border/60 text-muted-foreground bg-background/50"
+              >
+                Kept Private
+              </Badge>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              {meta.description}
+            </p>
+          </div>
+        </div>
+        <div className="shrink-0 flex items-center text-muted-foreground/60 pr-1">
+          <EyeOff className="size-4" />
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 

@@ -4,6 +4,7 @@ import * as React from "react"
 import { useCycleContext } from "@/lib/cycle-context/cycle-context"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Avatar } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import {
   User,
@@ -68,7 +69,17 @@ export function CycleContextSwitcher({
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <HeartHandshake className="size-3.5" />
+              {partnerInfo.avatarUrl ? (
+                <Avatar
+                  src={partnerInfo.avatarUrl}
+                  alt={partnerName}
+                  fallbackInitials={partnerName}
+                  size="xs"
+                  className="size-4 ring-1 ring-background"
+                />
+              ) : (
+                <HeartHandshake className="size-3.5" />
+              )}
               <span>{partnerName}&apos;s Cycle</span>
             </button>
           </div>
@@ -109,9 +120,19 @@ export function CycleContextSwitcher({
         )}
       >
         <div className="flex items-center gap-2">
-          <div className="size-6 rounded-lg bg-lavender flex items-center justify-center text-primary shrink-0 border border-lavender-border/60">
-            <HeartHandshake className="size-3.5" />
-          </div>
+          {partnerInfo.avatarUrl ? (
+            <Avatar
+              src={partnerInfo.avatarUrl}
+              alt={partnerName}
+              fallbackInitials={partnerName}
+              size="xs"
+              className="size-6 ring-1 ring-background"
+            />
+          ) : (
+            <div className="size-6 rounded-lg bg-lavender flex items-center justify-center text-primary shrink-0 border border-lavender-border/60">
+              <HeartHandshake className="size-3.5" />
+            </div>
+          )}
           <div className="leading-tight">
             <span className="font-semibold text-foreground">{partnerName}&apos;s Cycle</span>
             <span className="text-muted-foreground ml-1.5 text-[11px]">• Supporter Mode</span>

@@ -25,6 +25,7 @@ import { NotificationPermissionPrompt } from "@/components/notifications/notific
 import { resolveServerCycleContext } from "@/lib/cycle-context/server"
 import { CycleContextSwitcher } from "@/components/cycle-context/cycle-context-switcher"
 import { PartnerDashboardView } from "@/components/partner/partner-dashboard-view"
+import { RelationshipContextCard } from "@/components/partner/relationship-context-card"
 
 export const dynamic = "force-dynamic"
 
@@ -49,7 +50,7 @@ export default async function DashboardPage() {
   // 2. Fetch user profile for onboarding status and display name
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, last_period_start, typical_cycle_length, onboarding_completed, usage_role")
+    .select("display_name, username, avatar_url, last_period_start, typical_cycle_length, onboarding_completed, usage_role, affinity_display_format")
     .eq("user_id", user.id)
     .maybeSingle()
 
@@ -120,7 +121,28 @@ export default async function DashboardPage() {
       {cycleContext.canSwitchContext && <CycleContextSwitcher />}
 
       {/* Personalized Greeting Header */}
-      <DashboardHeader displayName={displayName} />
+      <DashboardHeader
+        displayName={displayName}
+        partnerDisplayName={cycleContext.partnerInfo.displayName}
+        hasActivePartner={cycleContext.partnerInfo.hasActivePartner}
+      />
+
+      {/* Our Space Relationship Context Card when connected with an active partner */}
+      {cycleContext.partnerInfo.hasActivePartner && (
+        <RelationshipContextCard
+          userDisplayName={displayName}
+          userAvatarUrl={profile?.avatar_url || user.user_metadata?.avatar_url || null}
+          partnerDisplayName={cycleContext.partnerInfo.displayName || "Partner"}
+          partnerUsername={cycleContext.partnerInfo.username}
+          partnerAvatarUrl={cycleContext.partnerInfo.avatarUrl}
+          relationshipRole={cycleContext.partnerInfo.isOwner ? "owner" : "supporter"}
+          relationshipStartDate={cycleContext.partnerInfo.relationshipStartDate}
+          affinityDisplayFormat={profile?.affinity_display_format || "detailed"}
+          sharedCategoriesCount={cycleContext.permissions.enabledCategories.length}
+          totalCategoriesCount={4}
+          isCoManagementActive={cycleContext.permissions.managementPermissions.length > 0}
+        />
+      )}
 
       {/* Explanatory Notification Permission Prompt */}
       <NotificationPermissionPrompt usageRole={profile?.usage_role} />

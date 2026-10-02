@@ -327,6 +327,10 @@ export async function getEnabledSharingCategories(
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
+  ownerAvatarUrl?: string | null
+  supporterDisplayName?: string
+  supporterUsername?: string
+  supporterAvatarUrl?: string | null
   relationshipStartDate?: string | null
   affinityDisplayFormat?: AffinityDisplayFormat
   reason?: AuthorizationDenialReason
@@ -366,17 +370,17 @@ export async function getEnabledSharingCategories(
     }
   }
 
-  // Fetch minimal owner profile info (display_name, username only)
+  // Fetch minimal owner profile info (display_name, username, avatar_url)
   const { data: ownerProfile } = await supabase
     .from("profiles")
-    .select("display_name, username")
+    .select("display_name, username, avatar_url")
     .eq("user_id", context.ownerUserId)
     .maybeSingle()
 
-  // Fetch supporter's affinity display format preference
+  // Fetch supporter profile info (affinity format, display_name, username, avatar_url)
   const { data: supporterProfile } = await supabase
     .from("profiles")
-    .select("affinity_display_format")
+    .select("affinity_display_format, display_name, username, avatar_url")
     .eq("user_id", context.authenticatedUserId)
     .maybeSingle()
 
@@ -388,6 +392,10 @@ export async function getEnabledSharingCategories(
     managementPermissions: enabledManagement,
     ownerDisplayName: ownerProfile?.display_name || "Partner",
     ownerUsername: ownerProfile?.username || undefined,
+    ownerAvatarUrl: ownerProfile?.avatar_url || null,
+    supporterDisplayName: supporterProfile?.display_name || undefined,
+    supporterUsername: supporterProfile?.username || undefined,
+    supporterAvatarUrl: supporterProfile?.avatar_url || null,
     relationshipStartDate: context.relationshipStartDate || null,
     affinityDisplayFormat: supporterProfile?.affinity_display_format || "detailed",
   }

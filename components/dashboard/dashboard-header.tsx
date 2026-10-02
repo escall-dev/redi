@@ -4,6 +4,8 @@ import * as React from "react"
 
 interface DashboardHeaderProps {
   displayName: string
+  partnerDisplayName?: string | null
+  hasActivePartner?: boolean
 }
 
 function getTimeOfDayGreeting(): string {
@@ -13,7 +15,11 @@ function getTimeOfDayGreeting(): string {
   return "Good evening"
 }
 
-export function DashboardHeader({ displayName }: DashboardHeaderProps) {
+export function DashboardHeader({
+  displayName,
+  partnerDisplayName,
+  hasActivePartner = false,
+}: DashboardHeaderProps) {
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
@@ -32,11 +38,18 @@ export function DashboardHeader({ displayName }: DashboardHeaderProps) {
 
   return (
     <div className="space-y-1 select-none">
-      {todayFormatted ? (
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {todayFormatted}
-        </p>
-      ) : null}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        {todayFormatted ? (
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {todayFormatted}
+          </p>
+        ) : null}
+        {hasActivePartner && partnerDisplayName && (
+          <span className="text-[11px] font-medium text-muted-foreground/80 bg-lavender/40 dark:bg-card/60 px-2.5 py-0.5 rounded-full border border-lavender-border/60">
+            Connected with {partnerDisplayName}
+          </span>
+        )}
+      </div>
 
       <h1 className="text-2xl sm:text-3xl font-normal tracking-tight text-foreground">
         {greeting}, <span className="font-bold">{displayName}!</span>

@@ -175,9 +175,15 @@ export type PartnerConnectionUIStatus =
 
 export interface PartnerConnectionState {
   status: PartnerConnectionUIStatus
+  currentUser?: {
+    username: string | null
+    displayName: string | null
+    avatarUrl: string | null
+  }
   partner?: {
     username: string
     displayName: string
+    avatarUrl?: string | null
   }
   relationship?: {
     id: string
@@ -195,6 +201,7 @@ export interface PartnerConnectionState {
     rawToken?: string
     inviteeUsername?: string
     inviteeDisplayName?: string
+    inviteeAvatarUrl?: string | null
   }
   incomingInvitation?: {
     id: string
@@ -202,6 +209,7 @@ export interface PartnerConnectionState {
     createdAt: string
     inviterUsername: string
     inviterDisplayName: string
+    inviterAvatarUrl?: string | null
     tokenHash: string
   }
 }

@@ -127,6 +127,16 @@ export function PrivacySettingsView({ email, createdAt }: PrivacySettingsViewPro
               </p>
             </div>
           </div>
+
+          <div className="flex items-start gap-3 rounded-xl bg-secondary/40 p-3.5 border border-border/40">
+            <ShieldCheck className="size-4 text-primary shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <p className="font-medium text-foreground">Mutual Consent &amp; Instant Revocation</p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Partner connections require explicit acceptance. All sharing categories are private by default, and revoking a connection terminates all shared access immediately with zero data retention on your partner&apos;s device.
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

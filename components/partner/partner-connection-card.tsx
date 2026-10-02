@@ -23,6 +23,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog"
+import { Avatar } from "@/components/ui/avatar"
 import {
   HeartHandshake,
   UserPlus,
@@ -234,169 +235,219 @@ export function PartnerConnectionCard({
             </div>
           )}
 
-          {/* STATE 1: NO PARTNER CONNECTED */}
-          {status === "none" && (
-            <div className="space-y-4 pt-1">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 text-center space-y-1.5">
-                <p className="text-sm font-semibold text-foreground">No partner connected</p>
-                <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Connect with your partner to synchronize cycle awareness respectfully and securely.
-                </p>
-              </div>
-
-              <Button
-                type="button"
-                onClick={() => setAddModalOpen(true)}
-                className="w-full h-11 rounded-xl text-xs gap-2 cursor-pointer font-semibold shadow-xs"
-              >
-                <UserPlus className="size-4" />
-                <span>Add Partner</span>
-              </Button>
-            </div>
-          )}
-
-          {/* STATE 2: OUTGOING PENDING INVITATION */}
-          {status === "outgoing_pending" && state?.outgoingInvitation && (
-            <div className="space-y-4 pt-1">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
-                <div className="flex items-center gap-2 text-xs font-medium text-foreground">
-                  <Clock className="size-4 text-primary shrink-0" />
-                  <span>Waiting for acceptance</span>
-                </div>
-
-                <div>
-                  <p className="text-xs text-muted-foreground">Invited partner:</p>
-                  <p className="text-sm font-bold text-foreground">
-                    {state.outgoingInvitation.inviteeDisplayName || "Partner"}
+            {/* STATE 1: NO PARTNER CONNECTED */}
+            {status === "none" && (
+              <div className="space-y-4 pt-1">
+                <div className="p-5 rounded-2xl bg-secondary/30 border border-border/40 text-center space-y-2">
+                  <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/60">
+                    <HeartHandshake className="size-6 stroke-[2.2]" />
+                  </div>
+                  <p className="text-sm font-semibold text-foreground">No Partner Connected Yet</p>
+                  <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                    Keep your cycle logs private, or connect with a partner to share cycle awareness together. You have complete control over what is shared and can revoke access anytime.
                   </p>
-                  {state.outgoingInvitation.inviteeUsername && (
-                    <p className="text-xs font-mono text-primary font-medium">
-                      @{state.outgoingInvitation.inviteeUsername}
-                    </p>
-                  )}
                 </div>
 
-                <p className="text-[11px] text-muted-foreground leading-relaxed">
-                  Your invitation is pending. It will remain valid for 7 days.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={actionPending}
-                  onClick={() => setCancelConfirmOpen(true)}
-                  className="flex-1 h-10 rounded-xl text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-border/70 cursor-pointer"
+                  onClick={() => setAddModalOpen(true)}
+                  className="w-full h-11 rounded-xl text-xs gap-2 cursor-pointer font-semibold shadow-xs"
                 >
-                  {actionPending ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <span>Cancel Invitation</span>
-                  )}
+                  <UserPlus className="size-4" />
+                  <span>Add Partner</span>
                 </Button>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* STATE 3: INCOMING PENDING INVITATION */}
-          {status === "incoming_pending" && state?.incomingInvitation && (
-            <div className="space-y-4 pt-1">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-2.5">
-                <div className="flex items-center gap-2 text-xs font-medium text-primary">
-                  <UserCheck className="size-4 shrink-0" />
-                  <span>Incoming Partner Invitation</span>
-                </div>
+            {/* STATE 2: OUTGOING PENDING INVITATION */}
+            {status === "outgoing_pending" && state?.outgoingInvitation && (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-foreground">
+                    <Clock className="size-4 text-primary shrink-0" />
+                    <span>Waiting for acceptance</span>
+                  </div>
 
-                <div>
-                  <p className="text-base font-bold text-foreground">
-                    {state.incomingInvitation.inviterDisplayName}
-                  </p>
-                  <p className="text-xs font-mono text-muted-foreground">
-                    @{state.incomingInvitation.inviterUsername}
-                  </p>
-                </div>
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      src={state.outgoingInvitation.inviteeAvatarUrl}
+                      alt={state.outgoingInvitation.inviteeDisplayName || "Partner"}
+                      fallbackInitials={state.outgoingInvitation.inviteeDisplayName || "Partner"}
+                      size="md"
+                      className="size-10 ring-2 ring-background border border-primary/20"
+                    />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Invited partner:</p>
+                      <p className="text-sm font-bold text-foreground">
+                        {state.outgoingInvitation.inviteeDisplayName || "Partner"}
+                      </p>
+                      {state.outgoingInvitation.inviteeUsername && (
+                        <p className="text-xs font-mono text-primary font-medium">
+                          @{state.outgoingInvitation.inviteeUsername}
+                        </p>
+                      )}
+                    </div>
+                  </div>
 
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Wants to connect with you on Seijun. Accepting links your accounts in a partner relationship.
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={actionPending}
-                  onClick={() => handleDeclineIncoming(state.incomingInvitation!.id)}
-                  className="h-10 rounded-xl text-xs cursor-pointer border-border/70"
-                >
-                  Decline
-                </Button>
-                <Button
-                  type="button"
-                  disabled={actionPending}
-                  onClick={() => handleAcceptIncoming(state.incomingInvitation!.id)}
-                  className="h-10 rounded-xl text-xs font-semibold cursor-pointer gap-1.5"
-                >
-                  {actionPending ? (
-                    <Loader2 className="size-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Check className="size-4" />
-                      <span>Accept</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* STATE 4: ACTIVE RELATIONSHIP */}
-          {status === "active" && state?.partner && (
-            <div className="space-y-4 pt-1">
-              <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-2">
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                    Connected Partner
-                  </p>
-                  <p className="text-base font-bold text-foreground">
-                    {state.partner.displayName}
-                  </p>
-                  <p className="text-xs font-mono text-primary font-medium">
-                    @{state.partner.username}
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    Your invitation is pending. It will remain valid for 7 days.
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                  <CheckCircle2 className="size-3.5" />
-                  <span>Partner Relationship Active</span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={actionPending}
+                    onClick={() => setCancelConfirmOpen(true)}
+                    className="flex-1 h-10 rounded-xl text-xs text-destructive hover:bg-destructive/10 hover:text-destructive border-border/70 cursor-pointer"
+                  >
+                    {actionPending ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <span>Cancel Invitation</span>
+                    )}
+                  </Button>
                 </div>
               </div>
+            )}
 
-              <div className="p-3 rounded-xl bg-secondary/20 text-xs text-muted-foreground space-y-1 border border-border/30">
-                <div className="flex items-center gap-1.5 font-medium text-foreground">
-                  <Shield className="size-3.5 text-primary" />
-                  <span>Privacy-First Sharing</span>
+            {/* STATE 3: INCOMING PENDING INVITATION */}
+            {status === "incoming_pending" && state?.incomingInvitation && (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-medium text-primary">
+                    <UserCheck className="size-4 shrink-0" />
+                    <span>Incoming Partner Invitation</span>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Avatar
+                      src={state.incomingInvitation.inviterAvatarUrl}
+                      alt={state.incomingInvitation.inviterDisplayName || "Partner"}
+                      fallbackInitials={state.incomingInvitation.inviterDisplayName || "Partner"}
+                      size="md"
+                      className="size-10 ring-2 ring-background border border-primary/20"
+                    />
+                    <div>
+                      <p className="text-base font-bold text-foreground">
+                        {state.incomingInvitation.inviterDisplayName}
+                      </p>
+                      <p className="text-xs font-mono text-muted-foreground">
+                        @{state.incomingInvitation.inviterUsername}
+                      </p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Wants to connect with you on Seijun. Accepting links your accounts in a partner relationship.
+                  </p>
                 </div>
-                <p className="text-[11px] leading-relaxed">
-                  Your cycle insights, journal entries, and private logs remain confidential by default.
-                </p>
-              </div>
 
-              {/* Partner Dashboard Link — visible for supporters */}
-              {state?.relationship?.role === "supporter" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/partner")}
-                  className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
-                >
-                  <Eye className="size-3.5" />
-                  <span>View Partner Dashboard</span>
-                </Button>
-              )}
-            </div>
-          )}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={actionPending}
+                    onClick={() => handleDeclineIncoming(state.incomingInvitation!.id)}
+                    className="h-10 rounded-xl text-xs cursor-pointer border-border/70"
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={actionPending}
+                    onClick={() => handleAcceptIncoming(state.incomingInvitation!.id)}
+                    className="h-10 rounded-xl text-xs font-semibold cursor-pointer gap-1.5"
+                  >
+                    {actionPending ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="size-4" />
+                        <span>Accept</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* STATE 4: ACTIVE RELATIONSHIP */}
+            {status === "active" && state?.partner && (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 rounded-2xl bg-secondary/30 border border-border/40 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      {/* Dual Interlinked Avatars */}
+                      <div className="relative flex items-center shrink-0 py-0.5">
+                        <div className="relative z-10">
+                          <Avatar
+                            src={state.currentUser?.avatarUrl}
+                            alt={state.currentUser?.displayName || "You"}
+                            fallbackInitials={state.currentUser?.displayName || "You"}
+                            size="md"
+                            className="size-10 ring-2 ring-background shadow-xs border border-primary/20"
+                          />
+                        </div>
+                        <div className="absolute left-6 -bottom-1 z-20 flex size-4 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xs ring-1 ring-background">
+                          <HeartHandshake className="size-2 stroke-[2.4]" />
+                        </div>
+                        <div className="relative z-0 -ml-3">
+                          <Avatar
+                            src={state.partner.avatarUrl}
+                            alt={state.partner.displayName}
+                            fallbackInitials={state.partner.displayName}
+                            size="md"
+                            className="size-10 ring-2 ring-background shadow-xs border border-lavender-border bg-lavender/60"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                          {state.relationship?.role === "owner" ? "Your Supporter" : "Cycle Owner"}
+                        </p>
+                        <p className="text-sm font-bold text-foreground truncate">
+                          {state.partner.displayName}
+                        </p>
+                        <p className="text-xs font-mono text-primary font-medium">
+                          @{state.partner.username}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium shrink-0 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <CheckCircle2 className="size-3" />
+                      <span>Active</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-secondary/20 text-xs text-muted-foreground space-y-1 border border-border/30">
+                  <div className="flex items-center gap-1.5 font-medium text-foreground">
+                    <Shield className="size-3.5 text-primary" />
+                    <span>Privacy-First Sharing</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    Your cycle insights, journal entries, and private logs remain confidential by default.
+                  </p>
+                </div>
+
+                {/* Partner Dashboard Link — visible for supporters */}
+                {state?.relationship?.role === "supporter" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => router.push("/partner")}
+                    className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
+                  >
+                    <Eye className="size-3.5" />
+                    <span>View Partner Dashboard</span>
+                  </Button>
+                )}
+              </div>
+            )}
         </CardContent>
       </Card>
 
@@ -420,6 +471,7 @@ export function PartnerConnectionCard({
           relationshipId={state.relationship.id}
           partnerDisplayName={state.partner?.displayName}
           partnerUsername={state.partner?.username}
+          partnerAvatarUrl={state.partner?.avatarUrl}
           onRevoked={fetchState}
         />
       )}

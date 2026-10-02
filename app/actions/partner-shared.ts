@@ -38,6 +38,10 @@ export interface PartnerDashboardData {
   managementPermissions?: CoManagementPermission[]
   ownerDisplayName?: string
   ownerUsername?: string
+  ownerAvatarUrl?: string | null
+  supporterDisplayName?: string
+  supporterUsername?: string
+  supporterAvatarUrl?: string | null
   relationshipStartDate?: string | null
   affinityDisplayFormat?: AffinityDisplayFormat
   reason?: AuthorizationDenialReason

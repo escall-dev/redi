@@ -66,16 +66,24 @@ export async function resolveServerCycleContext(
   // 1. Fetch current user profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("usage_role, display_name, username")
+    .select("usage_role, display_name, username, avatar_url")
     .eq("user_id", userId)
     .maybeSingle()
 
   const usageRole = (profile?.usage_role as "cycle_tracker" | "supporter" | "both" | null) ?? "cycle_tracker"
 
+  const currentUserInfo = profile
+    ? {
+        displayName: profile.display_name,
+        username: profile.username,
+        avatarUrl: profile.avatar_url,
+      }
+    : undefined
+
   // 2. Fetch active partner relationship (if any)
   const { data: activeRel } = await supabase
     .from("partner_relationships")
-    .select("id, status, owner_user_id, supporter_user_id")
+    .select("id, status, owner_user_id, supporter_user_id, relationship_start_date")
     .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
     .eq("status", "active")
     .maybeSingle()
@@ -93,17 +101,19 @@ export async function resolveServerCycleContext(
     // Fetch partner profile display info
     let partnerDisplayName = "Partner"
     let partnerUsername: string | null = null
+    let partnerAvatarUrl: string | null = null
 
     if (partnerUserId) {
       const { data: pProfile } = await supabase
         .from("profiles")
-        .select("display_name, username")
+        .select("display_name, username, avatar_url")
         .eq("user_id", partnerUserId)
         .maybeSingle()
 
       if (pProfile) {
         partnerDisplayName = pProfile.display_name || pProfile.username || "Partner"
         partnerUsername = pProfile.username || null
+        partnerAvatarUrl = pProfile.avatar_url || null
       }
     }
 
@@ -111,7 +121,9 @@ export async function resolveServerCycleContext(
       partnerUserId,
       displayName: partnerDisplayName,
       username: partnerUsername,
+      avatarUrl: partnerAvatarUrl,
       relationshipId: activeRel.id,
+      relationshipStartDate: activeRel.relationship_start_date || null,
       hasActivePartner: true,
       isSupporter,
       isOwner,
@@ -206,6 +218,7 @@ export async function resolveServerCycleContext(
     activeUserId,
     currentUserId: userId,
     usageRole,
+    currentUserInfo,
     partnerInfo,
     permissions,
     canSwitchContext,

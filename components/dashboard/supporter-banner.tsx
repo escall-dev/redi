@@ -23,16 +23,16 @@ export function SupporterBanner({ hasActivePartner = false }: SupporterBannerPro
               <div className="flex items-center gap-2">
                 <Badge variant="lavender" className="gap-1.5 font-normal text-xs px-2.5 py-0.5">
                   <Sparkles className="size-3 text-primary" />
-                  Supporter Account
+                  Partner &amp; Supporter
                 </Badge>
               </div>
               <h2 className="text-base sm:text-lg font-semibold text-foreground tracking-tight">
-                {hasActivePartner ? "Partner Supporter View" : "Connect with Your Partner"}
+                {hasActivePartner ? "Shared Partner Space" : "Connect with Your Partner"}
               </h2>
               <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-xl">
                 {hasActivePartner
-                  ? "You are set up to support someone else's cycle. Access your partner's shared estimates, period logs, and shared daily notes in your dedicated Partner Dashboard."
-                  : "You are set up as a cycle supporter. Connect with your partner using an invitation link or by sending an invite to view and support their cycle."}
+                  ? "Access your partner's shared cycle estimates, period flow logs, and daily notes in your dedicated shared dashboard."
+                  : "You are set up to support your partner. Send an invitation or accept an invite link to connect and share cycle awareness together."}
               </p>
             </div>
           </div>

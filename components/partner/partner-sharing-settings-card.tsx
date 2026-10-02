@@ -13,6 +13,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { SettingsToggle } from "@/components/settings/settings-toggle"
+import { Avatar } from "@/components/ui/avatar"
 import { cn } from "@/lib/utils"
 import {
   getPartnerSharingPreferencesAction,
@@ -41,6 +42,7 @@ interface PartnerSharingSettingsCardProps {
   relationshipId: string
   partnerDisplayName?: string
   partnerUsername?: string
+  partnerAvatarUrl?: string | null
   onRevoked?: () => void
 }
 
@@ -48,6 +50,7 @@ export function PartnerSharingSettingsCard({
   relationshipId,
   partnerDisplayName = "Partner",
   partnerUsername,
+  partnerAvatarUrl,
   onRevoked,
 }: PartnerSharingSettingsCardProps) {
   const [prefs, setPrefs] = React.useState<PartnerSharingPreferences | null>(null)
@@ -240,14 +243,19 @@ export function PartnerSharingSettingsCard({
       <Card className="overflow-hidden border-border/70 shadow-xs">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20">
-                <Sliders className="size-4" />
-              </div>
+            <div className="flex items-center gap-3">
+              <Avatar
+                src={partnerAvatarUrl}
+                alt={partnerDisplayName}
+                fallbackInitials={partnerDisplayName}
+                size="md"
+                className="size-9 ring-2 ring-background border border-primary/20 shadow-xs"
+              />
               <div>
                 <CardTitle className="text-sm font-semibold">Partner Access Control</CardTitle>
                 <CardDescription className="text-xs">
-                  Manage view and co-management permissions for {partnerDisplayName}.
+                  Manage view and co-management permissions for {partnerDisplayName}
+                  {partnerUsername ? ` (@${partnerUsername})` : ""}.
                 </CardDescription>
               </div>
             </div>
@@ -536,7 +544,7 @@ export function PartnerSharingSettingsCard({
               {partnerUsername && (
                 <span className="font-mono text-primary font-medium"> (@{partnerUsername})</span>
               )}
-              ? They will immediately lose all access to view and co-manage your cycle data.
+              ? They will immediately lose all access to view and co-manage your cycle data. All active permissions are revoked instantly, and no shared data is retained on their account.
             </DialogDescription>
           </DialogHeader>
 

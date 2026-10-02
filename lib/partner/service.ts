@@ -1121,12 +1121,20 @@ export async function getPartnerConnectionState(
       return { ok: false, error: "Error checking active relationship." }
     }
 
-    // Fetch user profile affinity format preference
+    // Fetch user profile affinity format preference and identity
     const { data: userProfile } = await supabase
       .from("profiles")
-      .select("affinity_display_format")
+      .select("affinity_display_format, display_name, username, avatar_url")
       .eq("user_id", userId)
       .maybeSingle()
+
+    const currentUserInfo = userProfile
+      ? {
+          displayName: userProfile.display_name,
+          username: userProfile.username,
+          avatarUrl: userProfile.avatar_url,
+        }
+      : undefined
 
     const affinityDisplayFormat: AffinityDisplayFormat =
       userProfile?.affinity_display_format || "detailed"
@@ -1135,11 +1143,15 @@ export async function getPartnerConnectionState(
       const isOwner = activeRel.owner_user_id === userId
       const partnerUserId = isOwner ? activeRel.supporter_user_id : activeRel.owner_user_id
 
-      let partnerInfo = { username: "partner", displayName: "Partner" }
+      let partnerInfo: { username: string; displayName: string; avatarUrl?: string | null } = {
+        username: "partner",
+        displayName: "Partner",
+        avatarUrl: null,
+      }
       if (partnerUserId) {
         const { data: pProfile } = await supabase
           .from("profiles")
-          .select("username, display_name")
+          .select("username, display_name, avatar_url")
           .eq("user_id", partnerUserId)
           .maybeSingle()
 
@@ -1147,6 +1159,7 @@ export async function getPartnerConnectionState(
           partnerInfo = {
             username: pProfile.username || "partner",
             displayName: pProfile.display_name || pProfile.username || "Partner",
+            avatarUrl: pProfile.avatar_url || null,
           }
         }
       }
@@ -1155,6 +1168,7 @@ export async function getPartnerConnectionState(
         ok: true,
         data: {
           status: "active",
+          currentUser: currentUserInfo,
           partner: partnerInfo,
           relationship: {
             id: activeRel.id,
@@ -1184,15 +1198,17 @@ export async function getPartnerConnectionState(
       } else {
         let inviteeUsername = ""
         let inviteeDisplayName = ""
+        let inviteeAvatarUrl: string | null = null
         if (outgoing.invitee_user_id) {
           const { data: targetProfile } = await supabase
             .from("profiles")
-            .select("username, display_name")
+            .select("username, display_name, avatar_url")
             .eq("user_id", outgoing.invitee_user_id)
             .maybeSingle()
           if (targetProfile) {
             inviteeUsername = targetProfile.username || ""
             inviteeDisplayName = targetProfile.display_name || targetProfile.username || ""
+            inviteeAvatarUrl = targetProfile.avatar_url || null
           }
         }
 
@@ -1200,12 +1216,14 @@ export async function getPartnerConnectionState(
           ok: true,
           data: {
             status: "outgoing_pending",
+            currentUser: currentUserInfo,
             outgoingInvitation: {
               id: outgoing.id,
               expiresAt: outgoing.expires_at,
               createdAt: outgoing.created_at,
               inviteeUsername,
               inviteeDisplayName,
+              inviteeAvatarUrl,
             },
           },
         }
@@ -1227,27 +1245,31 @@ export async function getPartnerConnectionState(
       } else {
         let inviterUsername = ""
         let inviterDisplayName = ""
+        let inviterAvatarUrl: string | null = null
         const { data: senderProfile } = await supabase
           .from("profiles")
-          .select("username, display_name")
+          .select("username, display_name, avatar_url")
           .eq("user_id", incoming.inviter_user_id)
           .maybeSingle()
 
         if (senderProfile) {
           inviterUsername = senderProfile.username || ""
           inviterDisplayName = senderProfile.display_name || senderProfile.username || ""
+          inviterAvatarUrl = senderProfile.avatar_url || null
         }
 
         return {
           ok: true,
           data: {
             status: "incoming_pending",
+            currentUser: currentUserInfo,
             incomingInvitation: {
               id: incoming.id,
               expiresAt: incoming.expires_at,
               createdAt: incoming.created_at,
               inviterUsername,
               inviterDisplayName,
+              inviterAvatarUrl,
               tokenHash: incoming.token_hash,
             },
           },
@@ -1259,6 +1281,7 @@ export async function getPartnerConnectionState(
       ok: true,
       data: {
         status: "none",
+        currentUser: currentUserInfo,
       },
     }
   } catch (err) {

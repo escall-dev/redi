@@ -20,7 +20,9 @@ export interface CyclePartnerInfo {
   partnerUserId: string | null
   displayName: string | null
   username: string | null
+  avatarUrl?: string | null
   relationshipId: string | null
+  relationshipStartDate?: string | null
   hasActivePartner: boolean
   isSupporter: boolean
   isOwner: boolean
@@ -51,6 +53,12 @@ export interface CycleContextState {
   currentUserId: string
   /** The authenticated user's profile usage role */
   usageRole: "cycle_tracker" | "supporter" | "both" | null
+  /** Information about the current authenticated user's profile presentation */
+  currentUserInfo?: {
+    displayName: string | null
+    username: string | null
+    avatarUrl: string | null
+  }
   /** Information about the connected partner (if any) */
   partnerInfo: CyclePartnerInfo
   /** Sharing categories and co-management capabilities */
