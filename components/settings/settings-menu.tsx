@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { useTheme } from "@/components/theme/theme-provider"
 import { SeijunSpinner } from "@/components/ui/seijun-spinner"
 import { cn } from "@/lib/utils"
+import { APP_VERSION_LABEL } from "@/lib/version"
 import type { ProfileSettingsData } from "@/components/settings/settings-form"
 import type { NotificationPreferences } from "@/lib/notifications/types"
 import {
@@ -592,7 +593,7 @@ export function SettingsMenu({
       icon: Sparkles,
       summaryBadge: (
         <Badge variant="lavender" className="text-[10px] px-1.5 py-0 font-normal">
-          v2.0.6
+          {APP_VERSION_LABEL}
         </Badge>
       ),
       items: (
@@ -609,7 +610,7 @@ export function SettingsMenu({
             id="item-about-seijun"
             title="About Seijun"
             description="Personal cycle companion & architecture"
-            value="v2.0.6"
+            value={APP_VERSION_LABEL}
             icon={Sparkles}
             href="/settings/about"
             onClick={() => navigateToView("about")}

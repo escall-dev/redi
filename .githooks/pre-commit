@@ -1,2 +1,4 @@
 #!/bin/sh
-node scripts/pre-commit-hook.mjs
+# Git commits must NEVER automatically increment or mutate application SemVer.
+# Application version is managed exclusively via intentional Semantic Versioning releases.
+exit 0

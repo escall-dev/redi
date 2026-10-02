@@ -2,123 +2,67 @@ import assert from "node:assert/strict"
 import fs from "node:fs"
 import path from "node:path"
 import os from "node:os"
-import { getNextVersion, isAppFile, shouldBumpVersion, updatePackageVersions } from "./version-lib.mjs"
+import { getNextSemver, getNextVersion, updatePackageVersions, bumpVersion } from "./version-lib.mjs"
 
-console.log("=== Running Seijun Versioning Test Suite ===")
-
-// -------------------------------------------------------------
-// Test Group 1: Progression Rules
-// -------------------------------------------------------------
-console.log("\n[Test 1] Testing exact version progression sequence...")
-
-const expectedSequence = [
-  ["0.1.0", "0.1.1"],
-  ["0.1.1", "0.1.2"],
-  ["0.1.2", "0.1.3"],
-  ["0.1.3", "0.1.4"],
-  ["0.1.4", "0.1.5"],
-  ["0.1.5", "0.1.6"],
-  ["0.1.6", "0.1.7"],
-  ["0.1.7", "0.1.8"],
-  ["0.1.8", "0.1.9"],
-  ["0.1.9", "2.0.0"],
-  ["2.0.0", "2.0.1"]
-]
-
-for (const [input, expected] of expectedSequence) {
-  const result = getNextVersion(input)
-  assert.equal(
-    result,
-    expected,
-    `Progression failed for ${input}: expected ${expected}, got ${result}`
-  )
-  console.log(`  ✓ ${input} -> ${result}`)
-}
+console.log("=== Running Seijun Semantic Versioning Test Suite ===")
 
 // -------------------------------------------------------------
-// Test Group 2: Critical Negative Guard Assertions for 0.1.9
+// Test Group 1: Strict Semantic Versioning Progression Rules
 // -------------------------------------------------------------
-console.log("\n[Test 2] Testing critical 0.1.9 safety guards...")
+console.log("\n[Test 1] Testing Semantic Versioning progression (PATCH, MINOR, MAJOR)...")
 
-const bump019 = getNextVersion("0.1.9")
-assert.equal(bump019, "2.0.0", "0.1.9 must strictly transition to 2.0.0")
-assert.notEqual(bump019, "0.1.10", "CRITICAL ERROR: 0.1.9 must NEVER become 0.1.10")
-assert.notEqual(bump019, "0.2.0", "CRITICAL ERROR: 0.1.9 must NEVER become 0.2.0")
-console.log("  ✓ 0.1.9 -> 2.0.0 verified")
-console.log("  ✓ Confirmed 0.1.9 !== 0.1.10")
-console.log("  ✓ Confirmed 0.1.9 !== 0.2.0")
+// 1.1 PATCH progression
+assert.equal(getNextSemver("1.18.4", "patch"), "1.18.5", "PATCH from 1.18.4 must be 1.18.5")
+assert.equal(getNextSemver("1.19.0", "patch"), "1.19.1", "PATCH from 1.19.0 must be 1.19.1")
+assert.equal(getNextVersion("1.18.4"), "1.18.5", "Default getNextVersion alias must bump patch")
+console.log("  ✓ PATCH progression verified (1.18.4 -> 1.18.5, 1.19.0 -> 1.19.1)")
 
-// -------------------------------------------------------------
-// Test Group 3: App File Filtering Rules
-// -------------------------------------------------------------
-console.log("\n[Test 3] Testing file trigger classification...")
+// 1.2 MINOR progression
+assert.equal(getNextSemver("1.18.4", "minor"), "1.19.0", "MINOR from 1.18.4 must be 1.19.0")
+assert.equal(getNextSemver("1.19.0", "minor"), "1.20.0", "MINOR from 1.19.0 must be 1.20.0")
+console.log("  ✓ MINOR progression verified (1.18.4 -> 1.19.0, 1.19.0 -> 1.20.0)")
 
-const appFiles = [
-  "app/login/page.tsx",
-  "app/dashboard/page.tsx",
-  "components/auth/login-form.tsx",
-  "components/brand/redi-logo.tsx",
-  "lib/auth/session.ts",
-  "lib/version.ts",
-  "public/icon.svg",
-  "public/manifest.webmanifest",
-  "supabase/migrations/01_auth.sql",
-  "scripts/generate-pwa-icons.mjs",
-  "next.config.ts",
-  "tsconfig.json",
-  "package.json"
-]
-
-for (const file of appFiles) {
-  assert.equal(isAppFile(file), true, `Expected "${file}" to be classified as application file`)
-  console.log(`  ✓ App file recognized: ${file}`)
-}
-
-const ignoredFiles = [
-  "README.md",
-  "CLAUDE.md",
-  "AGENTS.md",
-  "docs/architecture.md",
-  "scratch/notes.txt",
-  "scratch/temp.json",
-  "server.log",
-  ".gitignore",
-  ".gitattributes",
-  ".githooks/pre-commit",
-  "tsconfig.tsbuildinfo",
-  ".next/build-manifest.json",
-  "package-lock.json"
-]
-
-for (const file of ignoredFiles) {
-  assert.equal(isAppFile(file), false, `Expected "${file}" to be ignored`)
-  console.log(`  ✓ Ignored file recognized: ${file}`)
-}
-
-assert.equal(shouldBumpVersion(ignoredFiles), false, "Staging only ignored files should NOT trigger bump")
-assert.equal(shouldBumpVersion([...ignoredFiles, "app/login/page.tsx"]), true, "Staging code file must trigger bump")
-console.log("  ✓ shouldBumpVersion correctly filters staged changesets")
+// 1.3 MAJOR progression
+assert.equal(getNextSemver("1.19.0", "major"), "2.0.0", "MAJOR from 1.19.0 must be 2.0.0")
+assert.equal(getNextSemver("1.18.4", "major"), "2.0.0", "MAJOR from 1.18.4 must be 2.0.0")
+console.log("  ✓ MAJOR progression verified (1.19.0 -> 2.0.0)")
 
 // -------------------------------------------------------------
-// Test Group 4: Package Metadata Synchronization
+// Test Group 2: SemVer Safety Guards & Non-Semantic Rejections
 // -------------------------------------------------------------
-console.log("\n[Test 4] Testing package.json & package-lock.json atomic synchronization...")
+console.log("\n[Test 2] Testing safety guards and format enforcement...")
+
+// Invalid release types must throw
+assert.throws(() => getNextSemver("1.18.4", "commit"), /Invalid release type/, "Commits cannot be a release type")
+assert.throws(() => getNextSemver("1.18.4", "deployment"), /Invalid release type/, "Deployments cannot be a release type")
+assert.throws(() => getNextSemver("1.18.4", "build"), /Invalid release type/, "Builds cannot be a release type")
+
+// Invalid version formats must throw
+assert.throws(() => getNextSemver("invalid"), /Invalid version format/)
+assert.throws(() => getNextSemver("1.0"), /Invalid version format/)
+assert.throws(() => getNextSemver(123), /Expected version to be a string/)
+console.log("  ✓ Non-semantic and malformed version formats strictly rejected")
+
+// -------------------------------------------------------------
+// Test Group 3: Package Metadata Synchronization (package.json & lock)
+// -------------------------------------------------------------
+console.log("\n[Test 3] Testing package.json & package-lock.json atomic synchronization...")
 
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "seijun-ver-test-"))
 try {
   const mockPackageJson = {
     name: "seijun",
-    version: "0.1.0",
+    version: "1.18.4",
     private: true
   }
   const mockPackageLockJson = {
     name: "seijun",
-    version: "0.1.0",
+    version: "1.18.4",
     lockfileVersion: 3,
     packages: {
       "": {
         name: "seijun",
-        version: "0.1.0"
+        version: "1.18.4"
       }
     }
   }
@@ -126,42 +70,71 @@ try {
   fs.writeFileSync(path.join(tempDir, "package.json"), JSON.stringify(mockPackageJson, null, 2) + "\n")
   fs.writeFileSync(path.join(tempDir, "package-lock.json"), JSON.stringify(mockPackageLockJson, null, 2) + "\n")
 
-  const syncResult = updatePackageVersions("0.1.1", tempDir)
-  assert.equal(syncResult.previousVersion, "0.1.0")
-  assert.equal(syncResult.newVersion, "0.1.1")
+  const syncResult = updatePackageVersions("1.18.5", tempDir)
+  assert.equal(syncResult.previousVersion, "1.18.4")
+  assert.equal(syncResult.newVersion, "1.18.5")
 
   const updatedPkg = JSON.parse(fs.readFileSync(path.join(tempDir, "package.json"), "utf8"))
   const updatedLock = JSON.parse(fs.readFileSync(path.join(tempDir, "package-lock.json"), "utf8"))
 
-  assert.equal(updatedPkg.version, "0.1.1", "package.json version must be 0.1.1")
-  assert.equal(updatedLock.version, "0.1.1", "package-lock.json root version must be 0.1.1")
-  assert.equal(updatedLock.packages[""].version, "0.1.1", "package-lock.json packages[''] version must be 0.1.1")
-  console.log("  ✓ package.json and package-lock.json synchronized atomically to 0.1.1")
-
-  // Transition to 2.0.0
-  updatePackageVersions("2.0.0", tempDir)
-  const pkg2 = JSON.parse(fs.readFileSync(path.join(tempDir, "package.json"), "utf8"))
-  const lock2 = JSON.parse(fs.readFileSync(path.join(tempDir, "package-lock.json"), "utf8"))
-  assert.equal(pkg2.version, "2.0.0")
-  assert.equal(lock2.version, "2.0.0")
-  assert.equal(lock2.packages[""].version, "2.0.0")
-  console.log("  ✓ package.json and package-lock.json synchronized atomically to 2.0.0")
+  assert.equal(updatedPkg.version, "1.18.5", "package.json version must be 1.18.5")
+  assert.equal(updatedLock.version, "1.18.5", "package-lock.json root version must be 1.18.5")
+  assert.equal(updatedLock.packages[""].version, "1.18.5", "package-lock.json packages[''] version must be 1.18.5")
+  console.log("  ✓ package.json and package-lock.json synchronized atomically")
 } finally {
   fs.rmSync(tempDir, { recursive: true, force: true })
 }
 
 // -------------------------------------------------------------
-// Test Group 5: Active Single Source of Truth
+// Test Group 4: Active Single Source of Truth
 // -------------------------------------------------------------
-console.log("\n[Test 5] Verifying single source of truth in project...")
+console.log("\n[Test 4] Verifying canonical single source of truth across project...")
 
 const rootPkg = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package.json"), "utf8"))
 const rootLock = JSON.parse(fs.readFileSync(path.join(process.cwd(), "package-lock.json"), "utf8"))
 
 assert.equal(rootPkg.version, rootLock.version, "Root package.json and package-lock.json versions must match")
-assert.equal(rootPkg.version, rootLock.packages[""].version, "Root package.json and package-lock.json packages[''] must match")
-console.log(`  ✓ Root package metadata synchronized at v${rootPkg.version}`)
+assert.equal(rootPkg.version, rootLock.packages[""].version, "Root package.json and packages[''] version must match")
+console.log(`  ✓ Canonical version in package metadata: v${rootPkg.version}`)
+
+// -------------------------------------------------------------
+// Test Group 5: UI Components Single Source of Truth
+// -------------------------------------------------------------
+console.log("\n[Test 5] Verifying all UI components import from canonical lib/version.ts...")
+
+const aboutViewPath = path.join(process.cwd(), "components", "settings", "about-settings-view.tsx")
+const settingsMenuPath = path.join(process.cwd(), "components", "settings", "settings-menu.tsx")
+const loginPagePath = path.join(process.cwd(), "app", "login", "page.tsx")
+
+const aboutContent = fs.readFileSync(aboutViewPath, "utf8")
+const settingsContent = fs.readFileSync(settingsMenuPath, "utf8")
+const loginContent = fs.readFileSync(loginPagePath, "utf8")
+
+// Verify imports
+assert.ok(aboutContent.includes(`@/lib/version`), "AboutSettingsView must import from @/lib/version")
+assert.ok(settingsContent.includes(`@/lib/version`), "SettingsMenu must import from @/lib/version")
+assert.ok(loginContent.includes(`@/lib/version`), "LoginPage must import from @/lib/version")
+
+// Verify NO hardcoded stale versions in UI
+assert.ok(!aboutContent.includes("v2.0.6"), "AboutSettingsView must not contain hardcoded v2.0.6")
+assert.ok(!settingsContent.includes("v2.0.6"), "SettingsMenu must not contain hardcoded v2.0.6")
+assert.ok(!aboutContent.includes("v2.0.33"), "AboutSettingsView must not contain stale v2.0.33")
+assert.ok(!settingsContent.includes("v2.0.33"), "SettingsMenu must not contain stale v2.0.33")
+console.log("  ✓ All UI version displays read from canonical lib/version.ts with zero stale hardcodes")
+
+// -------------------------------------------------------------
+// Test Group 6: Git Commit Invariance (No Auto-Bumping)
+// -------------------------------------------------------------
+console.log("\n[Test 6] Verifying Git commits do NOT increment application SemVer...")
+
+const preCommitHook = fs.readFileSync(path.join(process.cwd(), ".githooks", "pre-commit"), "utf8")
+assert.ok(!preCommitHook.includes("node scripts/pre-commit-hook.mjs"), "Pre-commit hook must not call version bumping")
+assert.ok(preCommitHook.includes("exit 0"), "Pre-commit hook must safely exit 0 without bumping")
+
+const preCommitScript = fs.readFileSync(path.join(process.cwd(), "scripts", "pre-commit-hook.mjs"), "utf8")
+assert.ok(!preCommitScript.includes("updatePackageVersions"), "pre-commit-hook.mjs must not modify package versions")
+console.log("  ✓ Git commits verified to NOT increment application version")
 
 console.log("\n=================================================")
-console.log("ALL SEIJUN VERSIONING TESTS PASSED SUCCESSFULLY! (5/5)")
+console.log("ALL SEIJUN VERSIONING TESTS PASSED SUCCESSFULLY! (6/6)")
 console.log("=================================================\n")

@@ -14,6 +14,7 @@ import {
   Smartphone,
   ExternalLink,
 } from "lucide-react"
+import { APP_VERSION_LABEL } from "@/lib/version"
 
 export function AboutSettingsView() {
   const [activeModal, setActiveModal] = React.useState<"faq" | "privacy" | "terms" | null>(null)
@@ -31,7 +32,7 @@ export function AboutSettingsView() {
               <div className="flex items-center gap-2">
                 <CardTitle>About Seijun</CardTitle>
                 <Badge variant="lavender" className="text-[10px] px-2 py-0 font-normal">
-                  v2.0.6
+                  {APP_VERSION_LABEL}
                 </Badge>
               </div>
               <CardDescription>

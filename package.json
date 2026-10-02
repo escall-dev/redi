@@ -1,6 +1,6 @@
 {
   "name": "seijun",
-  "version": "2.0.33",
+  "version": "1.18.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,6 +9,9 @@
     "lint": "eslint",
     "prepare": "git config core.hooksPath .githooks",
     "version:bump": "node scripts/bump-version.mjs",
+    "release:patch": "node scripts/bump-version.mjs patch",
+    "release:minor": "node scripts/bump-version.mjs minor",
+    "release:major": "node scripts/bump-version.mjs major",
     "test:version": "node scripts/test-version.mjs",
     "test:classification": "node scripts/test-account-classification.mjs",
     "test:account": "node scripts/test-account-classification.mjs",
