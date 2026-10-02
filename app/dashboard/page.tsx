@@ -147,6 +147,23 @@ export default async function DashboardPage() {
       {/* Explanatory Notification Permission Prompt */}
       <NotificationPermissionPrompt usageRole={profile?.usage_role} />
 
+      {/* ─── MY SPACE (Personal Cycle Tracking & Private Journal) ─── */}
+      {cycleContext.partnerInfo.hasActivePartner && (
+        <div className="flex items-center justify-between pt-1 px-1 select-none">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              My Space
+            </h2>
+            <span className="text-[10px] text-muted-foreground/80 bg-secondary/60 px-2 py-0.5 rounded-full border border-border/50">
+              Private to you
+            </span>
+          </div>
+          <span className="text-[11px] text-muted-foreground/80 hidden sm:inline">
+            Personal cycle logs &amp; journal
+          </span>
+        </div>
+      )}
+
       {/* Current Cycle Card with Progress Visualizer */}
       <CurrentCycleCard
         currentCycle={currentCycle}

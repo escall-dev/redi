@@ -10,6 +10,7 @@ import {
   cancelPartnerInvitationAction,
   acceptPartnerInvitationByIdAction,
   declinePartnerInvitationByIdAction,
+  revokePartnerRelationshipAction,
 } from "@/app/actions/partner"
 import type { PartnerConnectionState } from "@/lib/partner/types"
 import { AddPartnerModal } from "@/components/partner/add-partner-modal"
@@ -62,6 +63,31 @@ export function PartnerConnectionCard({
     username?: string | null
     displayName?: string | null
   } | null>(null)
+  const [disconnectConfirmOpen, setDisconnectConfirmOpen] = React.useState(false)
+
+  const handleDisconnectSupporter = async () => {
+    if (!state?.relationship?.id) return
+    setActionPending(true)
+    setErrorMsg(null)
+    try {
+      const res = await revokePartnerRelationshipAction(state.relationship.id)
+      if (res.ok) {
+        setDisconnectConfirmOpen(false)
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("seijun:partner-state-changed"))
+          window.dispatchEvent(new CustomEvent("seijun:notification-update"))
+        }
+        await fetchState()
+        router.refresh()
+      } else {
+        setErrorMsg(res.error || "Failed to disconnect.")
+      }
+    } catch {
+      setErrorMsg("Error disconnecting.")
+    } finally {
+      setActionPending(false)
+    }
+  }
 
   const fetchState = React.useCallback(async (silent = false) => {
     try {
@@ -434,17 +460,28 @@ export function PartnerConnectionCard({
                   </p>
                 </div>
 
-                {/* Partner Dashboard Link — visible for supporters */}
+                {/* Partner Dashboard Link & Disconnect — visible for supporters */}
                 {state?.relationship?.role === "supporter" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => router.push("/partner")}
-                    className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5"
-                  >
-                    <Eye className="size-3.5" />
-                    <span>View Partner Dashboard</span>
-                  </Button>
+                  <div className="space-y-2 pt-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => router.push("/partner")}
+                      className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 font-medium"
+                    >
+                      <Eye className="size-3.5" />
+                      <span>View Our Shared Space</span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={actionPending}
+                      onClick={() => setDisconnectConfirmOpen(true)}
+                      className="w-full h-8 rounded-xl text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                    >
+                      <span>Disconnect from {state.partner.displayName}</span>
+                    </Button>
+                  </div>
                 )}
               </div>
             )}
@@ -539,6 +576,56 @@ export function PartnerConnectionCard({
         partnerUsername={cancelledPartnerInfo?.username}
         partnerDisplayName={cancelledPartnerInfo?.displayName}
       />
+
+      {/* Supporter Disconnect Confirmation Dialog */}
+      <Dialog open={disconnectConfirmOpen} onOpenChange={setDisconnectConfirmOpen}>
+        <DialogContent className="max-w-sm rounded-3xl p-6 overflow-hidden">
+          <DialogHeader className="text-center space-y-2">
+            <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20">
+              <AlertCircle className="size-6 stroke-[2.2]" />
+            </div>
+            <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+              Disconnect from {state?.partner?.displayName}?
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed text-left pt-1 space-y-1.5">
+              <span>
+                You will immediately lose access to {state?.partner?.displayName}&apos;s shared cycle overview and daily notes.
+              </span>
+              <span className="block font-medium text-foreground">
+                Your private information remains private.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex items-center gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={actionPending}
+              onClick={() => setDisconnectConfirmOpen(false)}
+              className="flex-1 h-10 rounded-xl text-xs cursor-pointer"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={actionPending}
+              onClick={handleDisconnectSupporter}
+              className="flex-1 h-10 rounded-xl text-xs font-semibold cursor-pointer gap-1.5 shadow-xs"
+            >
+              {actionPending ? (
+                <>
+                  <Loader2 className="size-3.5 animate-spin" />
+                  <span>Disconnecting...</span>
+                </>
+              ) : (
+                <span>Disconnect</span>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

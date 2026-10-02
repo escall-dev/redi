@@ -121,10 +121,15 @@ export function RelationshipContextCard({
                   <span>Our Space</span>
                 </Badge>
 
-                {durationText && (
+                {durationText ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-full border border-border/50">
                     <CalendarHeart className="size-3 text-rose-500" />
-                    <span>{durationText}</span>
+                    <span>Together for {durationText}</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground bg-secondary/50 px-2 py-0.5 rounded-full border border-border/40">
+                    <HeartHandshake className="size-3 text-primary/70" />
+                    <span>Connected</span>
                   </span>
                 )}
               </div>
@@ -197,12 +202,14 @@ export function RelationshipContextCard({
               {isOwner ? (
                 <>
                   <Sliders className="size-3 text-primary" />
-                  <span>Sharing</span>
+                  <span className="hidden sm:inline">Manage Sharing</span>
+                  <span className="sm:hidden">Sharing</span>
                 </>
               ) : (
                 <>
                   <Eye className="size-3 text-primary" />
-                  <span>Partner View</span>
+                  <span className="hidden sm:inline">View Our Shared Space</span>
+                  <span className="sm:hidden">Shared Space</span>
                 </>
               )}
               <ArrowRight className="size-3" />

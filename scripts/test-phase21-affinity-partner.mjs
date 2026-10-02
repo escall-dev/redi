@@ -43,7 +43,7 @@ try {
   const pkgLock = JSON.parse(fs.readFileSync(path.join(rootDir, "package-lock.json"), "utf8"))
   const versionTs = fs.readFileSync(path.join(rootDir, "lib/version.ts"), "utf8")
 
-  assert(pkg.version === "1.19.0" || pkg.version === "1.20.0", `package.json has valid Phase 21 canonical SemVer (got ${pkg.version})`)
+  assert(pkg.version === "1.20.0" || pkg.version === "1.21.0", `package.json has valid Phase 21 canonical SemVer (got ${pkg.version})`)
   assert(pkgLock.version === pkg.version, `package-lock.json matches package.json (${pkgLock.version})`)
   assert(versionTs.includes("APP_VERSION"), "lib/version.ts defines canonical APP_VERSION")
   assert(versionTs.includes("packageJson.version"), "lib/version.ts dynamically sources from canonical package.json")
@@ -186,6 +186,97 @@ try {
   assert(bannerCode.includes("Shared Partner Space"), "SupporterBanner presents supportive human-facing language")
 } catch (e) {
   console.error("Test 8 error:", e.message)
+}
+
+// ─── TEST 9: My Space vs Our Space Semantic Separation ─────────────────────
+console.log("\n[Test 9] Auditing My Space vs Our Space Semantic & Visual Distinction...")
+try {
+  const dashboardCode = fs.readFileSync(path.join(rootDir, "app/dashboard/page.tsx"), "utf8")
+  const cardCode = fs.readFileSync(path.join(rootDir, "components/partner/relationship-context-card.tsx"), "utf8")
+
+  assert(dashboardCode.includes("My Space"), "Dashboard explicitly renders 'My Space' semantic demarcation")
+  assert(dashboardCode.includes("Private to you"), "My Space header emphasizes 'Private to you' guarantee")
+  assert(cardCode.includes("Our Space"), "RelationshipContextCard explicitly features 'Our Space' badge")
+  assert(cardCode.includes("Together for"), "RelationshipContextCard formats duration as 'Together for ...'")
+  assert(cardCode.includes("Connected"), "RelationshipContextCard provides neutral 'Connected' state when no start date set")
+  assert(cardCode.includes("View Our Shared Space"), "RelationshipContextCard provides 'View Our Shared Space' action for supporters")
+  assert(cardCode.includes("Manage Sharing"), "RelationshipContextCard provides 'Manage Sharing' action for owners")
+} catch (e) {
+  console.error("Test 9 error:", e.message)
+}
+
+// ─── TEST 10: Reusable PrivateCategoryPlaceholder Component ────────────────
+console.log("\n[Test 10] Auditing Reusable PrivateCategoryPlaceholder Architecture...")
+try {
+  const placeholderPath = path.join(rootDir, "components/partner/private-category-placeholder.tsx")
+  assert(fs.existsSync(placeholderPath), "components/partner/private-category-placeholder.tsx exists")
+
+  const placeholderCode = fs.readFileSync(placeholderPath, "utf8")
+  assert(placeholderCode.includes("PrivateCategoryPlaceholder"), "Exports PrivateCategoryPlaceholder component")
+  assert(placeholderCode.includes("Private for now"), "Provides 'Private for now' badge for supporters")
+  assert(placeholderCode.includes("Not shared with partner"), "Provides 'Not shared with partner' badge for owners")
+  assert(placeholderCode.includes("Manage sharing"), "Provides 'Manage sharing' action link for owners")
+  assert(placeholderCode.includes("EyeOff"), "Includes privacy icon for supporter state")
+} catch (e) {
+  console.error("Test 10 error:", e.message)
+}
+
+// ─── TEST 11: Privacy Transparency UX ("What you share" / "What remains private") ──
+console.log("\n[Test 11] Auditing Privacy UX: What you share vs What remains private...")
+try {
+  const sharingCardCode = fs.readFileSync(path.join(rootDir, "components/partner/partner-sharing-settings-card.tsx"), "utf8")
+
+  assert(sharingCardCode.includes("What you share"), "PartnerSharingSettingsCard renders 'What you share' section")
+  assert(sharingCardCode.includes("What remains private"), "PartnerSharingSettingsCard renders 'What remains private' section")
+  assert(sharingCardCode.includes("Personal symptoms &amp; body observations"), "Explicitly explains that personal symptoms remain private")
+  assert(sharingCardCode.includes("Private notes &amp; unshared journals"), "Explicitly explains that private notes remain private")
+  assert(sharingCardCode.includes("Account security, MPIN &amp; credentials"), "Explicitly explains that account credentials and MPIN remain private")
+} catch (e) {
+  console.error("Test 11 error:", e.message)
+}
+
+// ─── TEST 12: Supporter Disconnect & Revocation Architecture ──────────────
+console.log("\n[Test 12] Auditing Supporter Disconnect & Revocation Contracts...")
+try {
+  const connectionCardCode = fs.readFileSync(path.join(rootDir, "components/partner/partner-connection-card.tsx"), "utf8")
+  const sharingCardCode = fs.readFileSync(path.join(rootDir, "components/partner/partner-sharing-settings-card.tsx"), "utf8")
+
+  // Supporter disconnect
+  assert(connectionCardCode.includes("Disconnect from"), "PartnerConnectionCard enables supporter disconnect flow")
+  assert(connectionCardCode.includes("handleDisconnectSupporter"), "PartnerConnectionCard defines handleDisconnectSupporter handler")
+  assert(connectionCardCode.includes("revokePartnerRelationshipAction"), "PartnerConnectionCard invokes revokePartnerRelationshipAction")
+
+  // Owner stop sharing dialog
+  assert(sharingCardCode.includes("Stop sharing with"), "PartnerSharingSettingsCard features 'Stop sharing with [Partner]?' confirmation")
+  assert(sharingCardCode.includes("Stop Sharing"), "PartnerSharingSettingsCard features clear 'Stop Sharing' confirmation button")
+  assert(sharingCardCode.includes("Your private information remains private"), "Revocation confirmation guarantees private information remains private")
+} catch (e) {
+  console.error("Test 12 error:", e.message)
+}
+
+// ─── TEST 13: Server-side Security & Anti-Tampering Invariants ─────────────
+console.log("\n[Test 13] Auditing Server-side Security & Anti-Tampering Invariants...")
+try {
+  const authCode = fs.readFileSync(path.join(rootDir, "lib/partner/authorization.ts"), "utf8")
+  const mutationsCode = fs.readFileSync(path.join(rootDir, "app/actions/partner-mutations.ts"), "utf8")
+  const serviceCode = fs.readFileSync(path.join(rootDir, "lib/partner/service.ts"), "utf8")
+
+  // 1. Session-derived user only (never client IDs)
+  assert(authCode.includes("supabase.auth.getUser()"), "Authorization derives user strictly from session auth")
+  assert(authCode.includes("relationship.owner_user_id === authenticatedUserId ? \"owner\" : \"supporter\""), "Role is derived server-side from active relationship record")
+
+  // 2. Active relationship required
+  assert(authCode.includes('.eq("status", "active")'), "Relationship lookup enforces status = 'active'")
+  assert(serviceCode.includes('.eq("status", "active")') || serviceCode.includes('status !== "active"'), "Service enforces active status checks")
+
+  // 3. Category isolation
+  assert(authCode.includes("isCategoryEnabled(context.sharingPreferences, category)"), "Supporter access enforces per-category sharing checks")
+
+  // 4. Mutation constraints: strictly constrained to ownerUserId
+  assert(mutationsCode.includes("authorizeSupporterManagement"), "All partner mutations require authorizeSupporterManagement")
+  assert(mutationsCode.includes("ownerUserId") && mutationsCode.includes("authResult.context"), "Mutations target ownerUserId resolved securely from server context")
+} catch (e) {
+  console.error("Test 13 error:", e.message)
 }
 
 // ─── TEST RESULTS SUMMARY ──────────────────────────────────────────────────

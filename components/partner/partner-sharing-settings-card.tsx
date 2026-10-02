@@ -36,6 +36,7 @@ import {
   Sparkles,
   Check,
   ShieldCheck,
+  Shield,
 } from "lucide-react"
 
 interface PartnerSharingSettingsCardProps {
@@ -315,6 +316,94 @@ export function PartnerSharingSettingsCard({
             </div>
           </div>
 
+          {/* PRIVACY TRANSPARENCY: WHAT YOU SHARE & WHAT REMAINS PRIVATE */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+            {/* What is shared */}
+            <div className="rounded-2xl border border-border/50 bg-secondary/20 p-3.5 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Eye className="size-3.5 text-primary" />
+                <span>What you share</span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-muted-foreground">
+                {prefs?.cycle_estimates && (
+                  <li className="flex items-center gap-1.5 text-foreground">
+                    <Check className="size-3 text-emerald-500 shrink-0" />
+                    <span>Cycle Estimates (day, phase, next period)</span>
+                  </li>
+                )}
+                {prefs?.period_status && (
+                  <li className="flex items-center gap-1.5 text-foreground">
+                    <Check className="size-3 text-emerald-500 shrink-0" />
+                    <span>Period Status (active flow, start dates)</span>
+                  </li>
+                )}
+                {prefs?.cycle_preferences && (
+                  <li className="flex items-center gap-1.5 text-foreground">
+                    <Check className="size-3 text-emerald-500 shrink-0" />
+                    <span>Cycle Preferences (typical duration targets)</span>
+                  </li>
+                )}
+                {prefs?.daily_notes && (
+                  <li className="flex items-center gap-1.5 text-foreground">
+                    <Check className="size-3 text-emerald-500 shrink-0" />
+                    <span>Daily Notes (shared journal entries)</span>
+                  </li>
+                )}
+                {!isSomeAllowed && (
+                  <li className="text-muted-foreground italic">
+                    Nothing shared yet. All cycle data is private.
+                  </li>
+                )}
+              </ul>
+            </div>
+
+            {/* What remains private */}
+            <div className="rounded-2xl border border-border/50 bg-secondary/20 p-3.5 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <Shield className="size-3.5 text-muted-foreground" />
+                <span>What remains private</span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] text-muted-foreground">
+                <li className="flex items-center gap-1.5">
+                  <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                  <span>Personal symptoms &amp; body observations</span>
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                  <span>Private notes &amp; unshared journals</span>
+                </li>
+                {!prefs?.cycle_estimates && (
+                  <li className="flex items-center gap-1.5">
+                    <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                    <span>Cycle day &amp; phase predictions</span>
+                  </li>
+                )}
+                {!prefs?.period_status && (
+                  <li className="flex items-center gap-1.5">
+                    <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                    <span>Active period bleeding status</span>
+                  </li>
+                )}
+                {!prefs?.cycle_preferences && (
+                  <li className="flex items-center gap-1.5">
+                    <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                    <span>Target cycle length preferences</span>
+                  </li>
+                )}
+                {!prefs?.daily_notes && (
+                  <li className="flex items-center gap-1.5">
+                    <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                    <span>Daily notes &amp; reflections</span>
+                  </li>
+                )}
+                <li className="flex items-center gap-1.5">
+                  <span className="size-1 rounded-full bg-muted-foreground shrink-0" />
+                  <span>Account security, MPIN &amp; credentials</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
           {/* SECTION 1: SHARING (VIEW ACCESS) */}
           <div className="space-y-2">
             <div className="flex items-center gap-1.5 px-0.5">
@@ -536,15 +625,18 @@ export function PartnerSharingSettingsCard({
               <ShieldAlert className="size-6 stroke-[2.2]" />
             </div>
             <DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
-              Revoke Partner Connection?
+              Stop sharing with {partnerDisplayName}?
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Are you sure you want to disconnect from{" "}
-              <span className="font-semibold text-foreground">{partnerDisplayName}</span>
-              {partnerUsername && (
-                <span className="font-mono text-primary font-medium"> (@{partnerUsername})</span>
-              )}
-              ? They will immediately lose all access to view and co-manage your cycle data. All active permissions are revoked instantly, and no shared data is retained on their account.
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed space-y-1.5 text-left pt-1">
+              <span>
+                Your partner will immediately lose access to the shared information you enabled. They will immediately lose all access to view and co-manage your cycle data.
+              </span>
+              <span className="block font-medium text-foreground">
+                Your private information remains private.
+              </span>
+              <span className="block text-[11px] text-muted-foreground/80">
+                All active permissions are revoked instantly, and no shared data is retained on their account.
+              </span>
             </DialogDescription>
           </DialogHeader>
 
@@ -568,10 +660,10 @@ export function PartnerSharingSettingsCard({
               {revokePending ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  <span>Revoking...</span>
+                  <span>Stopping sharing...</span>
                 </>
               ) : (
-                <span>Yes, Revoke</span>
+                <span>Stop Sharing</span>
               )}
             </Button>
           </div>

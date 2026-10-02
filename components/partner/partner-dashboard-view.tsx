@@ -486,7 +486,7 @@ function PrivateCategoryPlaceholderCard({
   const Icon = meta.icon
 
   return (
-    <Card className="border-border/50 bg-secondary/15 opacity-80 hover:opacity-100 transition-opacity rounded-2xl shadow-2xs">
+    <Card className="border-border/50 bg-secondary/15 opacity-80 hover:opacity-100 transition-opacity rounded-2xl shadow-2xs select-none">
       <CardContent className="p-3.5 flex items-center justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <div className="flex size-8 items-center justify-center rounded-xl bg-muted/60 text-muted-foreground shrink-0 mt-0.5 border border-border/40">
@@ -532,11 +532,11 @@ function PartnerDashboardHeader({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push("/settings/partner")}
-            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground rounded-lg -ml-2 cursor-pointer"
+            onClick={() => router.push("/dashboard")}
+            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground rounded-lg -ml-2 cursor-pointer gap-1"
           >
             <ChevronLeft className="size-3.5" />
-            Partner
+            <span>My Space</span>
           </Button>
         </div>
       )}
