@@ -193,9 +193,9 @@ export function MpinReturningForm({
     .join(" ")
 
   return (
-    <div className="w-full max-w-md mx-auto h-full min-h-0 flex flex-col justify-between overflow-hidden">
+    <div className="w-full max-w-md mx-auto min-h-full flex-1 flex flex-col justify-between px-4 sm:px-6 py-4 sm:py-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       {/* ── Form content: centered in upper/middle portion of viewport ── */}
-      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-2 min-h-0 space-y-5 sm:space-y-6">
+      <div className="w-full flex-1 flex flex-col justify-center my-auto py-2 space-y-5 sm:space-y-6">
         {/* Header & Logo Section */}
         <div className="flex flex-col items-center text-center space-y-2.5">
           {/* Highlighted Standalone Seijun Tulip Logo */}
@@ -324,7 +324,7 @@ export function MpinReturningForm({
       </div>
 
       {/* ── Bottom: Credits + Meadow nicely balanced slightly above bottom edge ── */}
-      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-5 sm:pb-6 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+      <footer className="shrink-0 flex flex-col items-center justify-end w-full pt-4 sm:pt-6">
         {/* Version badge & Credits — stacked right above meadow */}
         <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
@@ -340,10 +340,10 @@ export function MpinReturningForm({
         </div>
 
         {/* Botanical Tulip Grass Meadow Illustration */}
-        <div className="w-full leading-none">
+        <div className="w-full leading-none" aria-hidden="true">
           <SeijunMeadow />
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

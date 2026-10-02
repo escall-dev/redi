@@ -56,6 +56,7 @@ export function LoginForm({ version }: LoginFormProps = {}) {
   const urlError = searchParams.get("error")
   const urlVerified = searchParams.get("verified") === "true"
   const urlResetMpin = searchParams.get("reset_mpin") === "true"
+  const previewInstall = searchParams.get("preview_install") === "true"
 
   const [viewMode, setViewMode] = React.useState<AuthViewMode>("loading")
   const [currentUser, setCurrentUser] = React.useState<MpinReturningUser | null>(null)
@@ -339,9 +340,9 @@ export function LoginForm({ version }: LoginFormProps = {}) {
       : null)
 
   return (
-    <div className="w-full max-w-md mx-auto h-full min-h-0 flex flex-col justify-between overflow-hidden">
+    <div className="w-full max-w-md mx-auto min-h-full flex-1 flex flex-col justify-between px-4 sm:px-6 py-4 sm:py-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-[max(1.25rem,env(safe-area-inset-bottom))]">
       {/* ── Form content: centered in upper/middle portion of viewport ── */}
-      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-2 min-h-0 space-y-4 overflow-y-auto">
+      <div className="w-full flex-1 flex flex-col justify-center my-auto py-2 space-y-4 sm:space-y-5">
         {/* Header & Logo Section */}
         <div className="flex flex-col items-center text-center space-y-2.5">
           {/* Highlighted Standalone Seijun Tulip Logo */}
@@ -478,9 +479,6 @@ export function LoginForm({ version }: LoginFormProps = {}) {
               "Sign In"
             )}
           </Button>
-
-          {/* Install App Button */}
-          <InstallAppButton />
         </form>
 
         {/* Switch to Register */}
@@ -489,16 +487,19 @@ export function LoginForm({ version }: LoginFormProps = {}) {
             Don&apos;t have an account?{" "}
             <Link
               href="/register"
-              className="font-medium text-primary hover:underline underline-offset-4"
+              className="font-medium text-primary hover:underline underline-offset-4 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40 rounded-sm"
             >
               Create an account
             </Link>
           </p>
         </div>
+
+        {/* PWA Install CTA — distinct from authentication */}
+        <InstallAppButton forceShow={previewInstall} />
       </div>
 
       {/* ── Bottom: Credits + Meadow nicely balanced slightly above bottom edge ── */}
-      <div className="shrink-0 flex flex-col items-center justify-end w-full pb-5 sm:pb-6 pb-[max(1.75rem,env(safe-area-inset-bottom))]">
+      <footer className="shrink-0 flex flex-col items-center justify-end w-full pt-4 sm:pt-6">
         {/* Version badge & Credits — stacked right above meadow */}
         <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
@@ -514,10 +515,10 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         </div>
 
         {/* Botanical Tulip Grass Meadow Illustration */}
-        <div className="w-full leading-none">
+        <div className="w-full leading-none" aria-hidden="true">
           <SeijunMeadow />
         </div>
-      </div>
+      </footer>
     </div>
   )
 }

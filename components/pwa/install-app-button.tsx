@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -16,6 +17,7 @@ interface BeforeInstallPromptEvent extends Event {
 export interface InstallAppButtonProps {
   className?: string
   label?: string
+  forceShow?: boolean
 }
 
 function subscribeStandalone(callback: () => void) {
@@ -53,6 +55,7 @@ function getStandaloneServerSnapshot(): boolean {
 export function InstallAppButton({
   className,
   label = "Download as App",
+  forceShow = false,
 }: InstallAppButtonProps) {
   const [deferredPrompt, setDeferredPrompt] =
     React.useState<BeforeInstallPromptEvent | null>(null)
@@ -132,21 +135,25 @@ export function InstallAppButton({
   // 1. The app is already running in standalone PWA mode
   // 2. The app is already installed on the device (detected via getInstalledRelatedApps or appinstalled)
   // 3. No install prompt is available (browser suppresses it when installed, or unsupported)
-  if (isStandalone || isInstalled || !deferredPrompt) {
+  if (!forceShow && (isStandalone || isInstalled || !deferredPrompt)) {
     return null
   }
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={handleInstall}
-      className={cn(
-        "w-full h-11 text-sm font-semibold rounded-xl border border-primary/25 bg-card text-primary hover:bg-lavender/40 hover:text-primary transition-all cursor-pointer shadow-2xs",
-        className
-      )}
-    >
-      {label}
-    </Button>
+    <div className="w-full pt-1.5 flex flex-col items-center">
+      <Button
+        type="button"
+        variant="outline"
+        onClick={handleInstall}
+        aria-label="Download Seijun as App"
+        className={cn(
+          "w-full min-h-[44px] h-auto py-2.5 px-4 text-sm font-semibold rounded-xl border border-primary/25 bg-card/60 dark:bg-card/40 text-primary hover:bg-lavender/40 dark:hover:bg-primary/10 hover:text-primary transition-all cursor-pointer shadow-2xs inline-flex items-center justify-center gap-2 text-center whitespace-normal focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring/40",
+          className
+        )}
+      >
+        <Download className="size-4 shrink-0 text-primary" aria-hidden="true" />
+        <span>{label}</span>
+      </Button>
+    </div>
   )
 }

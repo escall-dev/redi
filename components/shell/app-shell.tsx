@@ -28,8 +28,8 @@ export function AppShell({ children, className }: AppShellProps) {
     <SessionTimeoutProvider>
       {isAuthRoute ? (
         pathname === "/login" ? (
-          <div className="relative h-[100dvh] overflow-hidden flex flex-col justify-between bg-background text-foreground">
-            <main className="w-full flex-1 flex flex-col h-full min-h-0 overflow-hidden">{children}</main>
+          <div className="relative min-h-screen min-h-dvh flex flex-col justify-between bg-background text-foreground overflow-x-clip">
+            <main className="w-full flex-1 flex flex-col min-h-0">{children}</main>
           </div>
         ) : (
           <div className="relative min-h-screen min-h-dvh flex flex-col items-center justify-center bg-background text-foreground px-4 py-8 sm:px-6 overflow-x-clip pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
