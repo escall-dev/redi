@@ -261,7 +261,7 @@ export function RegisterForm() {
 
         <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/80">
           <RediLogo size="xs" />
-          <span>Developed by Alex for Redge</span>
+          <span>Developed by Alex</span>
         </div>
       </div>
     </div>

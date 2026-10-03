@@ -547,7 +547,7 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         <div className="flex flex-col items-center justify-center space-y-1 pb-1.5 text-center pointer-events-auto">
           <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground/75">
             <RediLogo size="xs" />
-            <span>Developed by Alex for Redge</span>
+            <span>Developed by Alex</span>
           </div>
 
           {version && (
