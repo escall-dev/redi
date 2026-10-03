@@ -574,11 +574,36 @@ export async function acceptInvitation(
 
     const now = new Date().toISOString()
 
-    // 1. Transition relationship to active
+    // Resolve owner vs supporter based on usage_roles
+    let actualOwnerId = invitation.inviter_user_id
+    let actualSupporterId = acceptingUserId
+
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("usage_role")
+      .eq("user_id", invitation.inviter_user_id)
+      .maybeSingle()
+
+    const { data: acceptorProfile } = await supabase
+      .from("profiles")
+      .select("usage_role")
+      .eq("user_id", acceptingUserId)
+      .maybeSingle()
+
+    if (
+      inviterProfile?.usage_role === "supporter" &&
+      acceptorProfile?.usage_role !== "supporter"
+    ) {
+      actualOwnerId = acceptingUserId
+      actualSupporterId = invitation.inviter_user_id
+    }
+
+    // 1. Transition relationship to active with resolved roles
     const { data: updatedRel, error: relUpdateError } = await supabase
       .from("partner_relationships")
       .update({
-        supporter_user_id: acceptingUserId,
+        owner_user_id: actualOwnerId,
+        supporter_user_id: actualSupporterId,
         status: "active",
         accepted_at: now,
       })
@@ -594,6 +619,15 @@ export async function acceptInvitation(
     if (!updatedRel) {
       return { ok: false, error: "Failed to activate partner relationship. Record was not updated." }
     }
+
+    // Update partner_sharing_preferences owner_user_id to match the cycle owner
+    await supabase
+      .from("partner_sharing_preferences")
+      .update({
+        owner_user_id: actualOwnerId,
+        updated_at: now,
+      })
+      .eq("relationship_id", invitation.relationship_id)
 
     // 2. Transition invitation to accepted (prevents reuse)
     const { data: updatedInv, error: invUpdateError } = await supabase
@@ -1409,10 +1443,35 @@ export async function acceptInvitationById(
 
     const now = new Date().toISOString()
 
+    // Resolve owner vs supporter based on usage_roles
+    let actualOwnerId = invitation.inviter_user_id
+    let actualSupporterId = acceptingUserId
+
+    const { data: inviterProfile } = await supabase
+      .from("profiles")
+      .select("usage_role")
+      .eq("user_id", invitation.inviter_user_id)
+      .maybeSingle()
+
+    const { data: acceptorProfile } = await supabase
+      .from("profiles")
+      .select("usage_role")
+      .eq("user_id", acceptingUserId)
+      .maybeSingle()
+
+    if (
+      inviterProfile?.usage_role === "supporter" &&
+      acceptorProfile?.usage_role !== "supporter"
+    ) {
+      actualOwnerId = acceptingUserId
+      actualSupporterId = invitation.inviter_user_id
+    }
+
     const { data: updatedRel, error: relError } = await supabase
       .from("partner_relationships")
       .update({
-        supporter_user_id: acceptingUserId,
+        owner_user_id: actualOwnerId,
+        supporter_user_id: actualSupporterId,
         status: "active",
         accepted_at: now,
       })
@@ -1428,6 +1487,15 @@ export async function acceptInvitationById(
     if (!updatedRel) {
       return { ok: false, error: "Failed to activate partner relationship. Record was not updated." }
     }
+
+    // Update partner_sharing_preferences owner_user_id to match the cycle owner
+    await supabase
+      .from("partner_sharing_preferences")
+      .update({
+        owner_user_id: actualOwnerId,
+        updated_at: now,
+      })
+      .eq("relationship_id", invitation.relationship_id)
 
     const { data: updatedInv, error: invUpdateError } = await supabase
       .from("partner_invitations")
