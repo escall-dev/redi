@@ -48,8 +48,8 @@ export function MpinReturningForm({
   version,
 }: MpinReturningFormProps) {
   const initialAutofillPin = React.useMemo(() => {
-    if (typeof window === "undefined") return null
-    return getAutofillMpin(user.id) || getAutofillMpin()
+    if (typeof window === "undefined" || !user?.id) return null
+    return getAutofillMpin(user.id)
   }, [user.id])
 
   const initialRememberMe = React.useMemo(() => {

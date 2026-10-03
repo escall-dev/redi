@@ -44,6 +44,7 @@ export interface Database {
           typical_cycle_length: number | null
           onboarding_completed: boolean
           affinity_display_format: AffinityDisplayFormat
+          has_mpin: boolean
           created_at: string
           updated_at: string
         }
@@ -59,6 +60,7 @@ export interface Database {
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
           affinity_display_format?: AffinityDisplayFormat
+          has_mpin?: boolean
           created_at?: string
           updated_at?: string
         }
@@ -74,6 +76,7 @@ export interface Database {
           typical_cycle_length?: number | null
           onboarding_completed?: boolean
           affinity_display_format?: AffinityDisplayFormat
+          has_mpin?: boolean
           created_at?: string
           updated_at?: string
         }

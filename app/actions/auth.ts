@@ -15,6 +15,7 @@ export interface AuthActionResult {
     email?: string
     displayName?: string | null
     onboardingCompleted?: boolean
+    hasMpin?: boolean
   }
   redirectUrl?: string
 }
@@ -70,6 +71,9 @@ export async function loginAction(
     if (data.user) {
       // Set remember-me flag cookie for middleware and subsequent token refreshes
       const cookieStore = await cookies()
+      // Clean up any stale first-time MPIN setup cookie upon authentication
+      cookieStore.delete("seijun-mpin-setup")
+
       if (rememberMe) {
         cookieStore.set("sb-remember-me", "true", {
           path: "/",
@@ -89,7 +93,7 @@ export async function loginAction(
       const displayName = data.user.user_metadata?.display_name || null
       const { data: profile } = await supabase
         .from("profiles")
-        .select("onboarding_completed")
+        .select("onboarding_completed, has_mpin")
         .eq("user_id", data.user.id)
         .single()
 
@@ -108,6 +112,7 @@ export async function loginAction(
         email: data.user.email,
         displayName: displayName,
         onboardingCompleted: profile?.onboarding_completed ?? false,
+        hasMpin: profile?.has_mpin ?? false,
       }
 
       if (!profile?.onboarding_completed) {
@@ -348,5 +353,58 @@ export async function forgotMpinAction(): Promise<void> {
     // Ignore error
   }
   redirect("/login?reset_mpin=true")
+}
+
+/**
+ * Server Action: Get authenticated user's MPIN status from profiles table
+ */
+export async function getUserMpinStatusAction(): Promise<{ hasMpin: boolean }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { hasMpin: false }
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("has_mpin")
+      .eq("user_id", user.id)
+      .single()
+
+    return { hasMpin: Boolean(profile?.has_mpin) }
+  } catch {
+    return { hasMpin: false }
+  }
+}
+
+/**
+ * Server Action: Update authenticated user's MPIN status in profiles table
+ */
+export async function setUserMpinStatusAction(
+  hasMpin: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const supabase = await createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: "Not authenticated" }
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ has_mpin: hasMpin, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+    return { success: true }
+  } catch (err) {
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Failed to update MPIN status",
+    }
+  }
 }
 

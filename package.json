@@ -28,7 +28,8 @@
     "test:partner:affinity": "node scripts/test-partner-affinity.mjs",
     "test:partner:affinity-exp": "node scripts/test-phase21-affinity-partner.mjs",
     "test:mpin": "node scripts/test-mpin-auth.mjs",
-    "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs && node scripts/test-mpin-auth.mjs"
+    "test:mpin-switching": "node scripts/test-mpin-account-switching.mjs",
+    "test": "node scripts/test-version.mjs && node scripts/test-account-classification.mjs && node scripts/test-mpin-auth.mjs && node scripts/test-mpin-account-switching.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

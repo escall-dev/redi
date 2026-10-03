@@ -9,7 +9,6 @@ import { MpinInput } from "@/components/auth/mpin-input"
 import { createClient } from "@/lib/supabase/client"
 import { forgotMpinAction } from "@/app/actions/auth"
 import {
-  hasMpin,
   verifyMpin,
   saveMpin,
   clearMpin,
@@ -17,8 +16,9 @@ import {
   setRememberDeviceEnabled,
   isAutoUnlockEnabled,
   setAutoUnlockEnabled,
+  fetchUserMpinConfiguration,
 } from "@/lib/auth/mpin-storage"
-import { KeyRound, ShieldCheck, Check, AlertCircle, Loader2, RefreshCw, Smartphone, Zap } from "lucide-react"
+import { KeyRound, ShieldCheck, Check, AlertCircle, Loader2, Smartphone, Zap } from "lucide-react"
 
 export function MpinSettingsCard() {
   const [userId, setUserId] = React.useState<string | null>(null)
@@ -52,7 +52,8 @@ export function MpinSettingsCard() {
         if (!isMounted || !user) return
 
         setUserId(user.id)
-        const configured = hasMpin(user.id)
+        const configured = await fetchUserMpinConfiguration(user.id)
+        if (!isMounted) return
         setIsConfigured(configured)
         setRememberDevice(isRememberDeviceEnabled(user.id))
         setAutoUnlock(isAutoUnlockEnabled(user.id))

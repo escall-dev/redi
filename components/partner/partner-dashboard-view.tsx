@@ -208,7 +208,7 @@ export function PartnerDashboardView({
                   ? "Cycle Owner Dashboard"
                   : isRevoked
                   ? "Partner Connection Ended"
-                  : "No Partner Connection"}
+                  : "No Partner Connected Yet"}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {dashboardData?.reason === "NOT_SUPPORTER"

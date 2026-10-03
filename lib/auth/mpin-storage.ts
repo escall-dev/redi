@@ -6,6 +6,7 @@
  */
 
 import { generateSalt, hashMpin, timingSafeEqual } from "./mpin-crypto"
+import { createClient } from "@/lib/supabase/client"
 
 export interface MpinRecord {
   salt: string
@@ -58,7 +59,7 @@ export function setSessionLocked(locked: boolean): void {
     ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toUTCString()
     : "Thu, 01 Jan 1970 00:00:00 GMT"
 
-  document.cookie = `seijun-mpin-locked=${locked ? "true" : "false"}; path=/; SameSite=Lax; expires=${expires}`
+  document.cookie = `seijun-mpin-locked=${locked ? "true" : "false"}; path=/; SameSite=Lax; max-age=${maxAge}; expires=${expires}`
 
   try {
     if (locked) {
@@ -134,6 +135,17 @@ export async function saveMpin(
   }
   resetFailedAttempts(userId)
   setSessionLocked(false)
+  setAccountMpinConfigured(userId, true)
+
+  try {
+    const supabase = createClient()
+    await supabase
+      .from("profiles")
+      .update({ has_mpin: true, updated_at: new Date().toISOString() })
+      .eq("user_id", userId)
+  } catch {
+    // Non-blocking in case of offline/network issues; local verifier is persisted
+  }
 }
 
 /**
@@ -347,19 +359,86 @@ export function clearRememberedUser(): void {
 }
 
 /**
+ * Cache local representation of DB MPIN configuration for this user
+ */
+export function setAccountMpinConfigured(userId: string, configured: boolean): void {
+  if (typeof window === "undefined" || !userId) return
+  try {
+    localStorage.setItem(getKey("configured", userId), configured ? "true" : "false")
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function getAccountMpinConfigured(userId: string): boolean | null {
+  if (typeof window === "undefined" || !userId) return null
+  try {
+    const val = localStorage.getItem(getKey("configured", userId))
+    if (val === "true") return true
+    if (val === "false") return false
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Fetches MPIN configuration for a specific user ID.
+ * Queries Supabase `profiles` table as source of truth.
+ * Also checks local device verifier storage.
+ */
+export async function fetchUserMpinConfiguration(userId: string): Promise<boolean> {
+  if (!userId) return false
+
+  // Check local verifier for immediate signal on this device
+  const localConfigured = hasMpin(userId)
+
+  try {
+    const supabase = createClient()
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("has_mpin")
+      .eq("user_id", userId)
+      .maybeSingle()
+
+    if (!error && profile) {
+      const dbConfigured = Boolean(profile.has_mpin)
+      // If local has verifier but DB is not yet marked true, sync to DB
+      if (localConfigured && !dbConfigured) {
+        try {
+          await supabase
+            .from("profiles")
+            .update({ has_mpin: true, updated_at: new Date().toISOString() })
+            .eq("user_id", userId)
+        } catch {
+          // Ignore sync failure
+        }
+        setAccountMpinConfigured(userId, true)
+        return true
+      }
+      const finalConfigured = dbConfigured || localConfigured
+      setAccountMpinConfigured(userId, finalConfigured)
+      return finalConfigured
+    }
+  } catch {
+    // Network / offline fallback: rely on local device storage
+  }
+
+  setAccountMpinConfigured(userId, localConfigured)
+  return localConfigured
+}
+
+/**
  * Remember MPIN Autofill preference and storage
+ * Strictly scoped to the authenticated user ID.
  */
 export function isMpinRememberMeEnabled(userId?: string): boolean {
-  if (typeof window === "undefined" || !userId) return true
+  if (typeof window === "undefined" || !userId) return false
   try {
-    // If an autofill PIN already exists in localStorage, Remember Me is guaranteed active
-    const hasAutofill =
-      localStorage.getItem(getKey("autofill", userId)) ||
-      localStorage.getItem(`${PREFIX}active_autofill_pin`)
+    const hasAutofill = Boolean(localStorage.getItem(getKey("autofill", userId)))
     if (hasAutofill) return true
 
     const val = localStorage.getItem(getKey("remember_mpin", userId))
-    // Default to true for remembered returning users on this device
     return val !== "false"
   } catch {
     return true
@@ -387,27 +466,15 @@ export function saveAutofillMpin(userId: string, mpin: string): void {
         : Buffer.from(`seijun_${userId}_${mpin}`).toString("base64")
     localStorage.setItem(getKey("autofill", userId), encoded)
     localStorage.setItem(getKey("remember_mpin", userId), "true")
-    localStorage.setItem(`${PREFIX}active_autofill_pin`, encoded)
-    localStorage.setItem(`${PREFIX}active_autofill_user`, userId)
   } catch {
     // Ignore storage errors
   }
 }
 
 export function getAutofillMpin(userId?: string): string | null {
-  if (typeof window === "undefined") return null
+  if (typeof window === "undefined" || !userId) return null
   try {
-    let raw = userId ? localStorage.getItem(getKey("autofill", userId)) : null
-    if (!raw) {
-      const activeUser = localStorage.getItem(`${PREFIX}active_autofill_user`)
-      if (!userId || activeUser === userId) {
-        raw = localStorage.getItem(`${PREFIX}active_autofill_pin`)
-      }
-    }
-    // Final fallback to generic active pin
-    if (!raw) {
-      raw = localStorage.getItem(`${PREFIX}active_autofill_pin`)
-    }
+    const raw = localStorage.getItem(getKey("autofill", userId))
     if (!raw) return null
 
     const decoded =
@@ -433,11 +500,6 @@ export function clearAutofillMpin(userId: string): void {
   try {
     localStorage.removeItem(getKey("autofill", userId))
     localStorage.setItem(getKey("remember_mpin", userId), "false")
-    const activeUser = localStorage.getItem(`${PREFIX}active_autofill_user`)
-    if (activeUser === userId) {
-      localStorage.removeItem(`${PREFIX}active_autofill_pin`)
-      localStorage.removeItem(`${PREFIX}active_autofill_user`)
-    }
   } catch {
     // Ignore storage errors
   }
@@ -455,11 +517,30 @@ export function clearMpin(userId: string): void {
     localStorage.removeItem(getKey("autofill", userId))
     localStorage.removeItem(getKey("autounlock", userId))
     localStorage.removeItem(getKey("attempts", userId))
+    localStorage.removeItem(getKey("configured", userId))
     clearRememberedUser()
     setSessionLocked(false)
+
+    try {
+      const supabase = createClient()
+      void supabase
+        .from("profiles")
+        .update({ has_mpin: false, updated_at: new Date().toISOString() })
+        .eq("user_id", userId)
+        .then(() => {}, () => {})
+    } catch {
+      // Ignore
+    }
   } catch {
     // Ignore storage errors
   }
+}
+
+/**
+ * Clears account-specific MPIN state without wiping other stored users
+ */
+export function clearAccountMpinState(userId: string): void {
+  clearMpin(userId)
 }
 
 /**

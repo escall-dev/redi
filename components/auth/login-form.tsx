@@ -3,9 +3,18 @@
 import * as React from "react"
 import Link from "next/link"
 import { useSearchParams, useRouter } from "next/navigation"
-import { loginAction, setSessionLockAction, setMpinSetupPendingAction, logoutAction, type AuthActionResult } from "@/app/actions/auth"
+import { loginAction, setSessionLockAction, setMpinSetupPendingAction, type AuthActionResult } from "@/app/actions/auth"
 import { createClient } from "@/lib/supabase/client"
-import { hasMpin, isAutoUnlockEnabled, setSessionLocked, clearMpin, getRememberedUser, setRememberedUser, clearRememberedUser } from "@/lib/auth/mpin-storage"
+import {
+  hasMpin,
+  isAutoUnlockEnabled,
+  setSessionLocked,
+  clearMpin,
+  getRememberedUser,
+  setRememberedUser,
+  clearRememberedUser,
+  fetchUserMpinConfiguration,
+} from "@/lib/auth/mpin-storage"
 import { MpinReturningForm, type MpinReturningUser } from "@/components/auth/mpin-returning-form"
 import { MpinSetupForm } from "@/components/auth/mpin-setup-form"
 import { RediLogo } from "@/components/brand/redi-logo"
@@ -95,24 +104,10 @@ export function LoginForm({ version }: LoginFormProps = {}) {
     let isMounted = true
 
     async function evaluateExistingSession() {
-      // Priority 1: Check if this device has a remembered user profile
-      const remembered = getRememberedUser()
-      if (remembered && isMounted) {
-        setCurrentUser(remembered)
-      }
-
       // If user came via explicit reset MPIN, force email/password login
       if (urlResetMpin) {
         if (isMounted) {
           setViewMode("email-password")
-        }
-        return
-      }
-
-      // If this device has a remembered user with an active MPIN (default experience)
-      if (remembered && hasMpin(remembered.id)) {
-        if (isMounted) {
-          setViewMode("returning-mpin")
         }
         return
       }
@@ -126,15 +121,22 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         if (!isMounted) return
 
         if (user) {
+          // Explicit loading state: fetch current authenticated user's MPIN configuration
+          const isConfigured = await fetchUserMpinConfiguration(user.id)
+          if (!isMounted) return
+
           const userObj: MpinReturningUser = {
             id: user.id,
             email: user.email,
             displayName: user.user_metadata?.display_name || null,
           }
-          setCurrentUser(userObj)
-          setRememberedUser(userObj)
 
-          if (hasMpin(user.id)) {
+          if (isConfigured) {
+            // User already has an MPIN: show verification screen, never setup
+            setCurrentUser(userObj)
+            setRememberedUser(userObj)
+            await setMpinSetupPendingAction(false)
+
             // Check automatic unlock preference
             if (isAutoUnlockEnabled(user.id)) {
               setSessionLocked(false)
@@ -147,15 +149,23 @@ export function LoginForm({ version }: LoginFormProps = {}) {
             // Default returning experience: 6-digit MPIN keypad
             setViewMode("returning-mpin")
           } else {
-            // Authenticated user without MPIN on this device -> First-time setup
+            // Authenticated user without MPIN -> First-time setup flow
+            setCurrentUser(null)
             setSetupUserId(user.id)
             setSetupUserEmail(user.email)
             setSetupDisplayName(user.user_metadata?.display_name || null)
+            await setMpinSetupPendingAction(true)
             setViewMode("setup-mpin")
           }
         } else {
-          // No active Supabase session and no local MPIN -> Standard email/password login
-          setViewMode("email-password")
+          // No active Supabase session: check if device has remembered user with MPIN
+          const remembered = getRememberedUser()
+          if (remembered && hasMpin(remembered.id)) {
+            setCurrentUser(remembered)
+            setViewMode("returning-mpin")
+          } else {
+            setViewMode("email-password")
+          }
         }
       } catch {
         if (isMounted) {
@@ -206,7 +216,11 @@ export function LoginForm({ version }: LoginFormProps = {}) {
     setSessionLocked(false)
     await setSessionLockAction(false)
     await setMpinSetupPendingAction(false)
+    // Clear all account-specific React state so nothing leaks to the next account
     setCurrentUser(null)
+    setSetupUserId(null)
+    setSetupUserEmail(undefined)
+    setSetupDisplayName(null)
     setViewMode("email-password")
   }, [])
 
@@ -226,6 +240,9 @@ export function LoginForm({ version }: LoginFormProps = {}) {
     await setSessionLockAction(false)
     await setMpinSetupPendingAction(false)
     setCurrentUser(null)
+    setSetupUserId(null)
+    setSetupUserEmail(undefined)
+    setSetupDisplayName(null)
     setViewMode("email-password")
     setFormError("Your local MPIN has been reset. Please sign in with your email and password to create a new MPIN.")
   }, [currentUser])
@@ -250,7 +267,6 @@ export function LoginForm({ version }: LoginFormProps = {}) {
 
     const submittedEmail = formData.get("email")?.toString() || ""
     const isRemembered = formData.get("rememberMe") !== null
-    const submittedPassword = formData.get("password")?.toString() || ""
 
     if (isRemembered && submittedEmail) {
       try {
@@ -269,31 +285,58 @@ export function LoginForm({ version }: LoginFormProps = {}) {
         return
       }
 
-      // Persist remembered user profile for subsequent default MPIN visits
-      setRememberedUser({
-        id: result.user.id,
-        email: result.user.email,
-        displayName: result.user.displayName,
-      })
+      const authenticatedId = result.user.id
 
-      // Check if MPIN is already configured for this user
-      if (hasMpin(result.user.id)) {
-        setSessionLocked(false)
-        await setSessionLockAction(false)
-        await setMpinSetupPendingAction(false)
-        router.push(result.redirectUrl || redirectTarget)
-        router.refresh()
-        return
+      // 1. Wipe all account-specific state from any prior account
+      setCurrentUser(null)
+      setSetupUserId(null)
+      setSetupUserEmail(undefined)
+      setSetupDisplayName(null)
+
+      // 2. Explicit loading state: fetch current user's MPIN configuration
+      setViewMode("loading")
+
+      // 3. Database is source of truth, combined with local device configuration
+      let isConfigured = Boolean(result.user.hasMpin)
+      if (!isConfigured) {
+        isConfigured = await fetchUserMpinConfiguration(authenticatedId)
       }
 
-      // First login: prompt user to create 6-digit MPIN
-      await setMpinSetupPendingAction(true)
-      setSetupUserId(result.user.id)
-      setSetupUserEmail(result.user.email)
-      setSetupDisplayName(result.user.displayName || null)
-      setViewMode("setup-mpin")
+      const userObj: MpinReturningUser = {
+        id: authenticatedId,
+        email: result.user.email,
+        displayName: result.user.displayName,
+      }
+
+      if (isConfigured) {
+        // Requirement 5: If the current user already has an MPIN:
+        // - Show the MPIN verification/unlock screen.
+        // - Do not show the MPIN setup screen.
+        setCurrentUser(userObj)
+        setRememberedUser(userObj)
+        await setMpinSetupPendingAction(false)
+
+        if (isAutoUnlockEnabled(authenticatedId)) {
+          setSessionLocked(false)
+          await setSessionLockAction(false)
+          router.push(result.redirectUrl || redirectTarget)
+          router.refresh()
+          return
+        }
+
+        setViewMode("returning-mpin")
+      } else {
+        // Requirement 6: If the current user has no MPIN:
+        // - Show the MPIN setup flow.
+        await setMpinSetupPendingAction(true)
+        setSetupUserId(authenticatedId)
+        setSetupUserEmail(result.user.email)
+        setSetupDisplayName(result.user.displayName || null)
+        setViewMode("setup-mpin")
+      }
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "An unexpected error occurred.")
+      setViewMode("email-password")
     } finally {
       setIsSubmitting(false)
     }

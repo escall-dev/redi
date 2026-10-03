@@ -8,8 +8,7 @@ import { LogOut, Loader2, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 
-import { setSessionLocked } from "@/lib/auth/mpin-storage"
-import { setSessionLockAction } from "@/app/actions/auth"
+import { setSessionLocked, clearRememberedUser } from "@/lib/auth/mpin-storage"
 
 interface LogoutButtonProps {
   variant?: "destructive" | "listItem"
@@ -23,13 +22,22 @@ export function LogoutButton({ variant = "destructive", className }: LogoutButto
   const handleLogout = async () => {
     setIsLoggingOut(true)
     try {
-      setSessionLocked(true)
-      await setSessionLockAction(true)
+      const supabase = createClient()
+      await supabase.auth.signOut()
     } catch {
-      // Ignore
+      // Ignore client error
     }
-    router.push("/login")
-    router.refresh()
+    clearRememberedUser()
+    setSessionLocked(false)
+    try {
+      await logoutAction()
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
+        return
+      }
+      router.push("/login")
+      router.refresh()
+    }
   }
 
   if (variant === "listItem") {
