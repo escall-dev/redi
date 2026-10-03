@@ -1,4 +1,5 @@
 import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
+import { getServerUserProfile } from "@/lib/server/profile"
 import { redirect } from "next/navigation"
 import { getCyclesForUser } from "@/app/actions/cycles"
 import { getSymptomsForUser } from "@/app/actions/symptoms"
@@ -31,11 +32,7 @@ export default async function CalendarPage() {
   // 1. Resolve authoritative cycle context
   const cycleContext = await resolveServerCycleContext(supabase, user.id)
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("onboarding_completed, usage_role")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  const profile = await getServerUserProfile(user.id)
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")

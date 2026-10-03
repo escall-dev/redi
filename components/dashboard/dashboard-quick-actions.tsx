@@ -53,6 +53,7 @@ export function DashboardQuickActions() {
           ) : (
             <Link
               href="/settings/partner"
+              prefetch={true}
               className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
             >
               <div className="flex items-center gap-3">
@@ -97,6 +98,7 @@ export function DashboardQuickActions() {
         {/* 2. View Calendar */}
         <Link
           href="/calendar"
+          prefetch={true}
           className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
         >
           <div className="flex items-center gap-3">
@@ -119,6 +121,7 @@ export function DashboardQuickActions() {
         {isPartnerContext ? (
           <Link
             href="/notes"
+            prefetch={true}
             className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">
@@ -139,6 +142,7 @@ export function DashboardQuickActions() {
         ) : (
           <Link
             href="/cycles"
+            prefetch={true}
             className="group flex items-center justify-between p-4 rounded-2xl border border-border/80 dark:border-border/60 bg-card hover:border-primary/40 shadow-redi-card hover:shadow-redi-card-hover transition-all text-left active:scale-[0.99]"
           >
             <div className="flex items-center gap-3">

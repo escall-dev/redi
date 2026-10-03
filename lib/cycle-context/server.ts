@@ -1,3 +1,4 @@
+import { cache } from "react"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/supabase/types"
 import type {
@@ -8,12 +9,16 @@ import type {
 } from "./types"
 import type { SharingCategory, CoManagementPermission } from "@/lib/partner/authorization"
 import { cookies } from "next/headers"
+import { getServerUserProfile } from "@/lib/server/profile"
 
 import { CYCLE_CONTEXT_COOKIE_NAME } from "./types"
 export { CYCLE_CONTEXT_COOKIE_NAME }
 
 /**
  * Resolves the centralized Cycle Context on the server.
+ *
+ * Wrapped in React.cache() to deduplicate resolution across server components
+ * and layouts within the same request lifecycle.
  *
  * Implements authoritative role-based logic:
  *   - 'supporter': When in an active relationship as supporter, the primary
@@ -22,119 +27,108 @@ export { CYCLE_CONTEXT_COOKIE_NAME }
  *     cookie preference or explicitly requested mode.
  *   - 'cycle_tracker': Primary context is ALWAYS Own cycle.
  */
-export async function resolveServerCycleContext(
-  supabase: SupabaseClient<Database>,
-  userId: string,
-  requestedMode?: CycleContextMode | null
-): Promise<CycleContextState> {
-  const defaultPermissions: CyclePermissions = {
-    enabledCategories: [],
-    managementPermissions: [],
-    canManagePeriod: false,
-    canManageCyclePrefs: false,
-    canManageDailyNotes: false,
-    hasCycleEstimates: false,
-    hasPeriodStatus: false,
-    hasDailyNotes: false,
-    hasCyclePreferences: false,
-  }
-
-  const defaultPartnerInfo: CyclePartnerInfo = {
-    partnerUserId: null,
-    displayName: null,
-    username: null,
-    relationshipId: null,
-    hasActivePartner: false,
-    isSupporter: false,
-    isOwner: false,
-  }
-
-  if (!userId) {
-    return {
-      mode: "own",
-      isPartnerContext: false,
-      isOwnContext: true,
-      activeUserId: "",
-      currentUserId: "",
-      usageRole: null,
-      partnerInfo: defaultPartnerInfo,
-      permissions: defaultPermissions,
-      canSwitchContext: false,
+export const resolveServerCycleContext = cache(
+  async (
+    supabase: SupabaseClient<Database>,
+    userId: string,
+    requestedMode?: CycleContextMode | null
+  ): Promise<CycleContextState> => {
+    const defaultPermissions: CyclePermissions = {
+      enabledCategories: [],
+      managementPermissions: [],
+      canManagePeriod: false,
+      canManageCyclePrefs: false,
+      canManageDailyNotes: false,
+      hasCycleEstimates: false,
+      hasPeriodStatus: false,
+      hasDailyNotes: false,
+      hasCyclePreferences: false,
     }
-  }
 
-  // 1. Fetch current user profile
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("usage_role, display_name, username, avatar_url")
-    .eq("user_id", userId)
-    .maybeSingle()
+    const defaultPartnerInfo: CyclePartnerInfo = {
+      partnerUserId: null,
+      displayName: null,
+      username: null,
+      relationshipId: null,
+      hasActivePartner: false,
+      isSupporter: false,
+      isOwner: false,
+    }
 
-  const usageRole = (profile?.usage_role as "cycle_tracker" | "supporter" | "both" | null) ?? "cycle_tracker"
-
-  const currentUserInfo = profile
-    ? {
-        displayName: profile.display_name,
-        username: profile.username,
-        avatarUrl: profile.avatar_url,
-      }
-    : undefined
-
-  // 2. Fetch active partner relationship (if any)
-  const { data: activeRel } = await supabase
-    .from("partner_relationships")
-    .select("id, status, owner_user_id, supporter_user_id, relationship_start_date")
-    .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
-    .eq("status", "active")
-    .maybeSingle()
-
-  const hasActivePartner = Boolean(activeRel && activeRel.supporter_user_id)
-  let partnerInfo: CyclePartnerInfo = defaultPartnerInfo
-  let permissions: CyclePermissions = defaultPermissions
-  let partnerUserId: string | null = null
-
-  if (activeRel && activeRel.supporter_user_id) {
-    const isOwner = activeRel.owner_user_id === userId
-    const isSupporter = activeRel.supporter_user_id === userId
-    partnerUserId = isOwner ? activeRel.supporter_user_id : activeRel.owner_user_id
-
-    // Fetch partner profile display info
-    let partnerDisplayName = "Partner"
-    let partnerUsername: string | null = null
-    let partnerAvatarUrl: string | null = null
-
-    if (partnerUserId) {
-      const { data: pProfile } = await supabase
-        .from("profiles")
-        .select("display_name, username, avatar_url")
-        .eq("user_id", partnerUserId)
-        .maybeSingle()
-
-      if (pProfile) {
-        partnerDisplayName = pProfile.display_name || pProfile.username || "Partner"
-        partnerUsername = pProfile.username || null
-        partnerAvatarUrl = pProfile.avatar_url || null
+    if (!userId) {
+      return {
+        mode: "own",
+        isPartnerContext: false,
+        isOwnContext: true,
+        activeUserId: "",
+        currentUserId: "",
+        usageRole: null,
+        partnerInfo: defaultPartnerInfo,
+        permissions: defaultPermissions,
+        canSwitchContext: false,
       }
     }
 
-    partnerInfo = {
-      partnerUserId,
-      displayName: partnerDisplayName,
-      username: partnerUsername,
-      avatarUrl: partnerAvatarUrl,
-      relationshipId: activeRel.id,
-      relationshipStartDate: activeRel.relationship_start_date || null,
-      hasActivePartner: true,
-      isSupporter,
-      isOwner,
-    }
+    // 1 & 2. Concurrently fetch current user profile (memoized) and active partner relationship
+    const [profile, activeRelRes] = await Promise.all([
+      getServerUserProfile(userId),
+      supabase
+        .from("partner_relationships")
+        .select("id, status, owner_user_id, supporter_user_id, relationship_start_date")
+        .or(`owner_user_id.eq.${userId},supporter_user_id.eq.${userId}`)
+        .eq("status", "active")
+        .maybeSingle(),
+    ])
 
-    // Fetch sharing preferences for the relationship
-    const { data: prefs } = await supabase
-      .from("partner_sharing_preferences")
-      .select("*")
-      .eq("relationship_id", activeRel.id)
-      .maybeSingle()
+    const usageRole = (profile?.usage_role as "cycle_tracker" | "supporter" | "both" | null) ?? "cycle_tracker"
+
+    const currentUserInfo = profile
+      ? {
+          displayName: profile.display_name,
+          username: profile.username,
+          avatarUrl: profile.avatar_url,
+        }
+      : undefined
+
+    const activeRel = activeRelRes.data
+    const hasActivePartner = Boolean(activeRel && activeRel.supporter_user_id)
+    let partnerInfo: CyclePartnerInfo = defaultPartnerInfo
+    let permissions: CyclePermissions = defaultPermissions
+    let partnerUserId: string | null = null
+
+    if (activeRel && activeRel.supporter_user_id) {
+      const isOwner = activeRel.owner_user_id === userId
+      const isSupporter = activeRel.supporter_user_id === userId
+      partnerUserId = isOwner ? activeRel.supporter_user_id : activeRel.owner_user_id
+
+      // 3 & 4. Concurrently fetch partner profile and sharing preferences
+      const [pProfile, prefsRes] = await Promise.all([
+        partnerUserId ? getServerUserProfile(partnerUserId) : Promise.resolve(null),
+        supabase
+          .from("partner_sharing_preferences")
+          .select("*")
+          .eq("relationship_id", activeRel.id)
+          .maybeSingle(),
+      ])
+
+      const partnerDisplayName = pProfile?.display_name || pProfile?.username || "Partner"
+      const partnerUsername = pProfile?.username || null
+      const partnerAvatarUrl = pProfile?.avatar_url || null
+
+      partnerInfo = {
+        partnerUserId,
+        displayName: partnerDisplayName,
+        username: partnerUsername,
+        avatarUrl: partnerAvatarUrl,
+        relationshipId: activeRel.id,
+        relationshipStartDate: activeRel.relationship_start_date || null,
+        hasActivePartner: true,
+        isSupporter,
+        isOwner,
+      }
+
+      // Fetch sharing preferences for the relationship
+      const prefs = prefsRes.data
 
     if (prefs) {
       const enabledCats: SharingCategory[] = []
@@ -223,4 +217,4 @@ export async function resolveServerCycleContext(
     permissions,
     canSwitchContext,
   }
-}
+})

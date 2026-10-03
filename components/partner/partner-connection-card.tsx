@@ -237,7 +237,7 @@ export function PartnerConnectionCard({
             {/* Status Badges */}
             {status === "active" && (
               <Badge variant="outline" className="text-xs px-2.5 py-0.5 font-medium border-emerald-500/40 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">
-                Connected
+                Connected Partner
               </Badge>
             )}
             {status === "outgoing_pending" && (
@@ -268,7 +268,7 @@ export function PartnerConnectionCard({
                   <div className="mx-auto flex size-12 items-center justify-center rounded-2xl bg-lavender text-primary border border-lavender-border/60">
                     <HeartHandshake className="size-6 stroke-[2.2]" />
                   </div>
-                  <p className="text-sm font-semibold text-foreground">No Partner Connected Yet</p>
+                  <p className="text-sm font-semibold text-foreground">No partner connected</p>
                   <p className="text-xs text-muted-foreground max-w-sm mx-auto leading-relaxed">
                     Keep your cycle logs private, or connect with a partner to share cycle awareness together. You have complete control over what is shared and can revoke access anytime.
                   </p>
@@ -470,7 +470,7 @@ export function PartnerConnectionCard({
                       className="w-full h-10 rounded-xl text-xs gap-2 cursor-pointer border-primary/30 text-primary hover:bg-primary/5 font-medium"
                     >
                       <Eye className="size-3.5" />
-                      <span>View Our Shared Space</span>
+                      <span>View Partner Dashboard</span>
                     </Button>
                     <Button
                       type="button"

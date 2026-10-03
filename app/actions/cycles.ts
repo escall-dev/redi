@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
+import { getServerUserProfile } from "@/lib/server/profile"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
@@ -173,22 +174,29 @@ export async function getCyclesForUser(
 ): Promise<CycleRecord[]> {
   const supabase = customClient || (await createClient())
 
-  // Fetch cycles sorted by start_date ASC to compute consecutive cycle lengths
-  const initialCyclesRes = await supabase
-    .from("cycles")
-    .select(`
-      id,
-      user_id,
-      start_date,
-      end_date,
-      cycle_length,
-      period_duration,
-      notes,
-      created_at,
-      updated_at
-    `)
-    .eq("user_id", userId)
-    .order("start_date", { ascending: true })
+  // Fetch cycles and period days concurrently
+  const [initialCyclesRes, periodDaysRes] = await Promise.all([
+    supabase
+      .from("cycles")
+      .select(`
+        id,
+        user_id,
+        start_date,
+        end_date,
+        cycle_length,
+        period_duration,
+        notes,
+        created_at,
+        updated_at
+      `)
+      .eq("user_id", userId)
+      .order("start_date", { ascending: true }),
+    supabase
+      .from("period_days")
+      .select("id, cycle_id, user_id, date, flow, created_at")
+      .eq("user_id", userId)
+      .order("date", { ascending: true }),
+  ])
 
   if (initialCyclesRes.error) return []
 
@@ -197,11 +205,7 @@ export async function getCyclesForUser(
   // If user has zero cycles, run initial onboarding check
   if (!cycles || cycles.length === 0) {
     try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("last_period_start, onboarding_completed")
-        .eq("user_id", userId)
-        .single()
+      const profile = await getServerUserProfile(userId)
 
       if (profile?.last_period_start) {
         await supabase.from("cycles").insert({
@@ -238,20 +242,12 @@ export async function getCyclesForUser(
 
   if (!cycles || cycles.length === 0) return []
 
-  // Fetch period days for all cycles belonging to user
-  const { data: periodDays } = await supabase
-    .from("period_days")
-    .select("id, cycle_id, user_id, date, flow, created_at")
-    .eq("user_id", userId)
-    .order("date", { ascending: true })
-
+  const periodDays = periodDaysRes.data || []
   const daysByCycle = new Map<string, PeriodDayRecord[]>()
-  if (periodDays) {
-    for (const day of periodDays) {
-      const list = daysByCycle.get(day.cycle_id) || []
-      list.push(day as PeriodDayRecord)
-      daysByCycle.set(day.cycle_id, list)
-    }
+  for (const day of periodDays) {
+    const list = daysByCycle.get(day.cycle_id) || []
+    list.push(day as PeriodDayRecord)
+    daysByCycle.set(day.cycle_id, list)
   }
 
   // Compute cycle lengths between consecutive cycle start dates

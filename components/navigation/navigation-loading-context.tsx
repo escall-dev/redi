@@ -31,7 +31,7 @@ const NavigationLoadingContext = React.createContext<NavigationLoadingContextVal
  * any visual flicker. Transitions taking longer than 200ms will display the
  * purple-and-white loading spinner to reassure the user.
  */
-export const NAVIGATION_DELAY_MS = 200
+export const NAVIGATION_DELAY_MS = 800
 
 /**
  * Safety timeout: automatically reset loading state after 8 seconds

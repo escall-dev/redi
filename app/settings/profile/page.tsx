@@ -1,4 +1,5 @@
-import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
+import { getAuthenticatedUser } from "@/lib/supabase/server"
+import { getServerUserProfile } from "@/lib/server/profile"
 import { redirect } from "next/navigation"
 import { SettingsPageHeader } from "@/components/settings/settings-page-header"
 import { ProfileSettingsForm, type ProfileFormData } from "@/components/settings/profile-settings-form"
@@ -18,13 +19,7 @@ export default async function ProfileSettingsPage() {
     redirect("/login")
   }
 
-  const supabase = await createClient()
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, username, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  const profile = await getServerUserProfile(user.id)
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")

@@ -58,8 +58,14 @@ export function CycleContextProvider({
     initialState || defaultContextState
   )
   const [isLoading, setIsLoading] = React.useState(!initialState)
+  const lastFetchedRef = React.useRef<number>(0)
 
-  const refreshContext = React.useCallback(async () => {
+  const refreshContext = React.useCallback(async (force = false) => {
+    const now = Date.now()
+    if (!force && now - lastFetchedRef.current < 30000) {
+      return
+    }
+    lastFetchedRef.current = now
     try {
       const fresh = await getCycleContextAction()
       if (fresh) {
@@ -74,10 +80,10 @@ export function CycleContextProvider({
 
   React.useEffect(() => {
     // Initial fetch if not provided or to ensure freshness
-    refreshContext()
+    refreshContext(true)
 
     const handleFocus = () => {
-      refreshContext()
+      refreshContext(false)
     }
     const handleContextEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ mode: CycleContextMode }>

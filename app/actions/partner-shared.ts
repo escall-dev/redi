@@ -132,3 +132,52 @@ export async function getSharedDailyNotesAction(): Promise<SharedDailyNotesResul
   const supabase = await createClient()
   return getSharedDailyNotes(supabase)
 }
+
+// ─── Full Dashboard Batch ────────────────────────────────────────────────────
+
+export interface FullPartnerDashboardResult {
+  dashboardData: PartnerDashboardData
+  cycleEstimates: SharedCycleEstimateResult | null
+  periodStatus: SharedPeriodStatusResult | null
+  cyclePreferences: SharedCyclePreferencesResult | null
+  dailyNotes: SharedDailyNotesResult | null
+}
+
+/**
+ * Server Action: Combined partner dashboard loader.
+ * Authenticates and checks partner relationship ONCE, then concurrently fetches
+ * all authorized enabled categories via Promise.all.
+ * Reduces 5 separate HTTP roundtrips down to a single network call.
+ */
+export async function getPartnerDashboardFullAction(): Promise<FullPartnerDashboardResult> {
+  const supabase = await createClient()
+  const dashboardData = await getEnabledSharingCategories(supabase)
+
+  if (!dashboardData.authorized) {
+    return {
+      dashboardData,
+      cycleEstimates: null,
+      periodStatus: null,
+      cyclePreferences: null,
+      dailyNotes: null,
+    }
+  }
+
+  const categories = dashboardData.enabledCategories || dashboardData.categories || []
+
+  const [cycleEstimates, periodStatus, cyclePreferences, dailyNotes] = await Promise.all([
+    categories.includes("cycle_estimates") ? getSharedCycleEstimates(supabase) : Promise.resolve(null),
+    categories.includes("period_status") ? getSharedPeriodStatus(supabase) : Promise.resolve(null),
+    categories.includes("cycle_preferences") ? getSharedCyclePreferences(supabase) : Promise.resolve(null),
+    categories.includes("daily_notes") ? getSharedDailyNotes(supabase) : Promise.resolve(null),
+  ])
+
+  return {
+    dashboardData,
+    cycleEstimates,
+    periodStatus,
+    cyclePreferences,
+    dailyNotes,
+  }
+}
+

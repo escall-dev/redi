@@ -39,6 +39,7 @@ import {
 } from "lucide-react"
 import {
   getPartnerDashboardAction,
+  getPartnerDashboardFullAction,
   getSharedCycleEstimatesAction,
   getSharedPeriodStatusAction,
   getSharedCyclePreferencesAction,
@@ -108,60 +109,27 @@ export function PartnerDashboardView({
     setDailyNotes(res)
   }, [])
 
+  const lastFocusRef = React.useRef<number>(0)
+
   const load = React.useCallback(async (isInitial = false) => {
     try {
-      if (isInitial) setLoading(true)
+      if (isInitial) {
+        setLoading(true)
+        setCategoryLoading(true)
+      }
       setError(null)
-      const result = await getPartnerDashboardAction()
-      setDashboardData(result)
+      const res = await getPartnerDashboardFullAction()
+      setDashboardData(res.dashboardData)
 
-      if (!result.authorized) {
-        setLoading(false)
-        setCategoryLoading(false)
-        return
+      if (res.dashboardData.authorized) {
+        if (res.cycleEstimates) setCycleEstimates(res.cycleEstimates)
+        if (res.periodStatus) setPeriodStatus(res.periodStatus)
+        if (res.cyclePreferences) setCyclePreferences(res.cyclePreferences)
+        if (res.dailyNotes) setDailyNotes(res.dailyNotes)
       }
-
-      setLoading(false)
-
-      // Independently fetch only enabled categories
-      const categories = result.enabledCategories || (result as any).categories || []
-      setCategoryLoading(true)
-
-      const promises: Promise<void>[] = []
-
-      if (categories.includes("cycle_estimates")) {
-        promises.push(
-          getSharedCycleEstimatesAction().then((r) => {
-            setCycleEstimates(r)
-          })
-        )
-      }
-      if (categories.includes("period_status")) {
-        promises.push(
-          getSharedPeriodStatusAction().then((r) => {
-            setPeriodStatus(r)
-          })
-        )
-      }
-      if (categories.includes("cycle_preferences")) {
-        promises.push(
-          getSharedCyclePreferencesAction().then((r) => {
-            setCyclePreferences(r)
-          })
-        )
-      }
-      if (categories.includes("daily_notes")) {
-        promises.push(
-          getSharedDailyNotesAction().then((r) => {
-            setDailyNotes(r)
-          })
-        )
-      }
-
-      await Promise.all(promises)
-      setCategoryLoading(false)
     } catch {
       setError("Failed to load partner dashboard.")
+    } finally {
       setLoading(false)
       setCategoryLoading(false)
     }
@@ -170,9 +138,13 @@ export function PartnerDashboardView({
   React.useEffect(() => {
     load(true)
 
-    // Re-synchronize when partner tabs back to the dashboard
+    // Re-synchronize when partner tabs back to the dashboard (throttled to 30s)
     const handleFocus = () => {
-      load(false)
+      const now = Date.now()
+      if (now - lastFocusRef.current > 30000) {
+        lastFocusRef.current = now
+        load(false)
+      }
     }
     window.addEventListener("focus", handleFocus)
     return () => {
@@ -236,7 +208,7 @@ export function PartnerDashboardView({
                   ? "Cycle Owner Dashboard"
                   : isRevoked
                   ? "Partner Connection Ended"
-                  : "No Partner Connected Yet"}
+                  : "No Partner Connection"}
               </p>
               <p className="text-xs text-muted-foreground leading-relaxed">
                 {dashboardData?.reason === "NOT_SUPPORTER"
@@ -381,6 +353,9 @@ export function PartnerDashboardView({
         </div>
       ) : (
         <div className="space-y-4">
+          {categories.length === 0 && (
+            <p className="sr-only">No Data Shared Yet</p>
+          )}
           {/* 1. Cycle Estimates */}
           {categories.includes("cycle_estimates") && cycleEstimates ? (
             <CycleEstimatesCard data={cycleEstimates} />

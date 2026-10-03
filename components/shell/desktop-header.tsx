@@ -54,6 +54,7 @@ export function DesktopHeader() {
       <Link
         key={item.href}
         href={item.href}
+        prefetch={true}
         className={cn(
           "flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-medium transition-all duration-150 select-none",
           isActive
@@ -125,6 +126,7 @@ export function DesktopHeader() {
           {/* Profile Avatar Link */}
           <Link
             href="/settings/profile"
+            prefetch={true}
             aria-label="User Profile Details"
             title="User Profile"
             className={cn(

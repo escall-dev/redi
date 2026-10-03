@@ -49,6 +49,7 @@ export function MobileBottomNav() {
       <Link
         key={item.href}
         href={item.href}
+        prefetch={true}
         className={cn(
           "relative flex min-h-[48px] w-full flex-col items-center justify-center pt-2 pb-1 transition-all select-none active:scale-95",
           isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
@@ -138,6 +139,7 @@ export function MobileBottomNav() {
             /* Supporter without manage permissions: link to Partner page instead of fake log button */
             <Link
               href="/partner"
+              prefetch={true}
               aria-label="Partner Dashboard"
               className="group relative flex flex-col items-center justify-center select-none active:scale-95 transition-all -mt-9 focus:outline-none"
             >

@@ -1,4 +1,5 @@
 import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
+import { getServerUserProfile } from "@/lib/server/profile"
 import { redirect } from "next/navigation"
 import { Badge } from "@/components/ui/badge"
 import { SettingsMenu } from "@/components/settings/settings-menu"
@@ -23,16 +24,10 @@ export default async function SettingsPage() {
   const supabase = await createClient()
 
   // Concurrently fetch profile settings and notification preferences
-  const [profileRes, initialPreferences] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("display_name, username, avatar_url, sex, usage_role, typical_cycle_length, last_period_start, onboarding_completed, created_at")
-      .eq("user_id", user.id)
-      .maybeSingle(),
+  const [profile, initialPreferences] = await Promise.all([
+    getServerUserProfile(user.id),
     getNotificationPreferences(user.id),
   ])
-
-  const profile = profileRes.data
 
   // Onboarding guard: incomplete users must complete onboarding first
   if (profile && profile.onboarding_completed === false) {

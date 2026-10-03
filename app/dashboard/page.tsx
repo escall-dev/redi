@@ -1,4 +1,5 @@
 import { createClient, getAuthenticatedUser } from "@/lib/supabase/server"
+import { getServerUserProfile } from "@/lib/server/profile"
 import { redirect } from "next/navigation"
 import { getCyclesForUser } from "@/app/actions/cycles"
 import { getSymptomsByDateForUser } from "@/app/actions/symptoms"
@@ -47,12 +48,8 @@ export default async function DashboardPage() {
   // 1. Resolve authoritative cycle context (OWN vs PARTNER)
   const cycleContext = await resolveServerCycleContext(supabase, user.id)
 
-  // 2. Fetch user profile for onboarding status and display name
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, username, avatar_url, last_period_start, typical_cycle_length, onboarding_completed, usage_role, affinity_display_format")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  // 2. Fetch user profile for onboarding status and display name (memoized)
+  const profile = await getServerUserProfile(user.id)
 
   if (profile && profile.onboarding_completed === false) {
     redirect("/onboarding")
